@@ -66,128 +66,82 @@ static PRLogModuleInfo *gLog = nullptr;
 
 namespace mozilla {
 
-/*
- * The base class for all global refresh driver timers.  It takes care
- * of managing the list of refresh drivers attached to them and
- * provides interfaces for querying/setting the rate and actually
- * running a timer 'Tick'.  Subclasses must implement StartTimer(),
- * StopTimer(), and ScheduleNextTick() -- the first two just
- * start/stop whatever timer mechanism is in use, and ScheduleNextTick
- * is called at the start of the Tick() implementation to set a time
- * for the next tick.
- */
-class RefreshDriverTimer {
-public:
-  /*
-   * aRate -- the delay, in milliseconds, requested between timer firings
-   */
-  RefreshDriverTimer(double aRate)
-  {
-    SetRate(aRate);
+RefreshDriverTimer::RefreshDriverTimer(double aRate)
+{
+  SetRate(aRate);
+}
+
+RefreshDriverTimer::~RefreshDriverTimer()
+{
+  NS_ASSERTION(mRefreshDrivers.Length() == 0, "Should have removed all refresh drivers from here by now!");
+}
+
+void
+RefreshDriverTimer::AddRefreshDriver(nsRefreshDriver* aDriver)
+{
+  LOG("[%p] AddRefreshDriver %p", this, aDriver);
+
+  NS_ASSERTION(!mRefreshDrivers.Contains(aDriver), "AddRefreshDriver for a refresh driver that's already in the list!");
+  mRefreshDrivers.AppendElement(aDriver);
+
+  if (mRefreshDrivers.Length() == 1) {
+    StartTimer();
   }
+}
 
-  virtual ~RefreshDriverTimer()
-  {
-    NS_ASSERTION(mRefreshDrivers.Length() == 0, "Should have removed all refresh drivers from here by now!");
+void
+RefreshDriverTimer::RemoveRefreshDriver(nsRefreshDriver* aDriver)
+{
+  LOG("[%p] RemoveRefreshDriver %p", this, aDriver);
+
+  NS_ASSERTION(mRefreshDrivers.Contains(aDriver), "RemoveRefreshDriver for a refresh driver that's not in the list!");
+  mRefreshDrivers.RemoveElement(aDriver);
+
+  if (mRefreshDrivers.Length() == 0) {
+    StopTimer();
   }
+}
 
-  virtual void AddRefreshDriver(nsRefreshDriver* aDriver)
-  {
-    LOG("[%p] AddRefreshDriver %p", this, aDriver);
+void
+RefreshDriverTimer::SetRate(double aNewRate)
+{
+  mRateMilliseconds = aNewRate;
+  mRateDuration = TimeDuration::FromMilliseconds(mRateMilliseconds);
+}
 
-    NS_ASSERTION(!mRefreshDrivers.Contains(aDriver), "AddRefreshDriver for a refresh driver that's already in the list!");
-    mRefreshDrivers.AppendElement(aDriver);
+void
+RefreshDriverTimer::Tick()
+{
+  int64_t jsnow = JS_Now();
+  TimeStamp now = TimeStamp::Now();
 
-    if (mRefreshDrivers.Length() == 1) {
-      StartTimer();
+  ScheduleNextTick(now);
+
+  mLastFireEpoch = jsnow;
+  mLastFireTime = now;
+
+  LOG("[%p] ticking drivers...", this);
+  nsTArray<nsRefPtr<nsRefreshDriver> > drivers(mRefreshDrivers);
+  // RD is short for RefreshDriver
+  profiler_tracing("Paint", "RD", TRACING_INTERVAL_START);
+  for (size_t i = 0; i < drivers.Length(); ++i) {
+    // don't poke this driver if it's in test mode
+    if (drivers[i]->IsTestControllingRefreshesEnabled()) {
+      continue;
     }
+
+    TickDriver(drivers[i], jsnow, now);
   }
+  profiler_tracing("Paint", "RD", TRACING_INTERVAL_END);
+  LOG("[%p] done.", this);
+}
 
-  virtual void RemoveRefreshDriver(nsRefreshDriver* aDriver)
-  {
-    LOG("[%p] RemoveRefreshDriver %p", this, aDriver);
-
-    NS_ASSERTION(mRefreshDrivers.Contains(aDriver), "RemoveRefreshDriver for a refresh driver that's not in the list!");
-    mRefreshDrivers.RemoveElement(aDriver);
-
-    if (mRefreshDrivers.Length() == 0) {
-      StopTimer();
-    }
-  }
-
-  double GetRate() const
-  {
-    return mRateMilliseconds;
-  }
-
-  // will take effect at next timer tick
-  virtual void SetRate(double aNewRate)
-  {
-    mRateMilliseconds = aNewRate;
-    mRateDuration = TimeDuration::FromMilliseconds(mRateMilliseconds);
-  }
-
-  TimeStamp MostRecentRefresh() const { return mLastFireTime; }
-  int64_t MostRecentRefreshEpochTime() const { return mLastFireEpoch; }
-
-protected:
-  virtual void StartTimer() = 0;
-  virtual void StopTimer() = 0;
-  virtual void ScheduleNextTick(TimeStamp aNowTime) = 0;
-
-  /*
-   * Actually runs a tick, poking all the attached RefreshDrivers.
-   * Grabs the "now" time via JS_Now and TimeStamp::Now().
-   */
-  void Tick()
-  {
-    int64_t jsnow = JS_Now();
-    TimeStamp now = TimeStamp::Now();
-
-    ScheduleNextTick(now);
-
-    mLastFireEpoch = jsnow;
-    mLastFireTime = now;
-
-    LOG("[%p] ticking drivers...", this);
-    nsTArray<nsRefPtr<nsRefreshDriver> > drivers(mRefreshDrivers);
-    // RD is short for RefreshDriver
-    profiler_tracing("Paint", "RD", TRACING_INTERVAL_START);
-    for (size_t i = 0; i < drivers.Length(); ++i) {
-      // don't poke this driver if it's in test mode
-      if (drivers[i]->IsTestControllingRefreshesEnabled()) {
-        continue;
-      }
-
-      TickDriver(drivers[i], jsnow, now);
-    }
-    profiler_tracing("Paint", "RD", TRACING_INTERVAL_END);
-    LOG("[%p] done.", this);
-  }
-
-  static void TickDriver(nsRefreshDriver* driver, int64_t jsnow, TimeStamp now)
-  {
-    LOG(">> TickDriver: %p (jsnow: %lld)", driver, jsnow);
-    driver->Tick(jsnow, now);
-  }
-
-  double mRateMilliseconds;
-  TimeDuration mRateDuration;
-
-  int64_t mLastFireEpoch;
-  TimeStamp mLastFireTime;
-  TimeStamp mTargetTime;
-
-  nsTArray<nsRefPtr<nsRefreshDriver> > mRefreshDrivers;
-
-  // useful callback for nsITimer-based derived classes, here
-  // bacause of c++ protected shenanigans
-  static void TimerTick(nsITimer* aTimer, void* aClosure)
-  {
-    RefreshDriverTimer *timer = static_cast<RefreshDriverTimer*>(aClosure);
-    timer->Tick();
-  }
-};
+/*static*/ void
+RefreshDriverTimer::TickDriver(nsRefreshDriver* driver, int64_t jsnow, TimeStamp now)
+{
+  LOG(">> TickDriver: %p (jsnow: %lld)", driver, jsnow);
+  driver->Tick(jsnow, now);
+}
 
 /*
  * A RefreshDriverTimer that uses a nsITimer as the underlying timer.  Note that
