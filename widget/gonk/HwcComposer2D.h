@@ -87,6 +87,10 @@ public:
 
     bool Render(EGLDisplay dpy, EGLSurface sur);
 
+#if ANDROID_VERSION >= 17
+    void EnableVsync(bool aEnable);
+#endif
+
 private:
     void Reset();
     void Prepare(buffer_handle_t fbHandle, int fence);
@@ -98,6 +102,19 @@ private:
     void setCrop(HwcLayer* layer, hwc_rect_t srcCrop);
     void setHwcGeometry(bool aGeometryChanged);
     void SendtoLayerScope();
+
+#if ANDROID_VERSION >= 17
+    //hwc event callback
+    static void HookInvalidate(const struct hwc_procs* aProcs);
+    static void HookVsync(const struct hwc_procs* aProcs, int aDisplay,
+                          int64_t aTimestamp);
+    static void HookHotplug(const struct hwc_procs* aProcs, int aDisplay,
+                            int aConnected);
+
+    void Invalidate();
+    void Vsync(int aDisplay, int64_t aTimestamp);
+    void Hotplug(int aDisplay, int aConnected);
+#endif
 
     HwcDevice*              mHwc;
     HwcList*                mList;
@@ -114,6 +131,9 @@ private:
 #if ANDROID_VERSION >= 17
     android::sp<android::Fence> mPrevRetireFence;
     android::sp<android::Fence> mPrevDisplayFence;
+
+    hwc_procs_t             mHWCProcs;
+    bool                    mHasHWVsync;
 #endif
     nsTArray<layers::LayerComposite*> mHwcLayerMap;
     bool                    mPrepared;

@@ -26,6 +26,7 @@
 #include "mozilla/layers/PLayerTransaction.h"
 #include "mozilla/layers/ShadowLayerUtilsGralloc.h"
 #include "mozilla/layers/TextureHostOGL.h"  // for TextureHostOGL
+#include "mozilla/Preferences.h"
 #include "mozilla/StaticPtr.h"
 #include "cutils/properties.h"
 #include "gfx2DGlue.h"
@@ -76,6 +77,7 @@ HwcComposer2D::HwcComposer2D()
 #if ANDROID_VERSION >= 17
     , mPrevRetireFence(Fence::NO_FENCE)
     , mPrevDisplayFence(Fence::NO_FENCE)
+    , mHasHWVsync(false)
 #endif
     , mPrepared(false)
 {
@@ -115,6 +117,22 @@ HwcComposer2D::Init(hwc_display_t dpy, hwc_surface_t sur, gl::GLContext* aGLCont
         mColorFill = false;
         mRBSwapSupport = false;
     }
+
+    if (Preferences::GetBool("gfx.hw-vsync", false)) {
+        if (mHwc->registerProcs) {
+            memset(&mHWCProcs, 0, sizeof(mHWCProcs));
+
+            mHWCProcs.invalidate = &HwcComposer2D::HookInvalidate;
+            mHWCProcs.vsync = &HwcComposer2D::HookVsync;
+            if (mHwc->common.version >= HWC_DEVICE_API_VERSION_1_1) {
+              mHWCProcs.hotplug = &HwcComposer2D::HookHotplug;
+            }
+            mHwc->registerProcs(mHwc, &mHWCProcs);
+            mHasHWVsync = true;
+
+            EnableVsync(false);
+        }
+    }
 #else
     char propValue[PROPERTY_VALUE_MAX];
     property_get("ro.display.colorfill", propValue, "0");
@@ -138,6 +156,55 @@ HwcComposer2D::GetInstance()
     }
     return sInstance;
 }
+
+#if ANDROID_VERSION >= 17
+void
+HwcComposer2D::EnableVsync(bool aEnable)
+{
+    if (mHasHWVsync && mHwc && mHwc->eventControl){
+        mHwc->eventControl(mHwc, HWC_DISPLAY_PRIMARY, HWC_EVENT_VSYNC, aEnable);
+    }
+}
+
+void
+HwcComposer2D::HookInvalidate(const struct hwc_procs* aProcs)
+{
+    HwcComposer2D::GetInstance()->Invalidate();
+}
+
+void
+HwcComposer2D::HookVsync(const struct hwc_procs* aProcs, int aDisplay,
+                         int64_t aTimestamp)
+{
+    HwcComposer2D::GetInstance()->Vsync(aDisplay, aTimestamp);
+}
+
+void
+HwcComposer2D::HookHotplug(const struct hwc_procs* aProcs, int aDisplay,
+                           int aConnected)
+{
+    HwcComposer2D::GetInstance()->Hotplug(aDisplay, aConnected);
+}
+
+void
+HwcComposer2D::Invalidate()
+{
+    //no op
+}
+
+void
+HwcComposer2D::Vsync(int aDisplay, int64_t aTimestamp)
+{
+    //process vsync here
+    printf_stderr("vsync event timestamp:%lld", aTimestamp);
+}
+
+void
+HwcComposer2D::Hotplug(int aDisplay, int aConnected)
+{
+    //no op
+}
+#endif
 
 bool
 HwcComposer2D::ReallocLayerList()

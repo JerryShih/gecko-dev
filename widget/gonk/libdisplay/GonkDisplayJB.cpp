@@ -55,8 +55,8 @@ GonkDisplayJB::GonkDisplayJB()
 
     if (!err && mFBDevice) {
         mWidth = mFBDevice->width;
-	 mHeight = mFBDevice->height;
-	 xdpi = mFBDevice->xdpi;
+        mHeight = mFBDevice->height;
+        xdpi = mFBDevice->xdpi;
         /* The emulator actually reports RGBA_8888, but EGL doesn't return
          * any matching configuration. We force RGBX here to fix it. */
         surfaceformat = HAL_PIXEL_FORMAT_RGBX_8888;
@@ -162,17 +162,20 @@ GonkDisplayJB::SetEnabled(bool enabled)
         mPowerModule->setInteractive(mPowerModule, true);
     }
 
-    if (mHwc)
+    if (mHwc) {
         mHwc->blank(mHwc, HWC_DISPLAY_PRIMARY, !enabled);
-    else if (mFBDevice->enableScreen)
+    }
+    else if (mFBDevice->enableScreen) {
         mFBDevice->enableScreen(mFBDevice, enabled);
+    }
 
-    if (mEnabledCallback)
+    if (mEnabledCallback) {
         mEnabledCallback(enabled);
+    }
 
     if (!enabled) {
-        autosuspend_enable();
         mPowerModule->setInteractive(mPowerModule, false);
+        autosuspend_enable();
     }
 }
 
