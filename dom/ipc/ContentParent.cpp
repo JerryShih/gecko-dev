@@ -61,6 +61,7 @@
 #include "mozilla/layers/CompositorParent.h"
 #include "mozilla/layers/ImageBridgeParent.h"
 #include "mozilla/layers/SharedBufferManagerParent.h"
+#include "mozilla/layers/VsyncEventParent.h"
 #include "mozilla/net/NeckoParent.h"
 #include "mozilla/Preferences.h"
 #include "mozilla/Services.h"
@@ -1931,6 +1932,9 @@ ContentParent::InitInternal(ProcessPriority aInitialPriority,
         DebugOnly<bool> opened = PSharedBufferManager::Open(this);
         MOZ_ASSERT(opened);
 #endif
+
+        DebugOnly<bool> vsyncOpened = PVsyncEvent::Open(this);
+        MOZ_ASSERT(vsyncOpened);
     }
 
     if (aSendRegisteredChrome) {
@@ -2586,9 +2590,16 @@ ContentParent::AllocPBackgroundParent(Transport* aTransport,
 
 PSharedBufferManagerParent*
 ContentParent::AllocPSharedBufferManagerParent(mozilla::ipc::Transport* aTransport,
-                                                base::ProcessId aOtherProcess)
+                                               base::ProcessId aOtherProcess)
 {
     return SharedBufferManagerParent::Create(aTransport, aOtherProcess);
+}
+
+PVsyncEventParent*
+ContentParent::AllocPVsyncEventParent(mozilla::ipc::Transport* aTransport,
+                                      base::ProcessId aOtherProcess)
+{
+    return VsyncEventParent::Create(aTransport, aOtherProcess);
 }
 
 bool

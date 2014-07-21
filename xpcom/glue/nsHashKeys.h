@@ -493,9 +493,9 @@ public:
   typedef const char* KeyType;
   typedef const char* KeyTypePointer;
 
-  nsCharPtrHashKey(const char* aKey) : mKey(strdup(aKey)) {}
+  nsCharPtrHashKey(const char* aKey) : mKey(::strdup(aKey)) {}
   nsCharPtrHashKey(const nsCharPtrHashKey& aToCopy)
-    : mKey(strdup(aToCopy.mKey))
+    : mKey(::strdup(aToCopy.mKey))
   {
   }
 
