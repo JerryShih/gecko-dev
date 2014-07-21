@@ -12,6 +12,10 @@
 #include "ipc/Nuwa.h"
 #endif
 
+#ifdef MOZ_WIDGET_GONK
+#include "GonkVsyncDispatcher.h"
+#endif
+
 //#define VSYNC_EVENT_CHILD_CREATE_THREAD
 
 //#define PRINT_VSYNC_DEBUG
@@ -85,6 +89,10 @@ VsyncEventChild::Create(Transport* aTransport, ProcessId aOtherProcess)
   if (!CreateVsyncChildThread()) {
     return nullptr;
   }
+#ifdef MOZ_WIDGET_GONK
+  GonkVsyncDispatcher::StartUpOnExistedMessageLoop(sVsyncEventChildThread->message_loop());
+#endif
+
   sVsyncEventChild = new VsyncEventChild(sVsyncEventChildThread->message_loop(),
                                          aTransport);
 
@@ -94,6 +102,10 @@ VsyncEventChild::Create(Transport* aTransport, ProcessId aOtherProcess)
                                                aTransport,
                                                processHandle));
 #else
+#ifdef MOZ_WIDGET_GONK
+  GonkVsyncDispatcher::StartUpOnExistedMessageLoop(MessageLoop::current());
+#endif
+
   sVsyncEventChild = new VsyncEventChild(MessageLoop::current(), aTransport);
 
   sVsyncEventChild->Open(aTransport, aOtherProcess, XRE_GetIOMessageLoop(), ChildSide);
@@ -126,6 +138,9 @@ VsyncEventChild::~VsyncEventChild()
 bool VsyncEventChild::RecvNotifyVsyncEvent(const VsyncData& aVsyncData)
 {
   VSYNC_DEBUG_MESSAGE;
+#ifdef MOZ_WIDGET_GONK
+  GonkVsyncDispatcher::GetInstance()->DispatchVsync(aVsyncData);
+#endif
 
   return true;
 }

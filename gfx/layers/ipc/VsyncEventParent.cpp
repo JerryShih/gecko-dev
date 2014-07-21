@@ -9,6 +9,10 @@
 #include "base/thread.h"
 #include "nsXULAppAPI.h"
 
+#ifdef MOZ_WIDGET_GONK
+#include "GonkVsyncDispatcher.h"
+#endif
+
 //#define PRINT_VSYNC_DEBUG
 
 #ifdef PRINT_VSYNC_DEBUG
@@ -63,12 +67,19 @@ VsyncEventParent::Create(Transport* aTransport, ProcessId aOtherProcess)
     return nullptr;
   }
 
+#ifdef MOZ_WIDGET_GONK
+  GonkVsyncDispatcher::StartUp();
+
+  VsyncEventParent* vsync = new VsyncEventParent(GonkVsyncDispatcher::GetInstance()->GetMessageLoop(),
+                                                 aTransport);
+#else
   if (!CreateVsyncParentThread()) {
     return nullptr;
   }
 
   VsyncEventParent* vsync = new VsyncEventParent(sVsyncEventParentThread->message_loop(),
                                                  aTransport);
+#endif
 
   vsync->GetMessageLoop()->PostTask(FROM_HERE, NewRunnableFunction(
                                     &ConnectVsyncEventParent,
@@ -98,6 +109,9 @@ bool
 VsyncEventParent::RecvEnableVsyncEventNotification()
 {
   VSYNC_DEBUG_MESSAGE;
+#ifdef MOZ_WIDGET_GONK
+  GonkVsyncDispatcher::GetInstance()->RegisterVsyncEventParent(this);
+#endif
 
   return true;
 }
@@ -106,6 +120,9 @@ bool
 VsyncEventParent::RecvDisableVsyncEventNotification()
 {
   VSYNC_DEBUG_MESSAGE;
+#ifdef MOZ_WIDGET_GONK
+  GonkVsyncDispatcher::GetInstance()->UnregisterVsyncEventParent(this);
+#endif
 
   return true;
 }
@@ -114,6 +131,9 @@ void
 VsyncEventParent::ActorDestroy(ActorDestroyReason aActorDestroyReason)
 {
   VSYNC_DEBUG_MESSAGE;
+#ifdef MOZ_WIDGET_GONK
+  GonkVsyncDispatcher::GetInstance()->UnregisterVsyncEventParent(this);
+#endif
 
   return;
 }

@@ -163,7 +163,14 @@ GonkDisplayJB::SetEnabled(bool enabled)
     }
 
     if (mHwc) {
-        mHwc->blank(mHwc, HWC_DISPLAY_PRIMARY, !enabled);
+        if (enabled) {
+            mHwc->blank(mHwc, HWC_DISPLAY_PRIMARY, false);
+            mHwc->eventControl(mHwc, HWC_DISPLAY_PRIMARY, HWC_EVENT_VSYNC, true);
+        }
+        else{
+            mHwc->eventControl(mHwc, HWC_DISPLAY_PRIMARY, HWC_EVENT_VSYNC, false);
+            mHwc->blank(mHwc, HWC_DISPLAY_PRIMARY, true);
+        }
     }
     else if (mFBDevice->enableScreen) {
         mFBDevice->enableScreen(mFBDevice, enabled);

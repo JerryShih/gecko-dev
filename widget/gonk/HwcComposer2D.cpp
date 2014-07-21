@@ -19,6 +19,7 @@
 
 #include "libdisplay/GonkDisplay.h"
 #include "Framebuffer.h"
+#include "GonkVsyncDispatcher.h"
 #include "HwcUtils.h"
 #include "HwcComposer2D.h"
 #include "LayerScope.h"
@@ -130,7 +131,7 @@ HwcComposer2D::Init(hwc_display_t dpy, hwc_surface_t sur, gl::GLContext* aGLCont
             mHwc->registerProcs(mHwc, &mHWCProcs);
             mHasHWVsync = true;
 
-            EnableVsync(false);
+            EnableVsync(true);
         }
     }
 #else
@@ -161,6 +162,8 @@ HwcComposer2D::GetInstance()
 void
 HwcComposer2D::EnableVsync(bool aEnable)
 {
+    printf_stderr("bignose hwc enable:%d",(int)aEnable);
+
     if (mHasHWVsync && mHwc && mHwc->eventControl){
         mHwc->eventControl(mHwc, HWC_DISPLAY_PRIMARY, HWC_EVENT_VSYNC, aEnable);
     }
@@ -196,7 +199,15 @@ void
 HwcComposer2D::Vsync(int aDisplay, int64_t aTimestamp)
 {
     //process vsync here
-    printf_stderr("vsync event timestamp:%lld", aTimestamp);
+    //printf_stderr("vsync event timestamp:%lld", aTimestamp);
+    static int frameCount = 0;
+    char propValue[PROPERTY_VALUE_MAX];
+    property_get("debug.vsync_div", propValue, "1");
+    int div = atoi(propValue);
+ 
+    if (!(frameCount % div)) {
+        GonkVsyncDispatcher::GetInstance()->NotifyVsync(base::TimeTicks::HighResNow().ToInternalValue());
+    }
 }
 
 void
