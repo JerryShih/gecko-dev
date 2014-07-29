@@ -5,130 +5,64 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
 #include "mozilla/layers/VsyncEventChild.h"
-#include "base/thread.h"
 #include "nsXULAppAPI.h"
-
-#ifdef MOZ_NUWA_PROCESS
-#include "ipc/Nuwa.h"
-#endif
 
 #ifdef MOZ_WIDGET_GONK
 #include "GonkVsyncDispatcher.h"
 #endif
 
-//#define VSYNC_EVENT_CHILD_CREATE_THREAD
-
-//#define PRINT_VSYNC_DEBUG
-
+#define PRINT_VSYNC_DEBUG
 #ifdef PRINT_VSYNC_DEBUG
 #define VSYNC_DEBUG_MESSAGE printf_stderr("bignose tid:%d %s",gettid(),__PRETTY_FUNCTION__)
 #else
 #define VSYNC_DEBUG_MESSAGE
 #endif
 
-using namespace base;
-using namespace mozilla::ipc;
-
 namespace mozilla {
 namespace layers {
 
-static VsyncEventChild* sVsyncEventChild = nullptr;
-
-static Thread* sVsyncEventChildThread = nullptr;
-
-static bool
-CreateVsyncChildThread()
-{
-  if (sVsyncEventChildThread) {
-    return true;
-  }
-
-  sVsyncEventChildThread = new Thread("Vsync child ipc thread");
-
-  if (!sVsyncEventChildThread->Start()) {
-    delete sVsyncEventChildThread;
-    sVsyncEventChildThread = nullptr;
-    return false;
-  }
-
-  return true;
-}
-
-static void
-ConnectVsyncEventChild(VsyncEventChild* aVsyncEventChild,
-                       Transport* aTransport,
-                       ProcessHandle aOtherProcess)
-{
-  VSYNC_DEBUG_MESSAGE;
-
-  aVsyncEventChild->Open(aTransport, aOtherProcess, XRE_GetIOMessageLoop(), ChildSide);
-
-#ifdef MOZ_NUWA_PROCESS
-  if (IsNuwaProcess()) {
-    aVsyncEventChild->GetMessageLoop()->PostTask(FROM_HERE,
-                                                 NewRunnableFunction(NuwaMarkCurrentThread,
-                                                 (void (*)(void *))nullptr,
-                                                 (void *)nullptr));
-  }
-#endif
-}
+using namespace base;
+using namespace mozilla::ipc;
 
 PVsyncEventChild*
 VsyncEventChild::Create(Transport* aTransport, ProcessId aOtherProcess)
 {
   VSYNC_DEBUG_MESSAGE;
 
-  NS_ASSERTION(NS_IsMainThread(), "Should be on the main Thread!");
+  MOZ_RELEASE_ASSERT(NS_IsMainThread());
+  //MOZ_ASSERT(NS_IsMainThread());
 
   ProcessHandle processHandle;
   if (!OpenProcessHandle(aOtherProcess, &processHandle)) {
     return nullptr;
   }
 
-#ifdef VSYNC_EVENT_CHILD_CREATE_THREAD
-  if (!CreateVsyncChildThread()) {
-    return nullptr;
-  }
 #ifdef MOZ_WIDGET_GONK
-  GonkVsyncDispatcher::StartUpOnExistedMessageLoop(sVsyncEventChildThread->message_loop());
+  GonkVsyncDispatcher::StartUpOnCurrentThread();
 #endif
 
-  sVsyncEventChild = new VsyncEventChild(sVsyncEventChildThread->message_loop(),
-                                         aTransport);
+  VsyncEventChild* vsyncEventChild = nullptr;
+  vsyncEventChild = new VsyncEventChild(MessageLoop::current(), aTransport);
+  vsyncEventChild->Open(aTransport, aOtherProcess, XRE_GetIOMessageLoop(), ChildSide);
 
-  sVsyncEventChild->GetMessageLoop()->PostTask(FROM_HERE, NewRunnableFunction(
-                                               &ConnectVsyncEventChild,
-                                               sVsyncEventChild,
-                                               aTransport,
-                                               processHandle));
-#else
 #ifdef MOZ_WIDGET_GONK
-  GonkVsyncDispatcher::StartUpOnExistedMessageLoop(MessageLoop::current());
+  GonkVsyncDispatcher::GetInstance()->SetVsyncEventChild(vsyncEventChild);
 #endif
 
-  sVsyncEventChild = new VsyncEventChild(MessageLoop::current(), aTransport);
-
-  sVsyncEventChild->Open(aTransport, aOtherProcess, XRE_GetIOMessageLoop(), ChildSide);
-#endif
-
-  return sVsyncEventChild;
-}
-
-VsyncEventChild*
-VsyncEventChild::GetSingleton()
-{
-  return sVsyncEventChild;
+  return vsyncEventChild;
 }
 
 VsyncEventChild::VsyncEventChild(MessageLoop* aMessageLoop, Transport* aTransport)
   : mMessageLoop(aMessageLoop)
   , mTransport(aTransport)
 {
-
+  VSYNC_DEBUG_MESSAGE;
 }
 
 VsyncEventChild::~VsyncEventChild()
 {
+  VSYNC_DEBUG_MESSAGE;
+
   if (mTransport) {
     XRE_GetIOMessageLoop()->PostTask(FROM_HERE,
                                      new DeleteTask<Transport>(mTransport));
@@ -138,8 +72,10 @@ VsyncEventChild::~VsyncEventChild()
 bool VsyncEventChild::RecvNotifyVsyncEvent(const VsyncData& aVsyncData)
 {
   VSYNC_DEBUG_MESSAGE;
+
 #ifdef MOZ_WIDGET_GONK
-  GonkVsyncDispatcher::GetInstance()->DispatchVsync(aVsyncData);
+  GonkVsyncDispatcher::GetInstance()->DispatchVsyncEvent(aVsyncData.timeStamp(),
+                                                         aVsyncData.frameNumber());
 #endif
 
   return true;
@@ -149,6 +85,13 @@ void
 VsyncEventChild::ActorDestroy(ActorDestroyReason aActorDestroyReason)
 {
   VSYNC_DEBUG_MESSAGE;
+
+#ifdef MOZ_WIDGET_GONK
+  GonkVsyncDispatcher::GetInstance()->Shutdown();
+#endif
+
+  GetMessageLoop()->PostTask(FROM_HERE,
+                             new DeleteTask<VsyncEventChild>(this));
 
   return;
 }

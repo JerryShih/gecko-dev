@@ -18,10 +18,8 @@ public:
   static PVsyncEventChild* Create(Transport* aTransport,
                                   ProcessId aOtherProcess);
 
-  static VsyncEventChild* GetSingleton();
-
   VsyncEventChild(MessageLoop* aMessageLoop, Transport* aTransport);
-  ~VsyncEventChild();
+  virtual ~VsyncEventChild();
 
   virtual bool RecvNotifyVsyncEvent(const VsyncData& aVsyncData) MOZ_OVERRIDE;
 

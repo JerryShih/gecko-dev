@@ -8,183 +8,78 @@
 #define mozilla_GonkVsyncDispatcher_h
 
 #include "mozilla/VsyncDispatcher.h"
-#include "mozilla/layers/PVsyncEvent.h"
-#include "mozilla/RefPtr.h"
-#include "mozilla/Monitor.h"
-#include "nsTArray.h"
 
 #include "base/ref_counted.h"
-#include "base/message_loop.h"
+#include "nsTArray.h"
 
-namespace base {
-  class Thread;
-}
+class MessageLoop;
 
 namespace mozilla {
 
-class VsyncRefreshDriverTimer;
-
 namespace layers {
-class CompositorParent;
 class VsyncEventParent;
+class VsyncEventChild;
 }
 
-// TODO:
-// Describe the role of this object in vsync routing.
 class GonkVsyncDispatcher : public VsyncDispatcher,
                             public base::RefCountedThreadSafe<GonkVsyncDispatcher>
 {
   friend class base::RefCountedThreadSafe<GonkVsyncDispatcher>;
 
 public:
-  class GonkVsyncDispatcherInputProcessingHelper
-  {
-  public:
-    GonkVsyncDispatcherInputProcessingHelper()
-      : mNeedNotify(true)
-    {
-
-    }
-
-    ~GonkVsyncDispatcherInputProcessingHelper()
-    {
-      Notify();
-    }
-
-    void Notify()
-    {
-      if (mNeedNotify) {
-        mNeedNotify = false;
-        GonkVsyncDispatcher::GetInstance()->NotifyInputEventProcessed();
-      }
-    }
-
-  private:
-    bool mNeedNotify;
-  };
-
-  // Start up VsyncDispatcher on internal message loop
+  // Start up VsyncDispatcher on internal thread
   static void StartUp();
-  // Start up VsyncDispatcher on internal message loop
-  static void StartUpOnExistedMessageLoop(MessageLoop* aMessageLoop);
+  // Start up VsyncDispatcher on current thread
+  static void StartUpOnCurrentThread();
+
+  // Execute shutdown at VsyncDispatcher's message loop
+  static void Shutdown();
 
   static GonkVsyncDispatcher* GetInstance();
 
-  // TODO
-  // Find a correct place call Shutdown.
-  static void Shutdown();
+  // Notify VsyncDispatcher that we have a vsync event now
+  virtual void NotifyVsync(int64_t aTimestamp) MOZ_OVERRIDE;
 
-  virtual void EnableVsyncDispatcher() MOZ_OVERRIDE;
-  virtual void DisableVsyncDispatcher() MOZ_OVERRIDE;
+  // notify that we have vsync event now.
+  void DispatchVsyncEvent(int64_t aTimestamp);
+  // Notify that we have vsync event now. Only be call by VsyncEvent protocol.
+  void DispatchVsyncEvent(int64_t aTimestamp, uint32_t aFrameNumber);
 
-  // Get vsync dispatcher thread's message loop
-  MessageLoop* GetMessageLoop();
+  void SetVsyncEventChild(layers::VsyncEventChild* aVsyncEventChild);
 
-  // notify all registered vsync observer
-  void NotifyVsync(int64_t aTimestamp);
-
-  // dispatch vsync event
-  void DispatchVsync(const layers::VsyncData& aVsyncData);
-
-  // tell dispatcher to start other remain vsync event passing
-  void NotifyInputEventProcessed();
-
-  // Register input dispatcher.
-  void RegisterInputDispatcher();
-  void UnregisterInputDispatcher();
-
-  // Register compositor.
-  void RegisterCompositer(layers::CompositorParent *aCompositorParent);
-  void UnregisterCompositer(layers::CompositorParent *aCompositorParent);
-
-  // Register refresh driver timer.
-  void RegisterRefreshDriverTimer(VsyncRefreshDriverTimer *aRefreshDriverTimer);
-  void UnregisterRefreshDriverTimer(VsyncRefreshDriverTimer *aRefreshDriverTimer);
-
-  // Register content process ipc parent
+  // Register ipc VsyncEventParent
   void RegisterVsyncEventParent(layers::VsyncEventParent* aVsyncEventParent);
   void UnregisterVsyncEventParent(layers::VsyncEventParent* aVsyncEventParent);
 
+  // Check the observer number in VsyncDispatcher to enable/disable vsync event
+  // notification.
+  void CheckVsyncNotification();
+
+  // Get VsyncDispatcher's message loop
+  MessageLoop* GetMessageLoop();
+
+  // Enable/disable vsync dispatch
+  void EnableVsyncDispatch(bool aEnable);
+
 private:
-  // Singleton object. Hide constructor and destructor.
+  // Singleton pattern. Hide constructor and destructor.
   GonkVsyncDispatcher();
   ~GonkVsyncDispatcher();
 
-  // Register Input dispather on the specific thread.
-  void SetInputDispatcherInternal(bool aReg);
-
-  // Tell the input dispatcher to handle input event.
-  void InputEventDispatch(const layers::VsyncData& aVsyncData);
-
-  // Tell compositors to do composition.
-  void Compose(const layers::VsyncData& aVsyncData);
-
   // Sent vsync event to VsyncEventChild
-  void NotifyVsyncEventChild(const layers::VsyncData& aVsyncData);
-
-  // Tick refresh driver.
-  void Tick(const layers::VsyncData& aVsyncData);
+  void NotifyVsyncEventChild(int64_t aTimestamp, uint32_t aFrameNumber);
 
   // Return total registered object number.
   int GetRegistedObjectCount() const;
 
-  // Check the observer number to enable/disable vsync notification
-  void CheckVsyncNotification();
-
-  template <typename Type>
-  void ChangeList(nsTArray<Type*>* aList, Type* aItem, bool aAdd)
-  {
-    typedef nsTArray<Type*> ArrayType;
-
-    if (aAdd) {
-      //MOZ_RELEASE_ASSERT(!aList->Contains(aItem));
-      //MOZ_ASSERT(!aList->Contains(aItem));
-
-      if (!aList->Contains(aItem)) {
-        aList->AppendElement(aItem);
-      }
-    }
-    else {
-      typename ArrayType::index_type index = aList->IndexOf(aItem);
-      //MOZ_RELEASE_ASSERT(index != ArrayType::NoIndex);
-      //MOZ_ASSERT(index != ArrayType::NoIndex);
-
-      if (index != ArrayType::NoIndex) {
-        aList->RemoveElementAt(index);
-      }
-    }
-
-    CheckVsyncNotification();
-    //GetMessageLoop()->PostTask(FROM_HERE,
-    //                           NewRunnableMethod(this,
-    //                           &GonkVsyncDispatcher::CheckVsyncNotification));
-  }
+  // enable/disable vsync event generator
+  void EnableVsyncEvent(bool aEnable);
 
 private:
-  // Registered compositors
-  typedef nsTArray<layers::CompositorParent*> CompositorList;
-  CompositorList mCompositorList;
-  Mutex mCompositorListMutex;
-
-  // Registered refresh drivers.
-  typedef nsTArray<VsyncRefreshDriverTimer*> RefreshDriverTimerList;
-  RefreshDriverTimerList mRefreshDriverTimerList;
-  Mutex mRefreshDriverTimerListMutex;
-
-  // Registered vsync ipc parent
   typedef nsTArray<layers::VsyncEventParent*> VsyncEventParentList;
   VsyncEventParentList mVsyncEventParentList;
-  Mutex mVsyncEventParentListMutex;
 
-  // Sent vsync event to input dispatcher.
-  bool EnableInputDispatch;
-  Mutex mEnableInputDispatchMutex;
-  // Monotir for b2g main thread input event processing
-  Monitor mInputMonitor;
-
-  Mutex mVsyncListenerMutex;
-
-  int32_t mFrameNumber;
+  layers::VsyncEventChild* mVsyncEventChild;
 
   bool mEnableVsyncNotification;
 };

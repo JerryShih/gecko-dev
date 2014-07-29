@@ -195,6 +195,14 @@ private:
 
   DECL_GFX_PREF(Live, "gfx.draw-color-bars",                   CompositorDrawColorBars, bool, false);
 
+  // Update and compose aligned with vsync event.
+  DECL_GFX_PREF(Live, "gfx.silk",                              SilkEnabled, bool, false);
+  DECL_GFX_PREF(Live, "gfx.silk.input",                        SilkInputEnabled, bool, false);
+  DECL_GFX_PREF(Live, "gfx.silk.compose",                      SilkComposeEnabled, bool, false);
+  DECL_GFX_PREF(Live, "gfx.silk.tick",                         SilkTickEnabled, bool, false);
+  // Generate vsync event by hardware
+  DECL_GFX_PREF(Live, "gfx.silk.hw-vsync",                     SilkHWVsyncEnabled, bool, false);
+
   DECL_GFX_PREF(Live, "gl.msaa-level",                         MSAALevel, uint32_t, 2);
 
   DECL_GFX_PREF(Once, "layers.acceleration.disabled",          LayersAccelerationDisabled, bool, false);

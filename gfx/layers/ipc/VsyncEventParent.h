@@ -18,7 +18,7 @@ public:
   static PVsyncEventParent* Create(Transport* aTransport, ProcessId aOtherProcess);
 
   VsyncEventParent(MessageLoop* aMessageLoop, Transport* aTransport);
-  ~VsyncEventParent();
+  virtual ~VsyncEventParent();
 
   virtual bool RecvEnableVsyncEventNotification() MOZ_OVERRIDE;
   virtual bool RecvDisableVsyncEventNotification() MOZ_OVERRIDE;

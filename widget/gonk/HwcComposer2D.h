@@ -18,6 +18,7 @@
 #define mozilla_HwcComposer2D
 
 #include "Composer2D.h"
+#include "GLTypes.h"
 #include "Layers.h"
 #include <vector>
 #include <list>

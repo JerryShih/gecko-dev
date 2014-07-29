@@ -297,7 +297,11 @@ pref("dom.ipc.tabs.disabled", false);
 pref("layers.acceleration.disabled", false);
 pref("layers.async-pan-zoom.enabled", true);
 pref("gfx.content.azure.backends", "cairo");
-pref("gfx.hw-vsync", true);
+pref("gfx.silk", true);
+pref("gfx.silk.input", true);
+pref("gfx.silk.compose", true);
+pref("gfx.silk.tick", true);
+pref("gfx.silk.hw-vsync", true);
 #endif
 
 // Web Notifications
@@ -905,6 +909,15 @@ pref("dom.mozInputMethod.enabled", true);
 // Absolute path to the devtool unix domain socket file used
 // to communicate with a usb cable via adb forward
 pref("devtools.debugger.unix-domain-socket", "/data/local/debugger-socket");
+
+// project silk
+#ifdef MOZ_WIDGET_GONK
+pref("gfx.silk", true);
+pref("gfx.silk.input", true);
+pref("gfx.silk.compose", true);
+pref("gfx.silk.tick", true);
+pref("gfx.silk.hw-vsync", true);
+#endif
 
 // enable Skia/GL (OpenGL-accelerated 2D drawing) for large enough 2d canvases,
 // falling back to Skia/software for smaller canvases

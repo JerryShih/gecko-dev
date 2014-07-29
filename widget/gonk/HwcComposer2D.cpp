@@ -119,7 +119,7 @@ HwcComposer2D::Init(hwc_display_t dpy, hwc_surface_t sur, gl::GLContext* aGLCont
         mRBSwapSupport = false;
     }
 
-    if (Preferences::GetBool("gfx.hw-vsync", false)) {
+    if (gfxPrefs::SilkEnabled() && gfxPrefs::SilkHWVsyncEnabled()) {
         if (mHwc->registerProcs) {
             memset(&mHWCProcs, 0, sizeof(mHWCProcs));
 

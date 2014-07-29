@@ -6,46 +6,24 @@
 
 #include "mozilla/layers/VsyncEventParent.h"
 #include "mozilla/ipc/Transport.h"
-#include "base/thread.h"
 #include "nsXULAppAPI.h"
 
 #ifdef MOZ_WIDGET_GONK
 #include "GonkVsyncDispatcher.h"
 #endif
 
-//#define PRINT_VSYNC_DEBUG
-
+#define PRINT_VSYNC_DEBUG
 #ifdef PRINT_VSYNC_DEBUG
 #define VSYNC_DEBUG_MESSAGE printf_stderr("bignose tid:%d %s",gettid(),__PRETTY_FUNCTION__)
 #else
 #define VSYNC_DEBUG_MESSAGE
 #endif
 
-using namespace base;
-using namespace mozilla::ipc;
-
 namespace mozilla {
 namespace layers {
 
-static Thread* sVsyncEventParentThread = nullptr;
-
-static bool
-CreateVsyncParentThread()
-{
-  if (sVsyncEventParentThread) {
-    return true;
-  }
-
-  sVsyncEventParentThread = new Thread("Vsync parent ipc thread");
-
-  if (!sVsyncEventParentThread->Start()) {
-    delete sVsyncEventParentThread;
-    sVsyncEventParentThread = nullptr;
-    return false;
-  }
-
-  return true;
-}
+using namespace base;
+using namespace mozilla::ipc;
 
 static void
 ConnectVsyncEventParent(PVsyncEventParent* aVsyncEventParent,
@@ -67,25 +45,22 @@ VsyncEventParent::Create(Transport* aTransport, ProcessId aOtherProcess)
     return nullptr;
   }
 
+  VsyncEventParent* vsync = nullptr;
+
 #ifdef MOZ_WIDGET_GONK
   GonkVsyncDispatcher::StartUp();
 
-  VsyncEventParent* vsync = new VsyncEventParent(GonkVsyncDispatcher::GetInstance()->GetMessageLoop(),
-                                                 aTransport);
-#else
-  if (!CreateVsyncParentThread()) {
-    return nullptr;
-  }
-
-  VsyncEventParent* vsync = new VsyncEventParent(sVsyncEventParentThread->message_loop(),
-                                                 aTransport);
+  vsync = new VsyncEventParent(GonkVsyncDispatcher::GetInstance()->GetMessageLoop(),
+                               aTransport);
 #endif
 
-  vsync->GetMessageLoop()->PostTask(FROM_HERE, NewRunnableFunction(
-                                    &ConnectVsyncEventParent,
-                                    vsync,
-                                    aTransport,
-                                    processHandle));
+  if (vsync) {
+    vsync->GetMessageLoop()->PostTask(FROM_HERE, NewRunnableFunction(
+                                      &ConnectVsyncEventParent,
+                                      vsync,
+                                      aTransport,
+                                      processHandle));
+  }
 
   return vsync;
 }
@@ -94,11 +69,13 @@ VsyncEventParent::VsyncEventParent(MessageLoop* aMessageLoop, Transport* aTransp
   : mMessageLoop(aMessageLoop)
   , mTransport(aTransport)
 {
-
+  VSYNC_DEBUG_MESSAGE;
 }
 
 VsyncEventParent::~VsyncEventParent()
 {
+  VSYNC_DEBUG_MESSAGE;
+
   if (mTransport) {
     XRE_GetIOMessageLoop()->PostTask(FROM_HERE,
                                      new DeleteTask<Transport>(mTransport));
@@ -109,6 +86,7 @@ bool
 VsyncEventParent::RecvEnableVsyncEventNotification()
 {
   VSYNC_DEBUG_MESSAGE;
+
 #ifdef MOZ_WIDGET_GONK
   GonkVsyncDispatcher::GetInstance()->RegisterVsyncEventParent(this);
 #endif
@@ -120,6 +98,7 @@ bool
 VsyncEventParent::RecvDisableVsyncEventNotification()
 {
   VSYNC_DEBUG_MESSAGE;
+
 #ifdef MOZ_WIDGET_GONK
   GonkVsyncDispatcher::GetInstance()->UnregisterVsyncEventParent(this);
 #endif
@@ -131,6 +110,7 @@ void
 VsyncEventParent::ActorDestroy(ActorDestroyReason aActorDestroyReason)
 {
   VSYNC_DEBUG_MESSAGE;
+
 #ifdef MOZ_WIDGET_GONK
   GonkVsyncDispatcher::GetInstance()->UnregisterVsyncEventParent(this);
 #endif
@@ -143,6 +123,8 @@ VsyncEventParent::CloneToplevel(const InfallibleTArray<ProtocolFdMapping>& aFds,
                                 ProcessHandle aPeerProcess,
                                 ProtocolCloneContext* aCtx)
 {
+  VSYNC_DEBUG_MESSAGE;
+
   for (unsigned int i = 0; i < aFds.Length(); i++) {
     if (aFds[i].protocolId() == unsigned(GetProtocolId())) {
       Transport* transport = OpenDescriptor(aFds[i].fd(), Transport::MODE_SERVER);

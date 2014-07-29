@@ -9,6 +9,10 @@
 
 namespace mozilla {
 
+/*
+ * We would like to do some tasks aligned with vsync event. People can implement
+ * this class to do this stuff.
+ */
 class VsyncDispatcher
 {
 protected:
@@ -17,8 +21,8 @@ protected:
   }
 
 public:
-  virtual void EnableVsyncDispatcher() = 0;
-  virtual void DisableVsyncDispatcher() = 0;
+  // Notify vsync event to observers
+  virtual void NotifyVsync(int64_t aTimestamp) = 0;
 };
 
 } // namespace mozilla

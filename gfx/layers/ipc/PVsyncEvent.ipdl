@@ -12,7 +12,7 @@ namespace layers {
 struct VsyncData
 {
   int64_t timeStamp;
-  int32_t frameNumber;
+  uint32_t frameNumber;
 };
 
 sync protocol PVsyncEvent

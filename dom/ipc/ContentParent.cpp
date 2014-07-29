@@ -1926,15 +1926,17 @@ ContentParent::InitInternal(ProcessPriority aInitialPriority,
 #else
             opened = PImageBridge::Open(this);
             MOZ_ASSERT(opened);
+
+            if (gfxPrefs::SilkEnabled()) {
+              DebugOnly<bool> vsyncOpened = PVsyncEvent::Open(this);
+              MOZ_ASSERT(vsyncOpened);
+            }
 #endif
         }
 #ifdef MOZ_WIDGET_GONK
         DebugOnly<bool> opened = PSharedBufferManager::Open(this);
         MOZ_ASSERT(opened);
 #endif
-
-        DebugOnly<bool> vsyncOpened = PVsyncEvent::Open(this);
-        MOZ_ASSERT(vsyncOpened);
     }
 
     if (aSendRegisteredChrome) {
