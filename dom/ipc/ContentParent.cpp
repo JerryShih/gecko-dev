@@ -1926,11 +1926,12 @@ ContentParent::InitInternal(ProcessPriority aInitialPriority,
 #else
             opened = PImageBridge::Open(this);
             MOZ_ASSERT(opened);
-
+#if ANDROID_VERSION >= 17
             if (gfxPrefs::SilkEnabled()) {
               DebugOnly<bool> vsyncOpened = PVsyncEvent::Open(this);
               MOZ_ASSERT(vsyncOpened);
             }
+#endif
 #endif
         }
 #ifdef MOZ_WIDGET_GONK

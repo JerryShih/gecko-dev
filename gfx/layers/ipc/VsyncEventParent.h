@@ -15,6 +15,10 @@ namespace layers {
 class VsyncEventParent MOZ_FINAL : public PVsyncEventParent
 {
 public:
+  static void StartUp();
+
+  static void ShutDown();
+
   static PVsyncEventParent* Create(Transport* aTransport, ProcessId aOtherProcess);
 
   VsyncEventParent(MessageLoop* aMessageLoop, Transport* aTransport);

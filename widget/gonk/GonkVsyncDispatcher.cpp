@@ -129,23 +129,31 @@ GonkVsyncDispatcher::StartUpOnCurrentThread(void)
 }
 
 /*static*/ void
-GonkVsyncDispatcher::Shutdown()
+GonkVsyncDispatcher::ShutDown()
 {
   // we only call shutdown at main thread
   MOZ_RELEASE_ASSERT(NS_IsMainThread());
   //MOZ_ASSERT(NS_IsMainThread());
 
   if (sGonkVsyncDispatcher) {
+    // PostTask will call addRef, so we can assign nullptr after post task.
     sGonkVsyncDispatcher->GetMessageLoop()->PostTask(FROM_HERE,
                                                      NewRunnableMethod(sGonkVsyncDispatcher.get(),
                                                      &GonkVsyncDispatcher::EnableVsyncDispatch,
                                                      false));
+    sGonkVsyncDispatcher = nullptr;
+  }
+
+  if (sVsyncDispatchThread) {
+    delete sVsyncDispatchThread;
+    sVsyncDispatchThread = nullptr;
   }
 }
 
 GonkVsyncDispatcher::GonkVsyncDispatcher()
-  : mEnableVsyncNotification(false)
-  , mVsyncEventChild(nullptr)
+  : mVsyncEventChild(nullptr)
+  , mEnableVsyncDispatch(true)
+  , mNeedVsyncEvent(true)
 {
 }
 
@@ -160,19 +168,9 @@ GonkVsyncDispatcher::SetVsyncEventChild(VsyncEventChild* aVsyncEventChild)
 }
 
 void
-GonkVsyncDispatcher::EnableVsyncEvent(bool aEnable)
-{
-  HwcComposer2D *hwc = HwcComposer2D::GetInstance();
-
-  if (hwc->Initialized()){
-    hwc->EnableVsync(aEnable);
-  }
-}
-
-void
 GonkVsyncDispatcher::EnableVsyncDispatch(bool aEnable)
 {
-  mEnableVsyncNotification = aEnable;
+  mEnableVsyncDispatch = aEnable;
 }
 
 int
@@ -188,21 +186,23 @@ GonkVsyncDispatcher::GetRegistedObjectCount() const
 void
 GonkVsyncDispatcher::CheckVsyncNotification()
 {
-//  if (!!GetRegistedObjectCount() !=  mEnableVsyncNotification) {
-//    mEnableVsyncNotification = !mEnableVsyncNotification;
-//
-//    if (XRE_GetProcessType() == GeckoProcessType_Default) {
-//      EnableVsyncEvent(mEnableVsyncNotification);
-//    }
-//    else{
-//      if (mEnableVsyncNotification) {
-//        mVsyncEventChild->SendEnableVsyncEventNotification();
-//      }
-//      else {
-//        mVsyncEventChild->SendDisableVsyncEventNotification();
-//      }
-//    }
-//  }
+  if (!!GetRegistedObjectCount() !=  mNeedVsyncEvent) {
+    mNeedVsyncEvent = !mNeedVsyncEvent;
+
+    if (XRE_GetProcessType() == GeckoProcessType_Default) {
+      // TODO:
+      // We might consider that if there is no listener, we can disable the
+      // vsync event generator.
+    }
+    else{
+      if (mNeedVsyncEvent) {
+        mVsyncEventChild->SendEnableVsyncEventNotification();
+      }
+      else {
+        mVsyncEventChild->SendDisableVsyncEventNotification();
+      }
+    }
+  }
 }
 
 MessageLoop*
@@ -236,7 +236,7 @@ GonkVsyncDispatcher::DispatchVsyncEvent(int64_t aTimestamp, uint32_t aFrameNumbe
 {
   VSYNC_PRINT("DispatchVsyncEvent, time:%lld, frame:%u", aTimestamp, aFrameNumber);
 
-  if (!mEnableVsyncNotification) {
+  if (!mEnableVsyncDispatch || !mNeedVsyncEvent) {
     return;
   }
 

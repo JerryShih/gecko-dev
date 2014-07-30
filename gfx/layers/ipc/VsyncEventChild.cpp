@@ -87,7 +87,7 @@ VsyncEventChild::ActorDestroy(ActorDestroyReason aActorDestroyReason)
   VSYNC_DEBUG_MESSAGE;
 
 #ifdef MOZ_WIDGET_GONK
-  GonkVsyncDispatcher::GetInstance()->Shutdown();
+  GonkVsyncDispatcher::GetInstance()->ShutDown();
 #endif
 
   GetMessageLoop()->PostTask(FROM_HERE,

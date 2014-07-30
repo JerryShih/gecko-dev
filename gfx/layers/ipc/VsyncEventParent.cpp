@@ -35,6 +35,26 @@ ConnectVsyncEventParent(PVsyncEventParent* aVsyncEventParent,
   aVsyncEventParent->Open(aTransport, aOtherProcess, XRE_GetIOMessageLoop(), ParentSide);
 }
 
+/*static*/ void
+VsyncEventParent::StartUp()
+{
+  VSYNC_DEBUG_MESSAGE;
+
+#ifdef MOZ_WIDGET_GONK
+  GonkVsyncDispatcher::StartUp();
+#endif
+}
+
+/*static*/ void
+VsyncEventParent::ShutDown()
+{
+  VSYNC_DEBUG_MESSAGE;
+
+#ifdef MOZ_WIDGET_GONK
+  GonkVsyncDispatcher::ShutDown();
+#endif
+}
+
 /*static*/ PVsyncEventParent*
 VsyncEventParent::Create(Transport* aTransport, ProcessId aOtherProcess)
 {
@@ -48,8 +68,6 @@ VsyncEventParent::Create(Transport* aTransport, ProcessId aOtherProcess)
   VsyncEventParent* vsync = nullptr;
 
 #ifdef MOZ_WIDGET_GONK
-  GonkVsyncDispatcher::StartUp();
-
   vsync = new VsyncEventParent(GonkVsyncDispatcher::GetInstance()->GetMessageLoop(),
                                aTransport);
 #endif
@@ -114,6 +132,9 @@ VsyncEventParent::ActorDestroy(ActorDestroyReason aActorDestroyReason)
 #ifdef MOZ_WIDGET_GONK
   GonkVsyncDispatcher::GetInstance()->UnregisterVsyncEventParent(this);
 #endif
+
+  GetMessageLoop()->PostTask(FROM_HERE,
+                             new DeleteTask<VsyncEventParent>(this));
 
   return;
 }

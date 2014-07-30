@@ -33,7 +33,7 @@ public:
   static void StartUpOnCurrentThread();
 
   // Execute shutdown at VsyncDispatcher's message loop
-  static void Shutdown();
+  static void ShutDown();
 
   static GonkVsyncDispatcher* GetInstance();
 
@@ -72,16 +72,14 @@ private:
   // Return total registered object number.
   int GetRegistedObjectCount() const;
 
-  // enable/disable vsync event generator
-  void EnableVsyncEvent(bool aEnable);
-
 private:
   typedef nsTArray<layers::VsyncEventParent*> VsyncEventParentList;
   VsyncEventParentList mVsyncEventParentList;
 
   layers::VsyncEventChild* mVsyncEventChild;
 
-  bool mEnableVsyncNotification;
+  bool mEnableVsyncDispatch;
+  bool mNeedVsyncEvent;
 };
 
 } // namespace mozilla
