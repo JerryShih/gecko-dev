@@ -522,12 +522,12 @@ gfxPlatform::InitLayersIPC()
 #else
         mozilla::layers::ImageBridgeChild::StartUp();
         SharedBufferManagerChild::StartUp();
+#endif
 
-#if ANDROID_VERSION >= 17
+#if defined MOZ_WIDGET_GONK && ANDROID_VERSION >= 17
         if (gfxPrefs::SilkEnabled()) {
             mozilla::layers::VsyncEventParent::StartUp();
         }
-#endif
 #endif
     }
 }
@@ -552,7 +552,7 @@ gfxPlatform::ShutdownLayersIPC()
 
         layers::CompositorParent::ShutDown();
 
-#if ANDROID_VERSION >= 17
+#if defined MOZ_WIDGET_GONK && ANDROID_VERSION >= 17
         if (gfxPrefs::SilkEnabled()) {
             mozilla::layers::VsyncEventParent::ShutDown();
         }

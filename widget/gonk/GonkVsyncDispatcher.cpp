@@ -136,12 +136,17 @@ GonkVsyncDispatcher::ShutDown()
   //MOZ_ASSERT(NS_IsMainThread());
 
   if (sGonkVsyncDispatcher) {
-    // PostTask will call addRef, so we can assign nullptr after post task.
-    sGonkVsyncDispatcher->GetMessageLoop()->PostTask(FROM_HERE,
-                                                     NewRunnableMethod(sGonkVsyncDispatcher.get(),
-                                                     &GonkVsyncDispatcher::EnableVsyncDispatch,
-                                                     false));
-    sGonkVsyncDispatcher = nullptr;
+    MOZ_RELEASE_ASSERT(sVsyncDispatchMessageLoop);
+    //MOZ_ASSERT(sVsyncDispatchMessageLoop);
+    if (sVsyncDispatchMessageLoop) {
+      // PostTask will call addRef, so we can assign nullptr after post task.
+      sVsyncDispatchMessageLoop->PostTask(FROM_HERE,
+                                          NewRunnableMethod(sGonkVsyncDispatcher.get(),
+                                          &GonkVsyncDispatcher::EnableVsyncDispatch,
+                                          false));
+      sGonkVsyncDispatcher = nullptr;
+      sVsyncDispatchMessageLoop = nullptr;
+    }
   }
 
   if (sVsyncDispatchThread) {
@@ -153,7 +158,7 @@ GonkVsyncDispatcher::ShutDown()
 GonkVsyncDispatcher::GonkVsyncDispatcher()
   : mVsyncEventChild(nullptr)
   , mEnableVsyncDispatch(true)
-  , mNeedVsyncEvent(true)
+  , mNeedVsyncEvent(false)
 {
 }
 

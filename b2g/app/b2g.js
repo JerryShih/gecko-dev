@@ -297,11 +297,6 @@ pref("dom.ipc.tabs.disabled", false);
 pref("layers.acceleration.disabled", false);
 pref("layers.async-pan-zoom.enabled", true);
 pref("gfx.content.azure.backends", "cairo");
-pref("gfx.silk", true);
-pref("gfx.silk.input", true);
-pref("gfx.silk.compose", true);
-pref("gfx.silk.tick", true);
-pref("gfx.silk.hw-vsync", true);
 #endif
 
 // Web Notifications

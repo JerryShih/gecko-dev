@@ -37,16 +37,13 @@ VsyncEventChild::Create(Transport* aTransport, ProcessId aOtherProcess)
     return nullptr;
   }
 
+  VsyncEventChild* vsyncEventChild = nullptr;
+
 #ifdef MOZ_WIDGET_GONK
   GonkVsyncDispatcher::StartUpOnCurrentThread();
-#endif
-
-  VsyncEventChild* vsyncEventChild = nullptr;
   vsyncEventChild = new VsyncEventChild(MessageLoop::current(), aTransport);
-  vsyncEventChild->Open(aTransport, aOtherProcess, XRE_GetIOMessageLoop(), ChildSide);
-
-#ifdef MOZ_WIDGET_GONK
   GonkVsyncDispatcher::GetInstance()->SetVsyncEventChild(vsyncEventChild);
+  vsyncEventChild->Open(aTransport, aOtherProcess, XRE_GetIOMessageLoop(), ChildSide);
 #endif
 
   return vsyncEventChild;

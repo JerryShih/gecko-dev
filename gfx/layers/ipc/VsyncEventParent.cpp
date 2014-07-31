@@ -40,6 +40,9 @@ VsyncEventParent::StartUp()
 {
   VSYNC_DEBUG_MESSAGE;
 
+  MOZ_RELEASE_ASSERT(NS_IsMainThread());
+  //MOZ_ASSERT(NS_IsMainThread());
+
 #ifdef MOZ_WIDGET_GONK
   GonkVsyncDispatcher::StartUp();
 #endif
@@ -49,6 +52,9 @@ VsyncEventParent::StartUp()
 VsyncEventParent::ShutDown()
 {
   VSYNC_DEBUG_MESSAGE;
+
+  MOZ_RELEASE_ASSERT(NS_IsMainThread());
+  //MOZ_ASSERT(NS_IsMainThread());
 
 #ifdef MOZ_WIDGET_GONK
   GonkVsyncDispatcher::ShutDown();
@@ -60,6 +66,9 @@ VsyncEventParent::Create(Transport* aTransport, ProcessId aOtherProcess)
 {
   VSYNC_DEBUG_MESSAGE;
 
+  MOZ_RELEASE_ASSERT(NS_IsMainThread());
+  //MOZ_ASSERT(NS_IsMainThread());
+
   ProcessHandle processHandle;
   if (!OpenProcessHandle(aOtherProcess, &processHandle)) {
     return nullptr;
@@ -70,8 +79,6 @@ VsyncEventParent::Create(Transport* aTransport, ProcessId aOtherProcess)
 #ifdef MOZ_WIDGET_GONK
   vsync = new VsyncEventParent(GonkVsyncDispatcher::GetInstance()->GetMessageLoop(),
                                aTransport);
-#endif
-
   if (vsync) {
     vsync->GetMessageLoop()->PostTask(FROM_HERE, NewRunnableFunction(
                                       &ConnectVsyncEventParent,
@@ -79,6 +86,7 @@ VsyncEventParent::Create(Transport* aTransport, ProcessId aOtherProcess)
                                       aTransport,
                                       processHandle));
   }
+#endif
 
   return vsync;
 }
