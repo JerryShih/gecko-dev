@@ -11,7 +11,7 @@
 #include "GonkVsyncDispatcher.h"
 #endif
 
-#define PRINT_VSYNC_DEBUG
+//#define PRINT_VSYNC_DEBUG
 #ifdef PRINT_VSYNC_DEBUG
 #define VSYNC_DEBUG_MESSAGE printf_stderr("bignose tid:%d %s",gettid(),__PRETTY_FUNCTION__)
 #else
@@ -54,11 +54,15 @@ VsyncEventChild::VsyncEventChild(MessageLoop* aMessageLoop, Transport* aTranspor
   , mTransport(aTransport)
 {
   VSYNC_DEBUG_MESSAGE;
+
+  printf_stderr("bignose TestSilk VsyncEventChild::VsyncEventChild:%p, tid:%d",this,gettid());
 }
 
 VsyncEventChild::~VsyncEventChild()
 {
   VSYNC_DEBUG_MESSAGE;
+
+  printf_stderr("bignose TestSilk VsyncEventChild::VsyncEventChild:%p, tid:%d",this,gettid());
 
   if (mTransport) {
     XRE_GetIOMessageLoop()->PostTask(FROM_HERE,

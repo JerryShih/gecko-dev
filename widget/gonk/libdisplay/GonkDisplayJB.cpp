@@ -38,13 +38,13 @@ namespace mozilla {
 static GonkDisplayJB* sGonkDisplay = nullptr;
 
 GonkDisplayJB::GonkDisplayJB()
-    : mList(nullptr)
-    , mModule(nullptr)
+    : mModule(nullptr)
     , mFBModule(nullptr)
     , mHwc(nullptr)
     , mFBDevice(nullptr)
-    , mEnabledCallback(nullptr)
     , mPowerModule(nullptr)
+    , mList(nullptr)
+    , mEnabledCallback(nullptr)
 {
     int err = hw_get_module(GRALLOC_HARDWARE_MODULE_ID, &mFBModule);
     ALOGW_IF(err, "%s module not found", GRALLOC_HARDWARE_MODULE_ID);
@@ -157,32 +157,40 @@ GonkDisplayJB::GetNativeWindow()
 void
 GonkDisplayJB::SetEnabled(bool enabled)
 {
+    /**
+     * The order is important. we should make sure each
+     * enable/disable can work properly.
+     */
     if (enabled) {
         autosuspend_disable();
         mPowerModule->setInteractive(mPowerModule, true);
-    }
 
-    if (mHwc) {
-        if (enabled) {
+        if (mHwc) {
+            // Disable blank, and then enable Vsync
             mHwc->blank(mHwc, HWC_DISPLAY_PRIMARY, false);
             mHwc->eventControl(mHwc, HWC_DISPLAY_PRIMARY, HWC_EVENT_VSYNC, true);
+        } else {
+            mFBDevice->enableScreen(mFBDevice, true);
         }
-        else{
+
+        if (mEnabledCallback) {
+            mEnabledCallback(true);
+        }
+    } else {
+        if (mHwc) {
+            // Disable Vsync, and then enable blank
             mHwc->eventControl(mHwc, HWC_DISPLAY_PRIMARY, HWC_EVENT_VSYNC, false);
             mHwc->blank(mHwc, HWC_DISPLAY_PRIMARY, true);
+        } else {
+            mFBDevice->enableScreen(mFBDevice, false);
         }
-    }
-    else if (mFBDevice->enableScreen) {
-        mFBDevice->enableScreen(mFBDevice, enabled);
-    }
 
-    if (mEnabledCallback) {
-        mEnabledCallback(enabled);
-    }
+        if (mEnabledCallback) {
+            mEnabledCallback(false);
+        }
 
-    if (!enabled) {
-        mPowerModule->setInteractive(mPowerModule, false);
         autosuspend_enable();
+        mPowerModule->setInteractive(mPowerModule, false);
     }
 }
 
@@ -239,7 +247,7 @@ GonkDisplayJB::Post(buffer_handle_t buf, int fence)
     }
 
     hwc_display_contents_1_t *displays[HWC_NUM_DISPLAY_TYPES] = {NULL};
-    const hwc_rect_t r = { 0, 0, mWidth, mHeight };
+    const hwc_rect_t r = { 0, 0, static_cast<int>(mWidth), static_cast<int>(mHeight) };
     displays[HWC_DISPLAY_PRIMARY] = mList;
     mList->retireFenceFd = -1;
     mList->numHwLayers = 2;

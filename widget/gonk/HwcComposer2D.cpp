@@ -19,7 +19,6 @@
 
 #include "libdisplay/GonkDisplay.h"
 #include "Framebuffer.h"
-#include "GonkVsyncDispatcher.h"
 #include "HwcUtils.h"
 #include "HwcComposer2D.h"
 #include "LayerScope.h"
@@ -27,13 +26,15 @@
 #include "mozilla/layers/PLayerTransaction.h"
 #include "mozilla/layers/ShadowLayerUtilsGralloc.h"
 #include "mozilla/layers/TextureHostOGL.h"  // for TextureHostOGL
-#include "mozilla/Preferences.h"
 #include "mozilla/StaticPtr.h"
 #include "cutils/properties.h"
 #include "gfx2DGlue.h"
+#include "gfxPrefs.h"
 
 #if ANDROID_VERSION >= 17
 #include "libdisplay/FramebufferSurface.h"
+#include "nsThreadUtils.h"
+
 #ifndef HWC_BLIT
 #define HWC_BLIT (HWC_FRAMEBUFFER_TARGET + 1)
 #endif
@@ -78,6 +79,7 @@ HwcComposer2D::HwcComposer2D()
 #if ANDROID_VERSION >= 17
     , mPrevRetireFence(Fence::NO_FENCE)
     , mPrevDisplayFence(Fence::NO_FENCE)
+    , mShutDownVsyncEvent(false)
     , mHasHWVsync(false)
 #endif
     , mPrepared(false)
@@ -118,22 +120,6 @@ HwcComposer2D::Init(hwc_display_t dpy, hwc_surface_t sur, gl::GLContext* aGLCont
         mColorFill = false;
         mRBSwapSupport = false;
     }
-
-    if (gfxPrefs::SilkEnabled() && gfxPrefs::SilkHWVsyncEnabled()) {
-        if (mHwc->registerProcs) {
-            memset(&mHWCProcs, 0, sizeof(mHWCProcs));
-
-            mHWCProcs.invalidate = &HwcComposer2D::HookInvalidate;
-            mHWCProcs.vsync = &HwcComposer2D::HookVsync;
-            if (mHwc->common.version >= HWC_DEVICE_API_VERSION_1_1) {
-              mHWCProcs.hotplug = &HwcComposer2D::HookHotplug;
-            }
-            mHwc->registerProcs(mHwc, &mHWCProcs);
-            mHasHWVsync = true;
-
-            EnableVsync(true);
-        }
-    }
 #else
     char propValue[PROPERTY_VALUE_MAX];
     property_get("ro.display.colorfill", propValue, "0");
@@ -148,41 +134,87 @@ HwcComposer2D::Init(hwc_display_t dpy, hwc_surface_t sur, gl::GLContext* aGLCont
     return 0;
 }
 
-HwcComposer2D*
-HwcComposer2D::GetInstance()
-{
-    if (!sInstance) {
-        LOGI("Creating new instance");
-        sInstance = new HwcComposer2D();
-    }
-    return sInstance;
-}
 
 #if ANDROID_VERSION >= 17
+int
+HwcComposer2D::InitHwcEventCallback()
+{
+    if (gfxPrefs::SilkEnabled() && gfxPrefs::SilkHWVsyncEnabled()) {
+        HwcDevice* device = (HwcDevice*)GetGonkDisplay()->GetHWCDevice();
+        if (!device) {
+            LOGE("Failed to get hwc");
+            return -1;
+        }
+
+        if (device->registerProcs) {
+            memset(&mHWCProcs, 0, sizeof(mHWCProcs));
+            mHWCProcs.invalidate = &HwcComposer2D::HookInvalidate;
+            mHWCProcs.vsync = &HwcComposer2D::HookVsync;
+            if (device->common.version >= HWC_DEVICE_API_VERSION_1_1) {
+                mHWCProcs.hotplug = &HwcComposer2D::HookHotplug;
+            }
+            device->eventControl(device, HWC_DISPLAY_PRIMARY, HWC_EVENT_VSYNC, false);
+            device->registerProcs(device, &mHWCProcs);
+
+            mHasHWVsync = true;
+        }
+    }
+
+    return 0;
+}
+
+void
+HwcComposer2D::ShutDownHwcEvent()
+{
+    mShutDownVsyncEvent = true;
+}
+
+bool
+HwcComposer2D::HasHWVsync() const
+{
+    return mHasHWVsync;
+}
+
+void
+HwcComposer2D::RegisterVsyncDispatcher(VsyncDispatcher* aVsyncDispatcher)
+{
+    mVsyncDispatcher = aVsyncDispatcher;
+}
+
 void
 HwcComposer2D::EnableVsync(bool aEnable)
 {
-    printf_stderr("bignose hwc enable:%d",(int)aEnable);
+    // Post vsycn event control to main thread because we need to make sure
+    // the execution order for blank and event control.
+    nsCOMPtr<nsIRunnable> event =
+        NS_NewRunnableMethodWithArg<bool>(this, &HwcComposer2D::RunVsyncEventControl, aEnable);
+    NS_DispatchToMainThread(event);
+}
 
-    if (mHasHWVsync && mHwc && mHwc->eventControl){
+void
+HwcComposer2D::RunVsyncEventControl(bool aEnable)
+{
+    printf_stderr("bignose TestSilk HwcComposer2D::RunVsyncEventControl:%d tid:%d",(int)aEnable,gettid());
+
+    if (mHasHWVsync && mHwc && mHwc->eventControl) {
         mHwc->eventControl(mHwc, HWC_DISPLAY_PRIMARY, HWC_EVENT_VSYNC, aEnable);
     }
 }
 
-void
+/*static*/ void
 HwcComposer2D::HookInvalidate(const struct hwc_procs* aProcs)
 {
     HwcComposer2D::GetInstance()->Invalidate();
 }
 
-void
+/*static*/ void
 HwcComposer2D::HookVsync(const struct hwc_procs* aProcs, int aDisplay,
                          int64_t aTimestamp)
 {
     HwcComposer2D::GetInstance()->Vsync(aDisplay, aTimestamp);
 }
 
-void
+/*static*/ void
 HwcComposer2D::HookHotplug(const struct hwc_procs* aProcs, int aDisplay,
                            int aConnected)
 {
@@ -198,15 +230,18 @@ HwcComposer2D::Invalidate()
 void
 HwcComposer2D::Vsync(int aDisplay, int64_t aTimestamp)
 {
-    //process vsync here
-    //printf_stderr("vsync event timestamp:%lld", aTimestamp);
-    static int frameCount = 0;
-    char propValue[PROPERTY_VALUE_MAX];
-    property_get("debug.vsync_div", propValue, "1");
-    int div = atoi(propValue);
- 
-    if (!(frameCount % div)) {
-        GonkVsyncDispatcher::GetInstance()->NotifyVsync(base::TimeTicks::HighResNow().ToInternalValue());
+    if (mShutDownVsyncEvent) {
+      printf_stderr("bignose TestSilk HwcComposer2D::Vsync, shutdown, tid:%d", gettid());
+      mVsyncDispatcher = nullptr;
+      EnableVsync(false);
+      return;
+    }
+
+    // Handle Vsync event here
+    if (mVsyncDispatcher) {
+        // We can't get the same timer as hwc does. So we get the timestamp
+        // again here.
+        mVsyncDispatcher->NotifyVsync(base::TimeTicks::HighResNow().ToInternalValue());
     }
 }
 
@@ -216,6 +251,16 @@ HwcComposer2D::Hotplug(int aDisplay, int aConnected)
     //no op
 }
 #endif
+
+HwcComposer2D*
+HwcComposer2D::GetInstance()
+{
+    if (!sInstance) {
+        LOGI("Creating new instance");
+        sInstance = new HwcComposer2D();
+    }
+    return sInstance;
+}
 
 bool
 HwcComposer2D::ReallocLayerList()

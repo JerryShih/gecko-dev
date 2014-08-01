@@ -8,14 +8,13 @@
 
 #include "mozilla/layers/VsyncEventParent.h"
 #include "mozilla/layers/VsyncEventChild.h"
-#include "mozilla/StaticPtr.h"
 #include "base/message_loop.h"
 #include "base/thread.h"
 #include "HwcComposer2D.h"
 #include "nsThreadUtils.h"
 #include "nsXULAppAPI.h"
 
-#define DEBUG_VSYNC
+//#define DEBUG_VSYNC
 #ifdef DEBUG_VSYNC
 #define VSYNC_PRINT(...) do { printf_stderr("bignose " __VA_ARGS__); } while (0)
 #else
@@ -29,7 +28,7 @@ using namespace layers;
 static base::Thread* sVsyncDispatchThread = nullptr;
 static MessageLoop* sVsyncDispatchMessageLoop = nullptr;
 
-static StaticRefPtr<GonkVsyncDispatcher> sGonkVsyncDispatcher;
+static scoped_refptr<GonkVsyncDispatcher> sGonkVsyncDispatcher;
 
 class ArrayDataHelper
 {
@@ -106,6 +105,10 @@ GonkVsyncDispatcher::StartUp()
 
   if (sGonkVsyncDispatcher == nullptr) {
     sGonkVsyncDispatcher = new GonkVsyncDispatcher();
+
+    if (XRE_GetProcessType() == GeckoProcessType_Default) {
+      sGonkVsyncDispatcher->StartUpVsyncEvent();
+    }
   }
 }
 
@@ -144,6 +147,10 @@ GonkVsyncDispatcher::ShutDown()
                                           NewRunnableMethod(sGonkVsyncDispatcher.get(),
                                           &GonkVsyncDispatcher::EnableVsyncDispatch,
                                           false));
+
+      if (XRE_GetProcessType() == GeckoProcessType_Default) {
+        sGonkVsyncDispatcher->ShutDownVsyncEvent();
+      }
       sGonkVsyncDispatcher = nullptr;
       sVsyncDispatchMessageLoop = nullptr;
     }
@@ -159,11 +166,62 @@ GonkVsyncDispatcher::GonkVsyncDispatcher()
   : mVsyncEventChild(nullptr)
   , mEnableVsyncDispatch(true)
   , mNeedVsyncEvent(false)
+  , mInitVsyncEventGenerator(false)
+  , mUseHWVsyncEventGenerator(false)
 {
+  printf_stderr("bignose TestSilk GonkVsyncDispatcher::GonkVsyncDispatcher:%p, tid:%d",this,gettid());
 }
 
 GonkVsyncDispatcher::~GonkVsyncDispatcher()
 {
+  printf_stderr("bignose TestSilk GonkVsyncDispatcher::GonkVsyncDispatcher:%p, tid:%d",this,gettid());
+}
+
+void
+GonkVsyncDispatcher::StartUpVsyncEvent()
+{
+  printf_stderr("bignose TestSilk GonkVsyncDispatcher::StartUpVsyncEvent, tid:%d", gettid());
+
+  if (XRE_GetProcessType() == GeckoProcessType_Default) {
+    if (!mInitVsyncEventGenerator){
+      mInitVsyncEventGenerator = true;
+
+      mUseHWVsyncEventGenerator = false;
+
+      // check using hw event or software vsync event
+      if (gfxPrefs::SilkEnabled() && gfxPrefs::SilkHWVsyncEnabled()) {
+        HwcComposer2D::GetInstance()->InitHwcEventCallback();
+        if (HwcComposer2D::GetInstance()->HasHWVsync()) {
+          HwcComposer2D::GetInstance()->RegisterVsyncDispatcher(sGonkVsyncDispatcher);
+          mUseHWVsyncEventGenerator = true;
+        }
+      }
+
+      //TODO:
+      //init software vsync event here.
+      if (!mUseHWVsyncEventGenerator) {
+
+      }
+    }
+  }
+}
+
+void
+GonkVsyncDispatcher::ShutDownVsyncEvent()
+{
+  printf_stderr("bignose TestSilk GonkVsyncDispatcher::ShutDownVsyncEvent, tid:%d", gettid());
+
+  if (XRE_GetProcessType() == GeckoProcessType_Default) {
+    if (mInitVsyncEventGenerator) {
+      if (mUseHWVsyncEventGenerator) {
+        HwcComposer2D::GetInstance()->ShutDownHwcEvent();
+      }
+      else {
+        //TODO:
+        //init software vsync event here.
+      }
+    }
+  }
 }
 
 void
@@ -189,15 +247,27 @@ GonkVsyncDispatcher::GetRegistedObjectCount() const
 }
 
 void
+GonkVsyncDispatcher::EnableVsyncEvent(bool aEnable)
+{
+  if (mInitVsyncEventGenerator) {
+    if (mUseHWVsyncEventGenerator) {
+      HwcComposer2D::GetInstance()->EnableVsync(aEnable);
+    }
+    else {
+      //TODO:
+      //init software vsync event here.
+    }
+  }
+}
+
+void
 GonkVsyncDispatcher::CheckVsyncNotification()
 {
   if (!!GetRegistedObjectCount() !=  mNeedVsyncEvent) {
     mNeedVsyncEvent = !mNeedVsyncEvent;
 
     if (XRE_GetProcessType() == GeckoProcessType_Default) {
-      // TODO:
-      // We might consider that if there is no listener, we can disable the
-      // vsync event generator.
+      EnableVsyncEvent(mNeedVsyncEvent);
     }
     else{
       if (mNeedVsyncEvent) {

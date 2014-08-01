@@ -20,6 +20,7 @@
 #include "Composer2D.h"
 #include "GLTypes.h"
 #include "Layers.h"
+#include "mozilla/VsyncDispatcher.h"
 #include <vector>
 #include <list>
 
@@ -29,6 +30,8 @@
 #endif
 
 namespace mozilla {
+
+class VsyncDispatcher;
 
 namespace gl {
     class GLContext;
@@ -76,6 +79,17 @@ public:
 
     int Init(hwc_display_t aDisplay, hwc_surface_t aSurface, gl::GLContext* aGLContext);
 
+    // Hwc event
+#if ANDROID_VERSION >= 17
+    // Only init hwc event callback
+    int InitHwcEventCallback();
+    void ShutDownHwcEvent();
+
+    void EnableVsync(bool aEnable);
+    void RegisterVsyncDispatcher(VsyncDispatcher* aVsyncDispatcher);
+    bool HasHWVsync() const;
+#endif
+
     bool Initialized() const { return mHwc; }
 
     static HwcComposer2D* GetInstance();
@@ -87,10 +101,6 @@ public:
                    bool aGeometryChanged) MOZ_OVERRIDE;
 
     bool Render(EGLDisplay dpy, EGLSurface sur);
-
-#if ANDROID_VERSION >= 17
-    void EnableVsync(bool aEnable);
-#endif
 
 private:
     void Reset();
@@ -115,6 +125,8 @@ private:
     void Invalidate();
     void Vsync(int aDisplay, int64_t aTimestamp);
     void Hotplug(int aDisplay, int aConnected);
+
+    void RunVsyncEventControl(bool aEnable);
 #endif
 
     HwcDevice*              mHwc;
@@ -133,8 +145,10 @@ private:
     android::sp<android::Fence> mPrevRetireFence;
     android::sp<android::Fence> mPrevDisplayFence;
 
+    bool                    mShutDownVsyncEvent;
     hwc_procs_t             mHWCProcs;
     bool                    mHasHWVsync;
+    scoped_refptr<VsyncDispatcher>    mVsyncDispatcher;
 #endif
     nsTArray<layers::LayerComposite*> mHwcLayerMap;
     bool                    mPrepared;

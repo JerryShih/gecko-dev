@@ -8,8 +8,6 @@
 #define mozilla_GonkVsyncDispatcher_h
 
 #include "mozilla/VsyncDispatcher.h"
-
-#include "base/ref_counted.h"
 #include "nsTArray.h"
 
 class MessageLoop;
@@ -21,11 +19,8 @@ class VsyncEventParent;
 class VsyncEventChild;
 }
 
-class GonkVsyncDispatcher : public VsyncDispatcher,
-                            public base::RefCountedThreadSafe<GonkVsyncDispatcher>
+class GonkVsyncDispatcher : public VsyncDispatcher
 {
-  friend class base::RefCountedThreadSafe<GonkVsyncDispatcher>;
-
 public:
   // Start up VsyncDispatcher on internal thread
   static void StartUp();
@@ -72,6 +67,11 @@ private:
   // Return total registered object number.
   int GetRegistedObjectCount() const;
 
+  void EnableVsyncEvent(bool aEnable);
+
+  void StartUpVsyncEvent();
+  void ShutDownVsyncEvent();
+
 private:
   typedef nsTArray<layers::VsyncEventParent*> VsyncEventParentList;
   VsyncEventParentList mVsyncEventParentList;
@@ -80,6 +80,10 @@ private:
 
   bool mEnableVsyncDispatch;
   bool mNeedVsyncEvent;
+
+  // vsync event generator.
+  bool mInitVsyncEventGenerator;
+  bool mUseHWVsyncEventGenerator;
 };
 
 } // namespace mozilla

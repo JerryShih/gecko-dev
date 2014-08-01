@@ -7,21 +7,27 @@
 #ifndef mozilla_VsyncDispatcher_h
 #define mozilla_VsyncDispatcher_h
 
+#include "base/ref_counted.h"
+
 namespace mozilla {
 
 /*
  * We would like to do some tasks aligned with vsync event. People can implement
  * this class to do this stuff.
  */
-class VsyncDispatcher
+class VsyncDispatcher : public base::RefCountedThreadSafe<VsyncDispatcher>
 {
+  friend class base::RefCountedThreadSafe<VsyncDispatcher>;
+
 protected:
   virtual ~VsyncDispatcher()
   {
   }
 
 public:
-  // Notify vsync event to observers
+  // Notify vsync event to observers. The timestamp is microsecond.
+  // This function should return asap. Every heavy task should post to other
+  // thread.
   virtual void NotifyVsync(int64_t aTimestamp) = 0;
 };
 
