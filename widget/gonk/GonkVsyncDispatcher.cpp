@@ -185,18 +185,18 @@ GonkVsyncDispatcher::StartUpVsyncEvent()
   if (XRE_GetProcessType() == GeckoProcessType_Default) {
     if (!mInitVsyncEventGenerator){
       mInitVsyncEventGenerator = true;
-
       mUseHWVsyncEventGenerator = false;
 
+#if ANDROID_VERSION >= 17
       // check using hw event or software vsync event
-      if (gfxPrefs::SilkEnabled() && gfxPrefs::SilkHWVsyncEnabled()) {
+      if (gfxPrefs::SilkHWVsyncEnabled()) {
         HwcComposer2D::GetInstance()->InitHwcEventCallback();
         if (HwcComposer2D::GetInstance()->HasHWVsync()) {
           HwcComposer2D::GetInstance()->RegisterVsyncDispatcher(sGonkVsyncDispatcher);
           mUseHWVsyncEventGenerator = true;
         }
       }
-
+#endif
       //TODO:
       //init software vsync event here.
       if (!mUseHWVsyncEventGenerator) {
@@ -213,12 +213,15 @@ GonkVsyncDispatcher::ShutDownVsyncEvent()
 
   if (XRE_GetProcessType() == GeckoProcessType_Default) {
     if (mInitVsyncEventGenerator) {
+#if ANDROID_VERSION >= 17
       if (mUseHWVsyncEventGenerator) {
         HwcComposer2D::GetInstance()->ShutDownHwcEvent();
       }
-      else {
-        //TODO:
-        //init software vsync event here.
+#endif
+      //TODO:
+      //release software vsync event here.
+      if (!mUseHWVsyncEventGenerator) {
+
       }
     }
   }
@@ -255,7 +258,7 @@ GonkVsyncDispatcher::EnableVsyncEvent(bool aEnable)
     }
     else {
       //TODO:
-      //init software vsync event here.
+      //enable/disable software vsync event here.
     }
   }
 }

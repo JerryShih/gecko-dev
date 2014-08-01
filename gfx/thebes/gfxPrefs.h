@@ -195,13 +195,19 @@ private:
 
   DECL_GFX_PREF(Live, "gfx.draw-color-bars",                   CompositorDrawColorBars, bool, false);
 
+#ifdef MOZ_WIDGET_GONK
   // Update and compose aligned with vsync event.
-  DECL_GFX_PREF(Live, "gfx.silk",                              SilkEnabled, bool, false);
-  DECL_GFX_PREF(Live, "gfx.silk.input",                        SilkInputEnabled, bool, false);
-  DECL_GFX_PREF(Live, "gfx.silk.compose",                      SilkComposeEnabled, bool, false);
-  DECL_GFX_PREF(Live, "gfx.silk.tick",                         SilkTickEnabled, bool, false);
+  DECL_GFX_PREF(Once, "gfx.silk",                              SilkEnabled, bool, false);
+  DECL_GFX_PREF(Once, "gfx.silk.input",                        SilkInputEnabled, bool, false);
+  DECL_GFX_PREF(Once, "gfx.silk.compose",                      SilkComposeEnabled, bool, false);
+  DECL_GFX_PREF(Once, "gfx.silk.tick",                         SilkTickEnabled, bool, false);
+#if ANDROID_VERSION >= 17
   // Generate vsync event by hardware
-  DECL_GFX_PREF(Live, "gfx.silk.hw-vsync",                     SilkHWVsyncEnabled, bool, false);
+  DECL_GFX_PREF(Once, "gfx.silk.hw-vsync",                     SilkHWVsyncEnabled, bool, true);
+#else
+  DECL_GFX_PREF(Once, "gfx.silk.hw-vsync",                     SilkHWVsyncEnabled, bool, false);
+#endif
+#endif
 
   DECL_GFX_PREF(Live, "gl.msaa-level",                         MSAALevel, uint32_t, 2);
 
