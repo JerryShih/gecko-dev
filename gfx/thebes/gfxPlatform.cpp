@@ -12,6 +12,7 @@
 #include "mozilla/layers/CompositorParent.h"
 #include "mozilla/layers/ImageBridgeChild.h"
 #include "mozilla/layers/SharedBufferManagerChild.h"
+#include "mozilla/layers/VsyncEventParent.h"
 #include "mozilla/layers/ISurfaceAllocator.h"     // for GfxMemoryImageReporter
 
 #include "prlog.h"
@@ -522,6 +523,12 @@ gfxPlatform::InitLayersIPC()
         mozilla::layers::ImageBridgeChild::StartUp();
         SharedBufferManagerChild::StartUp();
 #endif
+
+#if defined MOZ_WIDGET_GONK && ANDROID_VERSION >= 17
+        if (gfxPrefs::SilkEnabled()) {
+            mozilla::layers::VsyncEventParent::StartUp();
+        }
+#endif
     }
 }
 
@@ -544,6 +551,12 @@ gfxPlatform::ShutdownLayersIPC()
 #endif
 
         layers::CompositorParent::ShutDown();
+
+#if defined MOZ_WIDGET_GONK && ANDROID_VERSION >= 17
+        if (gfxPrefs::SilkEnabled()) {
+            mozilla::layers::VsyncEventParent::ShutDown();
+        }
+#endif
     }
 }
 
