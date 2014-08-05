@@ -10,6 +10,7 @@
 #include "mozilla/layers/VsyncEventChild.h"
 #include "base/message_loop.h"
 #include "base/thread.h"
+#include "gfxPrefs.h"
 #include "HwcComposer2D.h"
 #include "nsThreadUtils.h"
 #include "nsXULAppAPI.h"
@@ -190,6 +191,7 @@ GonkVsyncDispatcher::StartUpVsyncEvent()
 #if ANDROID_VERSION >= 17
       // check using hw event or software vsync event
       if (gfxPrefs::SilkHWVsyncEnabled()) {
+        //init hw vsync event
         HwcComposer2D::GetInstance()->InitHwcEventCallback();
         if (HwcComposer2D::GetInstance()->HasHWVsync()) {
           HwcComposer2D::GetInstance()->RegisterVsyncDispatcher(sGonkVsyncDispatcher);
@@ -197,10 +199,9 @@ GonkVsyncDispatcher::StartUpVsyncEvent()
         }
       }
 #endif
-      //TODO:
-      //init software vsync event here.
       if (!mUseHWVsyncEventGenerator) {
-
+        //TODO:
+        //init software vsync event here.
       }
     }
   }
@@ -218,10 +219,9 @@ GonkVsyncDispatcher::ShutDownVsyncEvent()
         HwcComposer2D::GetInstance()->ShutDownHwcEvent();
       }
 #endif
-      //TODO:
-      //release software vsync event here.
       if (!mUseHWVsyncEventGenerator) {
-
+        //TODO:
+        //release software vsync event here.
       }
     }
   }

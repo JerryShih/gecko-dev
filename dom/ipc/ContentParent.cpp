@@ -1928,8 +1928,8 @@ ContentParent::InitInternal(ProcessPriority aInitialPriority,
             MOZ_ASSERT(opened);
 
             if (gfxPrefs::SilkEnabled()) {
-              DebugOnly<bool> vsyncOpened = PVsyncEvent::Open(this);
-              MOZ_ASSERT(vsyncOpened);
+                DebugOnly<bool> vsyncOpened = PVsyncEvent::Open(this);
+                MOZ_ASSERT(vsyncOpened);
             }
 #endif
         }
