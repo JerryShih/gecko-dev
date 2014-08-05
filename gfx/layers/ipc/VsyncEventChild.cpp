@@ -7,6 +7,10 @@
 #include "mozilla/layers/VsyncEventChild.h"
 #include "nsXULAppAPI.h"
 
+#ifdef MOZ_WIDGET_GONK
+#include "GonkVsyncDispatcher.h"
+#endif
+
 //#define PRINT_VSYNC_DEBUG
 #ifdef PRINT_VSYNC_DEBUG
 #define VSYNC_DEBUG_MESSAGE printf_stderr("bignose tid:%d %s",gettid(),__PRETTY_FUNCTION__)
@@ -36,7 +40,10 @@ VsyncEventChild::Create(Transport* aTransport, ProcessId aOtherProcess)
   VsyncEventChild* vsyncEventChild = nullptr;
 
 #ifdef MOZ_WIDGET_GONK
-  // Create VsyncEventChild here
+  GonkVsyncDispatcher::StartUpOnCurrentThread();
+  vsyncEventChild = new VsyncEventChild(MessageLoop::current(), aTransport);
+  GonkVsyncDispatcher::GetInstance()->SetVsyncEventChild(vsyncEventChild);
+  vsyncEventChild->Open(aTransport, aOtherProcess, XRE_GetIOMessageLoop(), ChildSide);
 #endif
 
   return vsyncEventChild;
@@ -63,6 +70,11 @@ bool VsyncEventChild::RecvNotifyVsyncEvent(const VsyncData& aVsyncData)
 {
   VSYNC_DEBUG_MESSAGE;
 
+#ifdef MOZ_WIDGET_GONK
+  GonkVsyncDispatcher::GetInstance()->DispatchVsyncEvent(aVsyncData.timeStamp(),
+                                                         aVsyncData.frameNumber());
+#endif
+
   return true;
 }
 
@@ -70,6 +82,10 @@ void
 VsyncEventChild::ActorDestroy(ActorDestroyReason aActorDestroyReason)
 {
   VSYNC_DEBUG_MESSAGE;
+
+#ifdef MOZ_WIDGET_GONK
+  GonkVsyncDispatcher::GetInstance()->ShutDown();
+#endif
 
   GetMessageLoop()->PostTask(FROM_HERE,
                              new DeleteTask<VsyncEventChild>(this));

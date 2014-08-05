@@ -8,6 +8,10 @@
 #include "mozilla/ipc/Transport.h"
 #include "nsXULAppAPI.h"
 
+#ifdef MOZ_WIDGET_GONK
+#include "GonkVsyncDispatcher.h"
+#endif
+
 //#define PRINT_VSYNC_DEBUG
 #ifdef PRINT_VSYNC_DEBUG
 #define VSYNC_DEBUG_MESSAGE printf_stderr("bignose tid:%d %s",gettid(),__PRETTY_FUNCTION__)
@@ -38,6 +42,10 @@ VsyncEventParent::StartUp()
 
   MOZ_RELEASE_ASSERT(NS_IsMainThread());
   //MOZ_ASSERT(NS_IsMainThread());
+
+#ifdef MOZ_WIDGET_GONK
+  GonkVsyncDispatcher::StartUp();
+#endif
 }
 
 /*static*/ void
@@ -47,6 +55,10 @@ VsyncEventParent::ShutDown()
 
   MOZ_RELEASE_ASSERT(NS_IsMainThread());
   //MOZ_ASSERT(NS_IsMainThread());
+
+#ifdef MOZ_WIDGET_GONK
+  GonkVsyncDispatcher::ShutDown();
+#endif
 }
 
 /*static*/ PVsyncEventParent*
@@ -65,7 +77,15 @@ VsyncEventParent::Create(Transport* aTransport, ProcessId aOtherProcess)
   VsyncEventParent* vsync = nullptr;
 
 #ifdef MOZ_WIDGET_GONK
-  // Create VsyncEventParent here
+  vsync = new VsyncEventParent(GonkVsyncDispatcher::GetInstance()->GetMessageLoop(),
+                               aTransport);
+  if (vsync) {
+    vsync->GetMessageLoop()->PostTask(FROM_HERE, NewRunnableFunction(
+                                      &ConnectVsyncEventParent,
+                                      vsync,
+                                      aTransport,
+                                      processHandle));
+  }
 #endif
 
   return vsync;
@@ -93,6 +113,10 @@ VsyncEventParent::RecvEnableVsyncEventNotification()
 {
   VSYNC_DEBUG_MESSAGE;
 
+#ifdef MOZ_WIDGET_GONK
+  GonkVsyncDispatcher::GetInstance()->RegisterVsyncEventParent(this);
+#endif
+
   return true;
 }
 
@@ -101,6 +125,10 @@ VsyncEventParent::RecvDisableVsyncEventNotification()
 {
   VSYNC_DEBUG_MESSAGE;
 
+#ifdef MOZ_WIDGET_GONK
+  GonkVsyncDispatcher::GetInstance()->UnregisterVsyncEventParent(this);
+#endif
+
   return true;
 }
 
@@ -108,6 +136,10 @@ void
 VsyncEventParent::ActorDestroy(ActorDestroyReason aActorDestroyReason)
 {
   VSYNC_DEBUG_MESSAGE;
+
+#ifdef MOZ_WIDGET_GONK
+  GonkVsyncDispatcher::GetInstance()->UnregisterVsyncEventParent(this);
+#endif
 
   GetMessageLoop()->PostTask(FROM_HERE,
                              new DeleteTask<VsyncEventParent>(this));

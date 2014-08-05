@@ -116,6 +116,7 @@ EXPORTS.mozilla += [
     'TextEvents.h',
     'TextRange.h',
     'TouchEvents.h',
+    'VsyncDispatcher.h',
     'WidgetUtils.h',
 ]
 
