@@ -106,7 +106,7 @@ public:
     void Vsync(int aDisplay, int64_t aTimestamp);
 
     // Vsync event rate per second.
-    uint32_t GetHWVsycnRate() const;
+    uint32_t GetHWVsyncRate() const;
 
     void Invalidate();
 #endif

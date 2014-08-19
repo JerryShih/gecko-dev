@@ -20,8 +20,8 @@ private:
   GonkVsyncDispatcher();
   ~GonkVsyncDispatcher();
 
-  virtual void StartUpVsyncEvent() MOZ_OVERRIDE;
-  virtual void ShutDownVsyncEvent() MOZ_OVERRIDE;
+  virtual void StartupVsyncEvent() MOZ_OVERRIDE;
+  virtual void ShutdownVsyncEvent() MOZ_OVERRIDE;
   virtual void EnableVsyncEvent(bool aEnable) MOZ_OVERRIDE;
 
   // vsync event generator.

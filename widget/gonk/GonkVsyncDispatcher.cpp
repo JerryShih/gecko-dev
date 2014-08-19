@@ -19,6 +19,8 @@ namespace mozilla {
 static void
 VsyncCallback(void)
 {
+  // We can't get the same timer as the hwc does at gecko. So we get the
+  // timestamp again here.
   VsyncDispatcherHost::GetInstance()->NotifyVsync(base::TimeTicks::HighResNow().ToInternalValue());
 }
 
@@ -35,11 +37,11 @@ GonkVsyncDispatcher::~GonkVsyncDispatcher()
 }
 
 void
-GonkVsyncDispatcher::StartUpVsyncEvent()
+GonkVsyncDispatcher::StartupVsyncEvent()
 {
-  MOZ_ASSERT(NS_IsMainThread(), "StartUpVsyncEvent should be called in main thread.");
+  MOZ_ASSERT(NS_IsMainThread(), "StartupVsyncEvent should be called in main thread.");
   MOZ_ASSERT(XRE_GetProcessType() == GeckoProcessType_Default,
-      "StartUpVsyncEvent should be called in chrome");
+      "StartupVsyncEvent should be called in chrome");
   MOZ_ASSERT(!mVsyncInited, "VsyncEvent is already initialized.");
 
   mVsyncInited = true;
@@ -48,7 +50,7 @@ GonkVsyncDispatcher::StartUpVsyncEvent()
   if (gfxPrefs::FrameUniformityHWVsyncEnabled()) {
     // init hw vsync event
     if (HwcComposer2D::GetInstance()->RegisterHwcEventCallback()) {
-      mVsyncRate = HwcComposer2D::GetInstance()->GetHWVsycnRate();
+      mVsyncRate = HwcComposer2D::GetInstance()->GetHWVsyncRate();
       HwcComposer2D::GetInstance()->RegisterVsyncCallback(VsyncCallback);
       HwcComposer2D::GetInstance()->EnableVsync(true);
       mUseHWVsync = true;
@@ -63,11 +65,11 @@ GonkVsyncDispatcher::StartUpVsyncEvent()
 }
 
 void
-GonkVsyncDispatcher::ShutDownVsyncEvent()
+GonkVsyncDispatcher::ShutdownVsyncEvent()
 {
-  MOZ_ASSERT(NS_IsMainThread(), "ShutDownVsyncEvent should at main thread");
+  MOZ_ASSERT(NS_IsMainThread(), "ShutdownVsyncEvent should at main thread");
   MOZ_ASSERT(XRE_GetProcessType() == GeckoProcessType_Default,
-      "ShutDownVsyncEvent should be called in chrome");
+      "ShutdownVsyncEvent should be called in chrome");
   MOZ_ASSERT(mVsyncInited, "VsyncEvent is not initialized.");
 
   if (mUseHWVsync) {

@@ -43,8 +43,8 @@ class VsyncDispatcherHost : public VsyncDispatcher
 public:
   static VsyncDispatcherHost* GetInstance();
 
-  void StartUp();
-  void ShutDown();
+  virtual void Startup() MOZ_OVERRIDE;
+  virtual void Shutdown() MOZ_OVERRIDE;
 
   // All vsync observers should call sync unregister call before they
   // call destructor.
@@ -87,8 +87,8 @@ private:
   void CreateVsyncDispatchThread();
 
   // Startup/shutdown the platform dependent vsync event generator.
-  virtual void StartUpVsyncEvent() = 0;
-  virtual void ShutDownVsyncEvent() = 0;
+  virtual void StartupVsyncEvent() = 0;
+  virtual void ShutdownVsyncEvent() = 0;
   virtual void EnableVsyncEvent(bool aEnable) = 0;
 
   // Set IPC parent. It should be called at vsync dispatcher thread.

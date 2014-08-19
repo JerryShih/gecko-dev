@@ -36,8 +36,8 @@ class VsyncDispatcherClient MOZ_FINAL : public VsyncDispatcher
 public:
   static VsyncDispatcherClient* GetInstance();
 
-  virtual void StartUp() MOZ_OVERRIDE;
-  virtual void ShutDown() MOZ_OVERRIDE;
+  virtual void Startup() MOZ_OVERRIDE;
+  virtual void Shutdown() MOZ_OVERRIDE;
 
   void SetVsyncRate(uint32_t aVsyncRate);
   virtual uint32_t GetVsyncRate() MOZ_OVERRIDE;
