@@ -7,10 +7,22 @@
 if CONFIG['MOZ_X11']:
     DIRS += ['x11']
 
+EXPORTS.mozilla += [
+    'VsyncDispatcher.h',
+    'VsyncDispatcherClient.h',
+    'VsyncDispatcherHost.h',
+]
+
 UNIFIED_SOURCES += [
     'nsShmImage.cpp',
     'SharedWidgetUtils.cpp',
     'WidgetEventImpl.cpp',
+]
+
+SOURCES += [
+    'VsyncDispatcher.cpp',
+    'VsyncDispatcherClient.cpp',
+    'VsyncDispatcherHost.cpp',
 ]
 
 include('/ipc/chromium/chromium-config.mozbuild')
