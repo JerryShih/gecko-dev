@@ -165,6 +165,8 @@ EXPORTS.mozilla.layers += [
     'ipc/SharedBufferManagerParent.h',
     'ipc/SharedPlanarYCbCrImage.h',
     'ipc/SharedRGBImage.h',
+    'ipc/VsyncEventChild.h',
+    'ipc/VsyncEventParent.h',
     'LayerMetricsWrapper.h',
     'LayersTypes.h',
     'opengl/CompositingRenderTargetOGL.h',
@@ -311,6 +313,8 @@ UNIFIED_SOURCES += [
     'ipc/SharedBufferManagerParent.cpp',
     'ipc/SharedPlanarYCbCrImage.cpp',
     'ipc/SharedRGBImage.cpp',
+    'ipc/VsyncEventChild.cpp',
+    'ipc/VsyncEventParent.cpp',
     'LayerScope.cpp',
     'LayersLogging.cpp',
     'LayerSorter.cpp',
@@ -362,6 +366,7 @@ IPDL_SOURCES = [
     'ipc/PLayerTransaction.ipdl',
     'ipc/PSharedBufferManager.ipdl',
     'ipc/PTexture.ipdl',
+    'ipc/PVsyncEvent.ipdl',
 ]
 
 FAIL_ON_WARNINGS = True

@@ -26,10 +26,12 @@
 #include "mozilla/layers/PLayerTransaction.h"
 #include "mozilla/layers/ShadowLayerUtilsGralloc.h"
 #include "mozilla/layers/TextureHostOGL.h"  // for TextureHostOGL
+#include "mozilla/TimeStamp.h"
 #include "mozilla/StaticPtr.h"
 #include "cutils/properties.h"
 #include "gfx2DGlue.h"
 #include "GeckoTouchDispatcher.h"
+#include "PlatformVsyncTimer.h"
 
 #ifdef MOZ_ENABLE_PROFILER_SPS
 #include "GeckoProfiler.h"
@@ -116,6 +118,8 @@ HwcComposer2D::HwcComposer2D()
 #if ANDROID_VERSION >= 17
     , mPrevRetireFence(Fence::NO_FENCE)
     , mPrevDisplayFence(Fence::NO_FENCE)
+    , mVsyncObserver(nullptr)
+    , mVsyncRate(0)
 #endif
     , mPrepared(false)
     , mHasHWVsync(false)
@@ -159,12 +163,6 @@ HwcComposer2D::Init(hwc_display_t dpy, hwc_surface_t sur, gl::GLContext* aGLCont
         mColorFill = false;
         mRBSwapSupport = false;
     }
-
-    if (RegisterHwcEventCallback()) {
-        sAndroidInitTime = systemTime(SYSTEM_TIME_MONOTONIC);
-        sMozInitTime = TimeStamp::Now();
-        EnableVsync(true);
-    }
 #else
     char propValue[PROPERTY_VALUE_MAX];
     property_get("ro.display.colorfill", propValue, "0");
@@ -193,6 +191,12 @@ void
 HwcComposer2D::EnableVsync(bool aEnable)
 {
 #if ANDROID_VERSION >= 17
+    if (!gfxPrefs::FrameUniformityHWVsyncEnabled()) {
+        return;
+    }
+
+    MOZ_ASSERT(mHasHWVsync);
+
     if (NS_IsMainThread()) {
         RunVsyncEventControl(aEnable);
     } else {
@@ -205,30 +209,63 @@ HwcComposer2D::EnableVsync(bool aEnable)
 
 #if ANDROID_VERSION >= 17
 bool
-HwcComposer2D::RegisterHwcEventCallback()
+HwcComposer2D::InitHwcEventCallback()
 {
+    MOZ_ASSERT(!mHasHWVsync);
+
     HwcDevice* device = (HwcDevice*)GetGonkDisplay()->GetHWCDevice();
-    if (!device || !device->registerProcs) {
-        LOGE("Failed to get hwc");
+    if (!device || !device->registerProcs || !device->getDisplayAttributes) {
+        LOGE("Failed to get hwc.");
         return false;
     }
 
-    // Disable Vsync first, and then register callback functions.
-    device->eventControl(device, HWC_DISPLAY_PRIMARY, HWC_EVENT_VSYNC, false);
-    device->registerProcs(device, &sHWCProcs);
+    // Get the vsync period
+    const int QUERY_ATTRIBUTE_NUM = 1;
+    const uint32_t HWC_ATTRIBUTES[QUERY_ATTRIBUTE_NUM+1] = {
+        HWC_DISPLAY_VSYNC_PERIOD,
+        HWC_DISPLAY_NO_ATTRIBUTE
+    };
+    int32_t hwcAttributeValues[QUERY_ATTRIBUTE_NUM];
+
+    device->getDisplayAttributes(device, 0, 0, HWC_ATTRIBUTES, hwcAttributeValues);
+    if (hwcAttributeValues[0] > 0) {
+      mVsyncRate = 1.0e9 / hwcAttributeValues[0] + 0.5;
+    } else {
+      LOGE("Failed to get hwc vsync attribute.");
+      return false;
+    }
+
     mHasHWVsync = true;
 
+    device->registerProcs(device, &sHWCProcs);
+    device->eventControl(device, HWC_DISPLAY_PRIMARY, HWC_EVENT_VSYNC, false);
+
+    // Set the reference timestamp for constructing mozilla::TimeStamp from
+    // Hwc driver timestamp.
+    sAndroidInitTime = systemTime(SYSTEM_TIME_MONOTONIC);
+    sMozInitTime = TimeStamp::Now();
+
     if (!gfxPrefs::FrameUniformityHWVsyncEnabled()) {
-        device->eventControl(device, HWC_DISPLAY_PRIMARY, HWC_EVENT_VSYNC, false);
         mHasHWVsync = false;
     }
 
     return mHasHWVsync;
 }
 
+uint32_t
+HwcComposer2D::GetHWVsyncRate() const
+{
+    MOZ_ASSERT(mHasHWVsync);
+    MOZ_ASSERT(mVsyncRate);
+
+    return mVsyncRate;
+}
+
 void
 HwcComposer2D::RunVsyncEventControl(bool aEnable)
 {
+    MOZ_ASSERT(mHasHWVsync);
+
     if (mHasHWVsync) {
         HwcDevice* device = (HwcDevice*)GetGonkDisplay()->GetHWCDevice();
         if (device && device->eventControl) {
@@ -240,15 +277,40 @@ HwcComposer2D::RunVsyncEventControl(bool aEnable)
 void
 HwcComposer2D::Vsync(int aDisplay, nsecs_t aVsyncTimestamp)
 {
+    MOZ_ASSERT(mHasHWVsync);
+
+    nsecs_t timeSinceInit = aVsyncTimestamp - sAndroidInitTime;
+    TimeStamp vsyncTime = sMozInitTime + TimeDuration::FromMicroseconds(timeSinceInit / 1000);
+
 #ifdef MOZ_ENABLE_PROFILER_SPS
     if (profiler_is_active()) {
-      nsecs_t timeSinceInit = aVsyncTimestamp - sAndroidInitTime;
-      TimeStamp vsyncTime = sMozInitTime + TimeDuration::FromMicroseconds(timeSinceInit / 1000);
       CompositorParent::PostInsertVsyncProfilerMarker(vsyncTime);
     }
 #endif
 
     GeckoTouchDispatcher::NotifyVsync(aVsyncTimestamp);
+    
+    if (mVsyncObserver) {
+        mVsyncObserver->NotifyVsync(vsyncTime);
+    }
+}
+
+void
+HwcComposer2D::RegisterVsyncObserver(VsyncTimerObserver* aVsyncObserver)
+{
+    MOZ_ASSERT(NS_IsMainThread());
+    MOZ_ASSERT(!mVsyncObserver);
+
+    mVsyncObserver = aVsyncObserver;
+}
+
+void
+HwcComposer2D::UnregisterVsyncObserver()
+{
+    MOZ_ASSERT(NS_IsMainThread());
+
+    EnableVsync(false);
+    mVsyncObserver = nullptr;
 }
 
 // Called on the "invalidator" thread (run from HAL).

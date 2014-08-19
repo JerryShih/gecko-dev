@@ -18,6 +18,7 @@
 #define mozilla_HwcComposer2D
 
 #include "Composer2D.h"
+#include "GLTypes.h"
 #include "Layers.h"
 #include "mozilla/Mutex.h"
 
@@ -30,6 +31,8 @@
 #endif
 
 namespace mozilla {
+
+class VsyncTimerObserver;
 
 namespace gl {
     class GLContext;
@@ -91,11 +94,27 @@ public:
     bool Render(EGLDisplay dpy, EGLSurface sur);
 
     void EnableVsync(bool aEnable);
+
 #if ANDROID_VERSION >= 17
-    bool RegisterHwcEventCallback();
+    // Init vsync, hotplug ... etc. callback.
+    bool InitHwcEventCallback();
+
+    // Register a vsync observer.
+    // We should register observer before we first call EnableVsync(true).
+    void RegisterVsyncObserver(VsyncTimerObserver* aVsyncObserver);
+    // Unregister the registered observer.
+    // We use this functoin for shutdown case.
+    void UnregisterVsyncObserver();
+
+    // Hwc vsync event handle function
     void Vsync(int aDisplay, int64_t aTimestamp);
+
+    // Vsync event rate per second.
+    uint32_t GetHWVsyncRate() const;
+
     void Invalidate();
 #endif
+
     void SetCompositorParent(layers::CompositorParent* aCompositorParent);
 
 private:
@@ -129,6 +148,9 @@ private:
 #if ANDROID_VERSION >= 17
     android::sp<android::Fence> mPrevRetireFence;
     android::sp<android::Fence> mPrevDisplayFence;
+
+    VsyncTimerObserver*     mVsyncObserver;
+    uint32_t                mVsyncRate;
 #endif
     nsTArray<layers::LayerComposite*> mHwcLayerMap;
     bool                    mPrepared;

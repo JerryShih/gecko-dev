@@ -928,6 +928,13 @@ pref("dom.mozInputMethod.enabled", true);
 // to communicate with a usb cable via adb forward
 pref("devtools.debugger.unix-domain-socket", "/data/local/debugger-socket");
 
+// frame uniformity
+#ifdef MOZ_WIDGET_GONK
+pref("gfx.frameuniformity.enabled", true);
+pref("gfx.frameuniformity.hw-vsync.enabled", true);
+pref("gfx.touch.resample", true);
+#endif
+
 // enable Skia/GL (OpenGL-accelerated 2D drawing) for large enough 2d canvases,
 // falling back to Skia/software for smaller canvases
 #ifdef MOZ_WIDGET_GONK
