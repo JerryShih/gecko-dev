@@ -24,7 +24,7 @@ VsyncEventChild::Create(Transport* aTransport, ProcessId aOtherProcess)
     return nullptr;
   }
 
-  VsyncDispatcherClient::GetInstance()->StartUp();
+  VsyncDispatcherClient::GetInstance()->Startup();
 
   VsyncEventChild* vsyncEventChild = new VsyncEventChild(aTransport);
 
@@ -67,7 +67,7 @@ void
 VsyncEventChild::ActorDestroy(ActorDestroyReason aActorDestroyReason)
 {
   VsyncDispatcherClient::GetInstance()->SetVsyncEventChild(nullptr);
-  VsyncDispatcherClient::GetInstance()->ShutDown();
+  VsyncDispatcherClient::GetInstance()->Shutdown();
 
   mMessageLoop->PostTask(FROM_HERE, new DeleteTask<VsyncEventChild>(this));
   mMessageLoop = nullptr;

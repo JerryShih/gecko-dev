@@ -221,8 +221,7 @@ HwcComposer2D::RegisterHwcEventCallback()
     device->getDisplayAttributes(device, 0, 0, HWC_ATTRIBUTES, hwcAttributeValues);
     if (hwcAttributeValues[0] > 0) {
       mVsyncRate = 1.0e9 / hwcAttributeValues[0] + 0.5;
-    }
-    else {
+    } else {
       LOGE("Failed to get hwc vsync attribute.");
       return false;
     }
@@ -237,7 +236,7 @@ HwcComposer2D::RegisterHwcEventCallback()
 }
 
 uint32_t
-HwcComposer2D::GetHWVsycnRate() const
+HwcComposer2D::GetHWVsyncRate() const
 {
     MOZ_ASSERT(mVsyncRate);
 

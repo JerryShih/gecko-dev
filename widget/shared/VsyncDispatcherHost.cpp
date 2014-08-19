@@ -66,7 +66,7 @@ VsyncDispatcherHost::CreateVsyncDispatchThread()
 }
 
 void
-VsyncDispatcherHost::StartUp()
+VsyncDispatcherHost::Startup()
 {
   MOZ_ASSERT(NS_IsMainThread(), "VDHost StartUp() should in main thread.");
   MOZ_ASSERT(!mInited, "VDHost is already initialized.");
@@ -80,16 +80,16 @@ VsyncDispatcherHost::StartUp()
   // We only start up the vsync event at chrome process.
   // Content side doesn't need to do this. Chrome will send the vsync event
   // to content via ipc channel.
-  StartUpVsyncEvent();
+  StartupVsyncEvent();
 }
 
 void
-VsyncDispatcherHost::ShutDown()
+VsyncDispatcherHost::Shutdown()
 {
   MOZ_ASSERT(NS_IsMainThread(), "VDHost ShutDown() should in main thread.");
   MOZ_ASSERT(mInited, "VDHost is not initialized.");
 
-  ShutDownVsyncEvent();
+  ShutdownVsyncEvent();
 
   // Wait all pending task in vsync dispatcher thread and delete the
   // vsync dispatcher thread.
@@ -185,7 +185,6 @@ VsyncDispatcherHost::UnregisterVsyncEventParent(VsyncEventParent* aVsyncEventPar
 
   ObserverListHelper::Remove(this, &mVsyncEventParentList, aVsyncEventParent);
 }
-
 
 void
 VsyncDispatcherHost::DispatchInputEvent(int64_t aTimestampUS, uint32_t aFrameNumber)

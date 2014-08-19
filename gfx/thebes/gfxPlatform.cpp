@@ -392,7 +392,7 @@ gfxPlatform::Init()
     if (gfxPrefs::FrameUniformityEnabled() && UsesOffMainThreadCompositing() &&
         XRE_GetProcessType() == GeckoProcessType_Default)
     {
-        VsyncDispatcher::GetInstance()->StartUp();
+        VsyncDispatcher::GetInstance()->Startup();
     }
 #endif
 
@@ -508,7 +508,7 @@ gfxPlatform::Shutdown()
     if (gfxPrefs::FrameUniformityEnabled() && UsesOffMainThreadCompositing() &&
         XRE_GetProcessType() == GeckoProcessType_Default)
     {
-      VsyncDispatcher::GetInstance()->ShutDown();
+        VsyncDispatcher::GetInstance()->Shutdown();
     }
 #endif
 

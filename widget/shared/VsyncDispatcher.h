@@ -31,8 +31,8 @@ class VsyncDispatcher
 public:
   static VsyncDispatcher* GetInstance();
 
-  virtual void StartUp() = 0;
-  virtual void ShutDown() = 0;
+  virtual void Startup() = 0;
+  virtual void Shutdown() = 0;
 
   // Vsync event rate per second.
   virtual uint32_t GetVsyncRate() = 0;

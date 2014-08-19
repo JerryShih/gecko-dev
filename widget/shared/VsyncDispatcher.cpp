@@ -16,8 +16,7 @@ VsyncDispatcher::GetInstance()
 {
   if (XRE_GetProcessType() == GeckoProcessType_Default) {
     return VsyncDispatcherHost::GetInstance();
-  }
-  else {
+  } else {
     return VsyncDispatcherClient::GetInstance();
   }
 }

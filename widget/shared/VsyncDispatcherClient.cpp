@@ -31,7 +31,7 @@ VsyncDispatcherClient::GetInstance()
 }
 
 void
-VsyncDispatcherClient::StartUp()
+VsyncDispatcherClient::Startup()
 {
   MOZ_ASSERT(IsInVsyncDispatcherClientThread(), "Call VDClient at wrong thread.");
   MOZ_ASSERT(!mInited, "VDClient is already initialized.");
@@ -40,7 +40,7 @@ VsyncDispatcherClient::StartUp()
 }
 
 void
-VsyncDispatcherClient::ShutDown()
+VsyncDispatcherClient::Shutdown()
 {
   MOZ_ASSERT(IsInVsyncDispatcherClientThread());
   MOZ_ASSERT(mInited, "VDClient is not initialized.");
@@ -117,8 +117,7 @@ VsyncDispatcherClient::EnableVsyncEvent(bool aEnable)
   if (mVsyncEventChild) {
     if (aEnable) {
       mVsyncEventChild->SendRegisterVsyncEvent();
-    }
-    else {
+    } else {
       mVsyncEventChild->SendUnregisterVsyncEvent();
     }
   }
