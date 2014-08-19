@@ -1,0 +1,297 @@
+/* -*- Mode: C++; tab-width: 8; indent-tabs-mode: nil; c-basic-offset: 2 -*- */
+/* vim: set sw=4 ts=8 et tw=80 : */
+/* This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
+
+#include "VsyncDispatcherHost.h"
+#include "VsyncDispatcherHelper.h"
+#include "mozilla/layers/VsyncEventParent.h"
+#include "base/message_loop.h"
+#include "base/thread.h"
+#include "nsThreadUtils.h"
+#include "nsXULAppAPI.h"
+
+#ifdef MOZ_WIDGET_GONK
+#include "GonkVsyncDispatcher.h"
+#endif
+
+namespace mozilla {
+
+using namespace layers;
+
+scoped_refptr<VsyncDispatcherHost> VsyncDispatcherHost::mVsyncDispatcherHost;
+
+/*static*/ VsyncDispatcherHost*
+VsyncDispatcherHost::GetInstance()
+{
+  if (!mVsyncDispatcherHost) {
+    // Because we use NS_INLINE_DECL_THREADSAFE_REFCOUNTING_WITH_MAIN_THREAD_DESTRUCTION,
+    // the first call of GetInstance() should at main thread.
+#ifdef MOZ_WIDGET_GONK
+    mVsyncDispatcherHost = new GonkVsyncDispatcher();
+    MOZ_RELEASE_ASSERT(mVsyncDispatcherHost, "Create GonkVD failed.");
+#endif
+    //TODO: put other platform's VsyncDispatcher here
+  }
+
+  return mVsyncDispatcherHost;
+}
+
+RefreshDriverTrigger*
+VsyncDispatcherHost::AsRefreshDriverTrigger()
+{
+  return this;
+}
+
+CompositorTrigger*
+VsyncDispatcherHost::AsCompositorTrigger()
+{
+  return this;
+}
+
+void
+VsyncDispatcherHost::CreateVsyncDispatchThread()
+{
+  MOZ_ASSERT(!mVsyncDispatchHostThread, "VDHost thread already existed.");
+
+  mVsyncDispatchHostThread = new base::Thread("Vsync dispatch thread");
+  MOZ_RELEASE_ASSERT(mVsyncDispatchHostThread, "New VDHost thread failed.");
+
+  bool startThread = mVsyncDispatchHostThread->Start();
+  MOZ_RELEASE_ASSERT(startThread, "Start VDHost thread failed.");
+
+  mVsyncDispatchHostMessageLoop = mVsyncDispatchHostThread->message_loop();
+  MOZ_RELEASE_ASSERT(mVsyncDispatchHostMessageLoop, "Get VDHost message loop failed.");
+}
+
+void
+VsyncDispatcherHost::StartUp()
+{
+  MOZ_ASSERT(NS_IsMainThread(), "VDHost StartUp() should in main thread.");
+  MOZ_ASSERT(!mInited, "VDHost is already initialized.");
+
+  mInited = true;
+
+  // We create a internal thread here. VsyncDispatcher can still do dispatch
+  // even when the main thread is busy.
+  CreateVsyncDispatchThread();
+
+  // We only start up the vsync event at chrome process.
+  // Content side doesn't need to do this. Chrome will send the vsync event
+  // to content via ipc channel.
+  StartUpVsyncEvent();
+}
+
+void
+VsyncDispatcherHost::ShutDown()
+{
+  MOZ_ASSERT(NS_IsMainThread(), "VDHost ShutDown() should in main thread.");
+  MOZ_ASSERT(mInited, "VDHost is not initialized.");
+
+  ShutDownVsyncEvent();
+
+  // Wait all pending task in vsync dispatcher thread and delete the
+  // vsync dispatcher thread.
+  mVsyncDispatchHostMessageLoop = nullptr;
+  // Deleting the thread will also wait all tasks in message loop finished.
+  delete mVsyncDispatchHostThread;
+  mVsyncDispatchHostThread = nullptr;
+
+  mInited = false;
+  // Release the VsyncDispatcher singleton.
+  mVsyncDispatcherHost = nullptr;
+}
+
+VsyncDispatcherHost::VsyncDispatcherHost()
+  : mVsyncRate(0)
+  , mInited(false)
+  , mVsyncDispatchHostThread(nullptr)
+  , mVsyncDispatchHostMessageLoop(nullptr)
+  , mVsyncEventNeeded(false)
+{
+}
+
+VsyncDispatcherHost::~VsyncDispatcherHost()
+{
+  mVsyncEventParentList.Clear();
+}
+
+void
+VsyncDispatcherHost::NotifyVsync(int64_t aTimestampUS)
+{
+  MOZ_ASSERT(mInited, "VDHost is not initialized.");
+
+  GetMessageLoop()->PostTask(FROM_HERE,
+                             NewRunnableMethod(this,
+                             &VsyncDispatcherHost::NotifyVsyncTask,
+                             aTimestampUS));
+}
+
+void
+VsyncDispatcherHost::NotifyVsyncTask(int64_t aTimestampUS)
+{
+  // We propose a monotonic increased frame number here.
+  // It helps us to identify the frame count for each vsync update.
+  static uint32_t frameNumber = 0;
+
+  DispatchVsyncEvent(aTimestampUS, ++frameNumber);
+}
+
+void
+VsyncDispatcherHost::DispatchVsyncEvent(int64_t aTimestampUS, uint32_t aFrameNumber)
+{
+  MOZ_ASSERT(IsInVsyncDispatcherHostThread());
+
+  if (!mVsyncEventNeeded) {
+    return;
+  }
+
+  // Notify the main thread to handle input event.
+  DispatchInputEvent(aTimestampUS, aFrameNumber);
+
+  // Do compose.
+  Compose(aTimestampUS, aFrameNumber);
+
+  // Send vsync event to content process
+  NotifyContentProcess(aTimestampUS, aFrameNumber);
+
+  // Tick chrome refresh driver.
+  TickRefreshDriver(aTimestampUS, aFrameNumber);
+}
+
+int
+VsyncDispatcherHost::GetVsyncObserverCount() const
+{
+  //TODO: If we have more type of vsync observer, we need to count all of them here.
+
+  return mVsyncEventParentList.Length();
+}
+
+void
+VsyncDispatcherHost::RegisterVsyncEventParent(VsyncEventParent* aVsyncEventParent)
+{
+  MOZ_ASSERT(mInited);
+  MOZ_ASSERT(IsInVsyncDispatcherHostThread());
+
+  ObserverListHelper::Add(this, &mVsyncEventParentList, aVsyncEventParent);
+}
+
+void
+VsyncDispatcherHost::UnregisterVsyncEventParent(VsyncEventParent* aVsyncEventParent)
+{
+  MOZ_ASSERT(mInited);
+  MOZ_ASSERT(IsInVsyncDispatcherHostThread());
+
+  ObserverListHelper::Remove(this, &mVsyncEventParentList, aVsyncEventParent);
+}
+
+
+void
+VsyncDispatcherHost::DispatchInputEvent(int64_t aTimestampUS, uint32_t aFrameNumber)
+{
+  //TODO: notify chrome to dispatch input
+}
+
+void
+VsyncDispatcherHost::Compose(int64_t aTimestampUS, uint32_t aFrameNumber)
+{
+  //TODO: notify compositor parent to do compose
+}
+
+void
+VsyncDispatcherHost::TickRefreshDriver(int64_t aTimestampUS, uint32_t aFrameNumber)
+{
+  //TODO: Tick chrome refresh driver
+}
+
+void
+VsyncDispatcherHost::NotifyContentProcess(int64_t aTimestampUS, uint32_t aFrameNumber)
+{
+  MOZ_ASSERT(IsInVsyncDispatcherHostThread());
+
+  VsyncData vsyncData(aTimestampUS, aFrameNumber);
+
+  // Send ipc to content process.
+  for (VsyncEventParentList::size_type i = 0; i < mVsyncEventParentList.Length(); ++i) {
+    VsyncEventParent* parent = mVsyncEventParentList[i];
+    parent->SendNotifyVsyncEvent(vsyncData);
+  }
+}
+
+MessageLoop*
+VsyncDispatcherHost::GetMessageLoop()
+{
+  MOZ_ASSERT(mVsyncDispatchHostMessageLoop, "VDHost message is not ready.");
+
+  return mVsyncDispatchHostMessageLoop;
+}
+
+void
+VsyncDispatcherHost::EnableVsyncNotificationIfhasObserver()
+{
+  // We check the observer number here to enable/disable vsync event
+  if (!!GetVsyncObserverCount() !=  mVsyncEventNeeded) {
+    mVsyncEventNeeded = !mVsyncEventNeeded;
+
+    EnableVsyncEvent(mVsyncEventNeeded);
+  }
+}
+
+bool
+VsyncDispatcherHost::IsInVsyncDispatcherHostThread()
+{
+  return (mVsyncDispatchHostThread->thread_id() == PlatformThread::CurrentId());
+}
+
+void
+VsyncDispatcherHost::EnableInputDispatcher()
+{
+  //TODO: enable input dispatcher
+}
+
+void
+VsyncDispatcherHost::DisableInputDispatcher(bool aSync)
+{
+  //TODO: disable input dispatcher
+  //      With sync flag, we should block here until we actually disable the
+  //      InputDispatcher at vsync dispatcher thread.
+}
+
+void
+VsyncDispatcherHost::RegisterCompositor(VsyncObserver* aCompositor)
+{
+  //TODO: register a CompositorParent
+}
+
+void
+VsyncDispatcherHost::UnregisterCompositor(VsyncObserver* aCompositor, bool aSync)
+{
+  //TODO: unregister a CompositorParent.
+  //      With sync flag, we should be blocked here until we actually remove the
+  //      CompositorParent at vsync dispatcher thread.
+}
+
+void
+VsyncDispatcherHost::RegisterTimer(VsyncObserver* aTimer)
+{
+  //TODO: register a refresh driver timer
+}
+
+void
+VsyncDispatcherHost::UnregisterTimer(VsyncObserver* aTimer, bool aSync)
+{
+  //TODO: unregister a refresh driver timer
+  //      With sync flag, we should be blocked here until we actually remove the
+  //      timer at vsync dispatcher thread.
+}
+
+uint32_t
+VsyncDispatcherHost::GetVsyncRate()
+{
+  MOZ_ASSERT(mVsyncRate);
+
+  return mVsyncRate;
+}
+
+} // namespace mozilla

@@ -34,6 +34,7 @@ include protocol PTestShell;
 include protocol PVoicemail;
 include protocol PJavaScript;
 include protocol PRemoteSpellcheckEngine;
+include protocol PVsyncEvent;
 include DOMTypes;
 include JavaScriptTypes;
 include InputStreamParams;
@@ -323,6 +324,7 @@ intr protocol PContent
     parent opens PCompositor;
     parent opens PSharedBufferManager;
     parent opens PImageBridge;
+    parent opens PVsyncEvent;
     child opens PBackground;
 
     manages PAsmJSCacheEntry;

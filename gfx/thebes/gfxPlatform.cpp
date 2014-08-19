@@ -13,6 +13,7 @@
 #include "mozilla/layers/ImageBridgeChild.h"
 #include "mozilla/layers/SharedBufferManagerChild.h"
 #include "mozilla/layers/ISurfaceAllocator.h"     // for GfxMemoryImageReporter
+#include "mozilla/VsyncDispatcher.h"
 
 #include "prlog.h"
 
@@ -387,6 +388,14 @@ gfxPlatform::Init()
     mozilla::gl::GLContext::StaticInit();
 #endif
 
+#ifdef MOZ_WIDGET_GONK
+    if (gfxPrefs::FrameUniformityEnabled() && UsesOffMainThreadCompositing() &&
+        XRE_GetProcessType() == GeckoProcessType_Default)
+    {
+        VsyncDispatcher::GetInstance()->StartUp();
+    }
+#endif
+
     InitLayersIPC();
 
     nsresult rv;
@@ -494,6 +503,14 @@ gfxPlatform::Shutdown()
         gPlatform->mMemoryPressureObserver = nullptr;
         gPlatform->mSkiaGlue = nullptr;
     }
+
+#ifdef MOZ_WIDGET_GONK
+    if (gfxPrefs::FrameUniformityEnabled() && UsesOffMainThreadCompositing() &&
+        XRE_GetProcessType() == GeckoProcessType_Default)
+    {
+      VsyncDispatcher::GetInstance()->ShutDown();
+    }
+#endif
 
 #ifdef MOZ_WIDGET_ANDROID
     // Shut down the texture pool
