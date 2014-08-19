@@ -109,6 +109,8 @@ HwcComposer2D::HwcComposer2D()
 #if ANDROID_VERSION >= 17
     , mPrevRetireFence(Fence::NO_FENCE)
     , mPrevDisplayFence(Fence::NO_FENCE)
+    , mVsyncCallback(nullptr)
+    , mVsyncRate(0)
 #endif
     , mPrepared(false)
     , mHasHWVsync(false)
@@ -198,23 +200,48 @@ HwcComposer2D::EnableVsync(bool aEnable)
 bool
 HwcComposer2D::RegisterHwcEventCallback()
 {
-    HwcDevice* device = (HwcDevice*)GetGonkDisplay()->GetHWCDevice();
-    if (!device || !device->registerProcs) {
-        LOGE("Failed to get hwc");
+    if (!gfxPrefs::FrameUniformityHWVsyncEnabled()) {
         return false;
+    }
+
+    HwcDevice* device = (HwcDevice*)GetGonkDisplay()->GetHWCDevice();
+    if (!device || !device->registerProcs || !device->getDisplayAttributes) {
+        LOGE("Failed to get hwc.");
+        return false;
+    }
+
+    // Get the vsync period
+    const int QUERY_ATTRIBUTE_NUM = 1;
+    const uint32_t HWC_ATTRIBUTES[QUERY_ATTRIBUTE_NUM+1] = {
+        HWC_DISPLAY_VSYNC_PERIOD,
+        HWC_DISPLAY_NO_ATTRIBUTE
+    };
+    int32_t hwcAttributeValues[QUERY_ATTRIBUTE_NUM];
+
+    device->getDisplayAttributes(device, 0, 0, HWC_ATTRIBUTES, hwcAttributeValues);
+    if (hwcAttributeValues[0] > 0) {
+      mVsyncRate = 1.0e9 / hwcAttributeValues[0] + 0.5;
+    }
+    else {
+      LOGE("Failed to get hwc vsync attribute.");
+      return false;
     }
 
     // Disable Vsync first, and then register callback functions.
     device->eventControl(device, HWC_DISPLAY_PRIMARY, HWC_EVENT_VSYNC, false);
     device->registerProcs(device, &sHWCProcs);
+
     mHasHWVsync = true;
 
-    if (!gfxPrefs::FrameUniformityHWVsyncEnabled()) {
-        device->eventControl(device, HWC_DISPLAY_PRIMARY, HWC_EVENT_VSYNC, false);
-        mHasHWVsync = false;
-    }
+    return true;
+}
 
-    return mHasHWVsync;
+uint32_t
+HwcComposer2D::GetHWVsycnRate() const
+{
+    MOZ_ASSERT(mVsyncRate);
+
+    return mVsyncRate;
 }
 
 void
@@ -232,8 +259,24 @@ void
 HwcComposer2D::Vsync(int aDisplay, int64_t aTimestamp)
 {
     GeckoTouchDispatcher::NotifyVsync(aTimestamp);
+
+    if (mVsyncCallback) {
+        mVsyncCallback();
+    }
 }
 
+void
+HwcComposer2D::RegisterVsyncCallback(HWVsyncCallback aHWVsyncCallback)
+{
+    mVsyncCallback = aHWVsyncCallback;
+}
+
+void
+HwcComposer2D::UnregisterVsyncCallback()
+{
+    EnableVsync(false);
+    mVsyncCallback = nullptr;
+}
 // Called on the "invalidator" thread (run from HAL).
 void
 HwcComposer2D::Invalidate()
@@ -248,6 +291,7 @@ HwcComposer2D::Invalidate()
         mCompositorParent->ScheduleRenderOnCompositorThread();
     }
 }
+
 #endif
 
 void

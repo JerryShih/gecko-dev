@@ -16,6 +16,7 @@
 
 EXPORTS += [
     'GonkPermission.h',
+    'GonkVsyncDispatcher.h',
     'OrientationObserver.h',
 ]
 
@@ -48,6 +49,7 @@ SOURCES += [
     'GfxInfo.cpp',
     'GonkMemoryPressureMonitoring.cpp',
     'GonkPermission.cpp',
+    'GonkVsyncDispatcher.cpp',
     'HwcComposer2D.cpp',
     'HwcUtils.cpp',
     'nsAppShell.cpp',

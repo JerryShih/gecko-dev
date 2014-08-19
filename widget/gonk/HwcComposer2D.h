@@ -18,6 +18,7 @@
 #define mozilla_HwcComposer2D
 
 #include "Composer2D.h"
+#include "GLTypes.h"
 #include "Layers.h"
 #include "mozilla/Mutex.h"
 
@@ -91,11 +92,25 @@ public:
     bool Render(EGLDisplay dpy, EGLSurface sur);
 
     void EnableVsync(bool aEnable);
+
 #if ANDROID_VERSION >= 17
     bool RegisterHwcEventCallback();
+
+    typedef void (*HWVsyncCallback)(void);
+
+    // Register a vsync event callback.
+    // We should register the callback before we enable vsync.
+    void RegisterVsyncCallback(HWVsyncCallback aHWVsyncCallback);
+    void UnregisterVsyncCallback();
+
     void Vsync(int aDisplay, int64_t aTimestamp);
+
+    // Vsync event rate per second.
+    uint32_t GetHWVsycnRate() const;
+
     void Invalidate();
 #endif
+
     void SetCompositorParent(layers::CompositorParent* aCompositorParent);
 
 private:
@@ -129,6 +144,9 @@ private:
 #if ANDROID_VERSION >= 17
     android::sp<android::Fence> mPrevRetireFence;
     android::sp<android::Fence> mPrevDisplayFence;
+
+    HWVsyncCallback         mVsyncCallback;
+    uint32_t                mVsyncRate;
 #endif
     nsTArray<layers::LayerComposite*> mHwcLayerMap;
     bool                    mPrepared;
