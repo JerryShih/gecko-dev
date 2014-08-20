@@ -21,4 +21,16 @@ VsyncDispatcher::GetInstance()
   }
 }
 
+RefreshDriverTrigger*
+VsyncDispatcher::AsRefreshDriverTrigger()
+{
+  return nullptr;
+}
+
+CompositorTrigger*
+VsyncDispatcher::AsCompositorTrigger()
+{
+  return nullptr;
+}
+
 } // namespace mozilla
