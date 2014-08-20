@@ -60,6 +60,7 @@ SOURCES += [
     'OrientationObserver.cpp',
     'ParentProcessController.cpp',
     'ProcessOrientation.cpp',
+    'VsyncTimer.cpp',
     'WidgetTraceEvent.cpp',
 ]
 

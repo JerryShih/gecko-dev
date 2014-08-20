@@ -81,4 +81,10 @@ GonkVsyncTimer::GetVsyncRate()
   return mVsyncRate;
 }
 
+void
+GonkVsyncTimer::SetPriority(int32_t aPriority)
+{
+  // cannot change the priority of gonk hwc timer
+}
+
 } // namespace mozilla

@@ -69,6 +69,9 @@ public:
   // Return 0 if failed.
   virtual uint32_t GetVsyncRate() = 0;
 
+  // Set Priority
+  virtual void SetPriority(int32_t aPriority) = 0;
+
 private:
   // Startup the timer.
   // Return true if the timer initials successfully.

@@ -23,6 +23,7 @@ public:
   virtual void Enable(bool aEnable) MOZ_OVERRIDE;
 
   virtual uint32_t GetVsyncRate() MOZ_OVERRIDE;
+  virtual void SetPriority(int32_t aPriority) MOZ_OVERRIDE;
 
 private:
   bool mInited;

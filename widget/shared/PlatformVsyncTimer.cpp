@@ -5,9 +5,12 @@
 
 #include "PlatformVsyncTimer.h"
 #include "mozilla/Assertions.h"
+#include "nsISupportsPriority.h"
+#include "gfxPrefs.h"
 
 #ifdef MOZ_WIDGET_GONK
 #include "GonkVsyncTimer.h"
+#include "VsyncTimer.h"
 #endif
 
 namespace mozilla {
@@ -39,11 +42,17 @@ PlatformVsyncTimerFactory::CreateSWTimer(VsyncTimerObserver* aObserver)
 {
   PlatformVsyncTimer* timer = nullptr;
 
-  // TODO: create the sw timer here.
+  // Create the sw timer here.
+#ifdef MOZ_WIDGET_GONK
+  timer = new VsyncTimer(aObserver);
+#endif
 
   if (timer) {
     // SW timer should not init failed.
     MOZ_RELEASE_ASSERT(timer->Startup());
+
+    // Set priority as nice value = -2
+    timer->SetPriority(nsISupportsPriority::PRIORITY_HIGHEST);
   }
 
   return timer;
@@ -55,7 +64,9 @@ PlatformVsyncTimerFactory::Create(VsyncTimerObserver* aObserver)
   PlatformVsyncTimer* timer = nullptr;
 
   // We init the hw timer first, and then fallback to sw timer.
-  timer = CreateHWTimer(aObserver);
+  if (!gfxPrefs::FrameUniformityForceSWVsync()) {
+    timer = CreateHWTimer(aObserver);
+  }
   if (!timer){
     timer = CreateSWTimer(aObserver);
   }
