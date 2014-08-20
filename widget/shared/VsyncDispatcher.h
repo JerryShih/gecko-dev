@@ -37,15 +37,9 @@ public:
   // Vsync event rate per second.
   virtual uint32_t GetVsyncRate() = 0;
 
-  virtual RefreshDriverTrigger* AsRefreshDriverTrigger()
-  {
-    return nullptr;
-  }
+  virtual RefreshDriverTrigger* AsRefreshDriverTrigger();
 
-  virtual CompositorTrigger* AsCompositorTrigger()
-  {
-    return nullptr;
-  }
+  virtual CompositorTrigger* AsCompositorTrigger();
 
 protected:
   virtual ~VsyncDispatcher() { }
