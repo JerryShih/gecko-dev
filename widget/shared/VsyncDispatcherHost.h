@@ -7,6 +7,7 @@
 #ifndef mozilla_VsyncDispatcherHost_h
 #define mozilla_VsyncDispatcherHost_h
 
+#include "nsAutoPtr.h"
 #include "nsTArray.h"
 #include "ThreadSafeRefcountingWithMainThreadDestruction.h"
 #include "VsyncDispatcher.h"
@@ -122,7 +123,7 @@ private:
   void EnableVsyncNotificationIfhasObserver();
 
 private:
-  static scoped_refptr<VsyncDispatcherHost> mVsyncDispatcherHost;
+  static nsRefPtr<VsyncDispatcherHost> mVsyncDispatcherHost;
 
   bool mInited;
 

@@ -33,17 +33,15 @@ VsyncEventParent::Create(Transport* aTransport, ProcessId aOtherProcess)
     return nullptr;
   }
 
-  VsyncEventParent* vsyncParent = nullptr;
+  nsRefPtr<VsyncEventParent> vsyncParent = new VsyncEventParent(aTransport);
+  vsyncParent->mVsyncEventParent = vsyncParent;
 
-  vsyncParent = new VsyncEventParent(aTransport);
-  if (vsyncParent) {
-    // Use VsyncDispatcherHost thread for ipc.
-    VsyncDispatcherHost::GetInstance()->GetMessageLoop()->PostTask(FROM_HERE, NewRunnableFunction(
-                                                                   &ConnectVsyncEventParent,
-                                                                   vsyncParent,
-                                                                   aTransport,
-                                                                   processHandle));
-  }
+  // Use VsyncDispatcherHost thread for ipc.
+  VsyncDispatcherHost::GetInstance()->GetMessageLoop()->PostTask(FROM_HERE, NewRunnableFunction(
+                                                                 &ConnectVsyncEventParent,
+                                                                 vsyncParent,
+                                                                 aTransport,
+                                                                 processHandle));
 
   return vsyncParent;
 }
@@ -51,14 +49,26 @@ VsyncEventParent::Create(Transport* aTransport, ProcessId aOtherProcess)
 VsyncEventParent::VsyncEventParent(Transport* aTransport)
   : mTransport(aTransport)
 {
+  MOZ_ASSERT(NS_IsMainThread());
 }
 
 VsyncEventParent::~VsyncEventParent()
 {
+  MOZ_ASSERT(NS_IsMainThread());
+
   if (mTransport) {
     XRE_GetIOMessageLoop()->PostTask(FROM_HERE,
                                      new DeleteTask<Transport>(mTransport));
   }
+}
+
+void
+VsyncEventParent::DestroyTask()
+{
+  // We should release VsyncEventParent at main thread.
+  // NS_INLINE_DECL_THREADSAFE_REFCOUNTING_WITH_MAIN_THREAD_DESTRUCTION will
+  // help us to to this.
+  mVsyncEventParent = nullptr;
 }
 
 bool
@@ -90,8 +100,14 @@ VsyncEventParent::ActorDestroy(ActorDestroyReason aActorDestroyReason)
 {
   VsyncDispatcherHost::GetInstance()->UnregisterVsyncEventParent(this);
 
-  VsyncDispatcherHost::GetInstance()->GetMessageLoop()->PostTask(FROM_HERE,
-                                                                 new DeleteTask<VsyncEventParent>(this));
+  // Top level protocol actor should be delete at main thread.
+  // We don't post the deletion task to main thread directly here.
+  // Instead, we post a pending DeleteTask in VsyncDispatcher Thread.
+  // It prevents the problem that ipc system access VsyncEventParent's data
+  // when main thread starts to delete the VsyncEventParent.
+  VsyncDispatcherHost::GetInstance()->GetMessageLoop()->PostTask(FROM_HERE, NewRunnableMethod(
+                                                                 this,
+                                                                 &VsyncEventParent::DestroyTask));
 }
 
 IToplevelProtocol*

@@ -8,6 +8,8 @@
 #define MOZILLA_GFX_VSYNCEVENTCHILD_H
 
 #include "mozilla/layers/PVsyncEventChild.h"
+#include "nsAutoPtr.h"
+#include "ThreadSafeRefcountingWithMainThreadDestruction.h"
 
 class MessageLoop;
 
@@ -16,6 +18,9 @@ namespace layers {
 
 class VsyncEventChild MOZ_FINAL : public PVsyncEventChild
 {
+  // Top level protocol should be deleted at main thread.
+  NS_INLINE_DECL_THREADSAFE_REFCOUNTING_WITH_MAIN_THREAD_DESTRUCTION(VsyncEventChild);
+
 public:
   static PVsyncEventChild* Create(Transport* aTransport,
                                   ProcessId aOtherProcess);
@@ -28,9 +33,13 @@ public:
   virtual void ActorDestroy(ActorDestroyReason aActorDestroyReason) MOZ_OVERRIDE;
 
 private:
+  void DestroyTask();
+
   Transport* mTransport;
 
-  MessageLoop* mMessageLoop;
+  // Hold a reference to ourself to use message loop.
+  // We will release the reference in ActorDestroy().
+  nsRefPtr<VsyncEventChild> mVsyncEventChild;
 };
 
 } //layers

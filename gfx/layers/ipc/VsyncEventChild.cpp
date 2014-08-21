@@ -26,7 +26,8 @@ VsyncEventChild::Create(Transport* aTransport, ProcessId aOtherProcess)
 
   VsyncDispatcherClient::GetInstance()->Startup();
 
-  VsyncEventChild* vsyncEventChild = new VsyncEventChild(aTransport);
+  nsRefPtr<VsyncEventChild> vsyncEventChild = new VsyncEventChild(aTransport);
+  vsyncEventChild->mVsyncEventChild = vsyncEventChild;
 
   // Use current thread(main thread) for ipc.
   vsyncEventChild->Open(aTransport, aOtherProcess, XRE_GetIOMessageLoop(), ChildSide);
@@ -44,15 +45,23 @@ VsyncEventChild::Create(Transport* aTransport, ProcessId aOtherProcess)
 VsyncEventChild::VsyncEventChild(Transport* aTransport)
   : mTransport(aTransport)
 {
-  mMessageLoop = MessageLoop::current();
+  MOZ_ASSERT(NS_IsMainThread());
 }
 
 VsyncEventChild::~VsyncEventChild()
 {
+  MOZ_ASSERT(NS_IsMainThread());
+
   if (mTransport) {
     XRE_GetIOMessageLoop()->PostTask(FROM_HERE,
                                      new DeleteTask<Transport>(mTransport));
   }
+}
+
+void
+VsyncEventChild::DestroyTask()
+{
+  mVsyncEventChild = nullptr;
 }
 
 bool VsyncEventChild::RecvNotifyVsyncEvent(const VsyncData& aVsyncData)
@@ -69,8 +78,9 @@ VsyncEventChild::ActorDestroy(ActorDestroyReason aActorDestroyReason)
   VsyncDispatcherClient::GetInstance()->SetVsyncEventChild(nullptr);
   VsyncDispatcherClient::GetInstance()->Shutdown();
 
-  mMessageLoop->PostTask(FROM_HERE, new DeleteTask<VsyncEventChild>(this));
-  mMessageLoop = nullptr;
+  MessageLoop::current()->PostTask(FROM_HERE,
+                                   NewRunnableMethod(this,
+                                   &VsyncEventChild::DestroyTask));
 }
 
 } //layers

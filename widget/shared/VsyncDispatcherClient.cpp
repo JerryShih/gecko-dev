@@ -15,7 +15,7 @@ namespace mozilla {
 
 using namespace layers;
 
-scoped_refptr<VsyncDispatcherClient> VsyncDispatcherClient::mVsyncDispatcherClient;
+nsRefPtr<VsyncDispatcherClient> VsyncDispatcherClient::mVsyncDispatcherClient;
 
 /*static*/ VsyncDispatcherClient*
 VsyncDispatcherClient::GetInstance()
