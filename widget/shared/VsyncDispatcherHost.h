@@ -130,12 +130,8 @@ private:
   base::Thread* mVsyncDispatchHostThread;
   MessageLoop* mVsyncDispatchHostMessageLoop;
 
-  //TODO: Put other vsync observer list here.
-  // Ex: input, compositor and refresh driver.
-
   // IPC parent
   typedef nsTArray<layers::VsyncEventParent*> VsyncEventParentList;
-  // IPC parent
   VsyncEventParentList mVsyncEventParentList;
 
   //TODO: Put other vsync observer list here.
