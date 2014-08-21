@@ -8,12 +8,19 @@
 #define MOZILLA_VSYNC_EVENT_PARENT_H
 
 #include "mozilla/layers/PVsyncEventParent.h"
+#include "nsAutoPtr.h"
+#include "ThreadSafeRefcountingWithMainThreadDestruction.h"
+
+class MessageLoop;
 
 namespace mozilla {
 namespace layers {
 
 class VsyncEventParent MOZ_FINAL : public PVsyncEventParent
 {
+  // Top level protocol should be deleted at main thread.
+  NS_INLINE_DECL_THREADSAFE_REFCOUNTING_WITH_MAIN_THREAD_DESTRUCTION(VsyncEventParent);
+
 public:
   static PVsyncEventParent* Create(Transport* aTransport, ProcessId aOtherProcess);
 
@@ -32,7 +39,14 @@ public:
                                            ProtocolCloneContext* aCtx) MOZ_OVERRIDE;
 
 private:
+  void DestroyTask();
+  void MainThreadDestroyTask();
+
   Transport* mTransport;
+
+  // Hold a reference to ourself to use message loop.
+  // We will release the reference in ActorDestroy().
+  nsRefPtr<VsyncEventParent> mVsyncEventParent;
 };
 
 } //layers

@@ -75,7 +75,7 @@ private:
   void EnableVsyncNotificationIfhasObserver();
 
 private:
-  static scoped_refptr<VsyncDispatcherClient> mVsyncDispatcherClient;
+  static nsRefPtr<VsyncDispatcherClient> mVsyncDispatcherClient;
 
   uint32_t mVsyncRate;
 
