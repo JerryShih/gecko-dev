@@ -7,6 +7,8 @@
 #ifndef mozilla_VsyncDispatcher_h
 #define mozilla_VsyncDispatcher_h
 
+#include "ThreadSafeRefcountingWithMainThreadDestruction.h"
+
 class MessageLoop;
 
 namespace mozilla {
@@ -26,6 +28,8 @@ class VsyncDispatcherHost;
 // Vsync event observer
 class VsyncObserver
 {
+  NS_INLINE_DECL_THREADSAFE_REFCOUNTING_WITH_MAIN_THREAD_DESTRUCTION(VsyncObserver);
+
 public:
   virtual void VsyncTick(int64_t aTimestampUS, uint32_t aFrameNumber) = 0;
 
