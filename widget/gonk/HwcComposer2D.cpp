@@ -27,6 +27,7 @@
 #include "mozilla/layers/ShadowLayerUtilsGralloc.h"
 #include "mozilla/layers/TextureHostOGL.h"  // for TextureHostOGL
 #include "mozilla/StaticPtr.h"
+#include "mozilla/VsyncDispatcher.h"
 #include "cutils/properties.h"
 #include "gfx2DGlue.h"
 #include "GeckoTouchDispatcher.h"
@@ -109,7 +110,7 @@ HwcComposer2D::HwcComposer2D()
 #if ANDROID_VERSION >= 17
     , mPrevRetireFence(Fence::NO_FENCE)
     , mPrevDisplayFence(Fence::NO_FENCE)
-    , mVsyncCallback(nullptr)
+    , mVsyncDispatcher(nullptr)
     , mVsyncRate(0)
 #endif
     , mPrepared(false)
@@ -259,22 +260,28 @@ HwcComposer2D::Vsync(int aDisplay, int64_t aTimestamp)
 {
     GeckoTouchDispatcher::NotifyVsync(aTimestamp);
 
-    if (mVsyncCallback) {
-        mVsyncCallback();
+    if (mVsyncDispatcher) {
+        // We can't get the same timer as the hwc does at gecko. So we get the
+        // timestamp again here.
+        mVsyncDispatcher->NotifyVsync(base::TimeTicks::HighResNow().ToInternalValue());
     }
 }
 
 void
-HwcComposer2D::RegisterVsyncCallback(HWVsyncCallback aHWVsyncCallback)
+HwcComposer2D::RegisterVsyncDispatcher(VsyncDispatcherHost* aVsyncDispatcherHost)
 {
-    mVsyncCallback = aHWVsyncCallback;
+    MOZ_ASSERT(NS_IsMainThread());
+
+    mVsyncDispatcher = aVsyncDispatcherHost;
 }
 
 void
-HwcComposer2D::UnregisterVsyncCallback()
+HwcComposer2D::UnregisterVsyncDispatcher()
 {
+    MOZ_ASSERT(NS_IsMainThread());
+
     EnableVsync(false);
-    mVsyncCallback = nullptr;
+    mVsyncDispatcher = nullptr;
 }
 // Called on the "invalidator" thread (run from HAL).
 void

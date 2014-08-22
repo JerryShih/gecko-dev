@@ -4,7 +4,7 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
-#include "mozilla/VsyncDispatcherClient.h"
+#include "mozilla/VsyncDispatcher.h"
 #include "mozilla/layers/VsyncEventChild.h"
 #include "nsXULAppAPI.h"
 
@@ -24,7 +24,7 @@ VsyncEventChild::Create(Transport* aTransport, ProcessId aOtherProcess)
     return nullptr;
   }
 
-  VsyncDispatcherClient::GetInstance()->Startup();
+  VsyncDispatcher::GetInstance()->Startup();
 
   nsRefPtr<VsyncEventChild> vsyncEventChild = new VsyncEventChild(aTransport);
   vsyncEventChild->mVsyncEventChild = vsyncEventChild;
@@ -35,9 +35,9 @@ VsyncEventChild::Create(Transport* aTransport, ProcessId aOtherProcess)
   // Get vsync rate from parent side.
   uint32_t vsyncRate = 0;
   vsyncEventChild->SendGetVsyncRate(&vsyncRate);
-  VsyncDispatcherClient::GetInstance()->SetVsyncRate(vsyncRate);
+  VsyncDispatcher::GetInstance()->AsVsyncDispatcherClient()->SetVsyncRate(vsyncRate);
 
-  VsyncDispatcherClient::GetInstance()->SetVsyncEventChild(vsyncEventChild);
+  VsyncDispatcher::GetInstance()->AsVsyncDispatcherClient()->SetVsyncEventChild(vsyncEventChild);
 
   return vsyncEventChild;
 }
@@ -66,8 +66,9 @@ VsyncEventChild::DestroyTask()
 
 bool VsyncEventChild::RecvNotifyVsyncEvent(const VsyncData& aVsyncData)
 {
-  VsyncDispatcherClient::GetInstance()->DispatchVsyncEvent(aVsyncData.timeStampUS(),
-                                                           aVsyncData.frameNumber());
+  VsyncDispatcher::GetInstance()->AsVsyncDispatcherClient()
+      ->DispatchVsyncEvent(aVsyncData.timeStampUS(),
+                           aVsyncData.frameNumber());
 
   return true;
 }
@@ -75,8 +76,8 @@ bool VsyncEventChild::RecvNotifyVsyncEvent(const VsyncData& aVsyncData)
 void
 VsyncEventChild::ActorDestroy(ActorDestroyReason aActorDestroyReason)
 {
-  VsyncDispatcherClient::GetInstance()->SetVsyncEventChild(nullptr);
-  VsyncDispatcherClient::GetInstance()->Shutdown();
+  VsyncDispatcher::GetInstance()->AsVsyncDispatcherClient()->SetVsyncEventChild(nullptr);
+  VsyncDispatcher::GetInstance()->Shutdown();
 
   MessageLoop::current()->PostTask(FROM_HERE,
                                    NewRunnableMethod(this,

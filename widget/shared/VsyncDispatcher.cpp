@@ -5,8 +5,8 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
 #include "VsyncDispatcher.h"
-#include "VsyncDispatcherClient.h"
-#include "VsyncDispatcherHost.h"
+#include "VsyncDispatcherClientImpl.h"
+#include "VsyncDispatcherHostImpl.h"
 #include "nsXULAppAPI.h"
 
 namespace mozilla {
@@ -15,10 +15,16 @@ namespace mozilla {
 VsyncDispatcher::GetInstance()
 {
   if (XRE_GetProcessType() == GeckoProcessType_Default) {
-    return VsyncDispatcherHost::GetInstance();
+    return VsyncDispatcherHostImpl::GetInstance();
   } else {
-    return VsyncDispatcherClient::GetInstance();
+    return VsyncDispatcherClientImpl::GetInstance();
   }
+}
+
+InputDispatchTrigger*
+VsyncDispatcher::AsInputDispatchTrigger()
+{
+  return nullptr;
 }
 
 RefreshDriverTrigger*
@@ -29,6 +35,18 @@ VsyncDispatcher::AsRefreshDriverTrigger()
 
 CompositorTrigger*
 VsyncDispatcher::AsCompositorTrigger()
+{
+  return nullptr;
+}
+
+VsyncDispatcherClient*
+VsyncDispatcher::AsVsyncDispatcherClient()
+{
+  return nullptr;
+}
+
+VsyncDispatcherHost*
+VsyncDispatcher::AsVsyncDispatcherHost()
 {
   return nullptr;
 }
