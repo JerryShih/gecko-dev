@@ -7,10 +7,21 @@
 #ifndef mozilla_VsyncDispatcher_h
 #define mozilla_VsyncDispatcher_h
 
+class MessageLoop;
+
 namespace mozilla {
 
+namespace layers {
+class VsyncEventChild;
+class VsyncEventParent;
+};
+
+class InputDispatchTrigger;
 class CompositorTrigger;
 class RefreshDriverTrigger;
+
+class VsyncDispatcherClient;
+class VsyncDispatcherHost;
 
 // Vsync event observer
 class VsyncObserver
@@ -37,12 +48,26 @@ public:
   // Vsync event rate per second.
   virtual uint32_t GetVsyncRate() = 0;
 
+  virtual InputDispatchTrigger* AsInputDispatchTrigger();
   virtual RefreshDriverTrigger* AsRefreshDriverTrigger();
-
   virtual CompositorTrigger* AsCompositorTrigger();
+
+  virtual VsyncDispatcherClient* AsVsyncDispatcherClient();
+  virtual VsyncDispatcherHost* AsVsyncDispatcherHost();
 
 protected:
   virtual ~VsyncDispatcher() { }
+};
+
+// Enable/disable input dispatch when vsync event comes.
+class InputDispatchTrigger
+{
+public:
+  virtual void EnableInputDispatcher() = 0;
+  virtual void DisableInputDispatcher(bool aSync = false) = 0;
+
+protected:
+  virtual ~InputDispatchTrigger() { }
 };
 
 // RefreshDriverTrigger will call all registered refresh driver timer
@@ -67,6 +92,39 @@ public:
 
 protected:
   virtual ~CompositorTrigger() { }
+};
+
+class VsyncDispatcherClient
+{
+public:
+  // Dispatch vsync to all observer
+  virtual void DispatchVsyncEvent(int64_t aTimestampUS, uint32_t aFrameNumber) = 0;
+
+  // Set IPC child. It should be called at vsync dispatcher thread.
+  virtual void SetVsyncEventChild(layers::VsyncEventChild* aVsyncEventChild) = 0;
+
+  virtual void SetVsyncRate(uint32_t aVsyncRate) = 0;
+
+protected:
+  virtual ~VsyncDispatcherClient() { }
+};
+
+class VsyncDispatcherHost
+{
+public:
+  // Notify the VsyncDispatcher that there has one vsync event.
+  // VsyncDispatcher will start to dispatch vsync event to all observer.
+  virtual void NotifyVsync(int64_t aTimestampUS) = 0;
+
+  // Set IPC parent.
+  virtual void RegisterVsyncEventParent(layers::VsyncEventParent* aVsyncEventParent) = 0;
+  virtual void UnregisterVsyncEventParent(layers::VsyncEventParent* aVsyncEventParent) = 0;
+
+  // Get VsyncDispatcher's message loop
+  virtual MessageLoop* GetMessageLoop() = 0;
+
+protected:
+  virtual ~VsyncDispatcherHost() { }
 };
 
 } // namespace mozilla

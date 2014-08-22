@@ -6,7 +6,7 @@
 
 #include "mozilla/layers/VsyncEventParent.h"
 #include "mozilla/ipc/Transport.h"
-#include "mozilla/VsyncDispatcherHost.h"
+#include "mozilla/VsyncDispatcher.h"
 #include "nsXULAppAPI.h"
 
 namespace mozilla {
@@ -36,12 +36,13 @@ VsyncEventParent::Create(Transport* aTransport, ProcessId aOtherProcess)
   nsRefPtr<VsyncEventParent> vsyncParent = new VsyncEventParent(aTransport);
   vsyncParent->mVsyncEventParent = vsyncParent;
 
-  // Use VsyncDispatcherHost thread for ipc.
-  VsyncDispatcherHost::GetInstance()->GetMessageLoop()->PostTask(FROM_HERE, NewRunnableFunction(
-                                                                 &ConnectVsyncEventParent,
-                                                                 vsyncParent,
-                                                                 aTransport,
-                                                                 processHandle));
+  // Use VsyncDispatcher thread for ipc.
+  VsyncDispatcher::GetInstance()->AsVsyncDispatcherHost()->
+      GetMessageLoop()->PostTask(FROM_HERE, NewRunnableFunction(
+                                 &ConnectVsyncEventParent,
+                                 vsyncParent,
+                                 aTransport,
+                                 processHandle));
 
   return vsyncParent;
 }
@@ -74,7 +75,7 @@ VsyncEventParent::DestroyTask()
 bool
 VsyncEventParent::RecvRegisterVsyncEvent()
 {
-  VsyncDispatcherHost::GetInstance()->RegisterVsyncEventParent(this);
+  VsyncDispatcher::GetInstance()->AsVsyncDispatcherHost()->RegisterVsyncEventParent(this);
 
   return true;
 }
@@ -82,7 +83,7 @@ VsyncEventParent::RecvRegisterVsyncEvent()
 bool
 VsyncEventParent::RecvUnregisterVsyncEvent()
 {
-  VsyncDispatcherHost::GetInstance()->UnregisterVsyncEventParent(this);
+  VsyncDispatcher::GetInstance()->AsVsyncDispatcherHost()->UnregisterVsyncEventParent(this);
 
   return true;
 }
@@ -90,7 +91,7 @@ VsyncEventParent::RecvUnregisterVsyncEvent()
 bool
 VsyncEventParent::RecvGetVsyncRate(uint32_t *aVsyncRate)
 {
-  *aVsyncRate = VsyncDispatcherHost::GetInstance()->GetVsyncRate();
+  *aVsyncRate = VsyncDispatcher::GetInstance()->GetVsyncRate();
 
   return true;
 }
@@ -98,16 +99,17 @@ VsyncEventParent::RecvGetVsyncRate(uint32_t *aVsyncRate)
 void
 VsyncEventParent::ActorDestroy(ActorDestroyReason aActorDestroyReason)
 {
-  VsyncDispatcherHost::GetInstance()->UnregisterVsyncEventParent(this);
+  VsyncDispatcher::GetInstance()->AsVsyncDispatcherHost()->UnregisterVsyncEventParent(this);
 
   // Top level protocol actor should be delete at main thread.
   // We don't post the deletion task to main thread directly here.
   // Instead, we post a pending DeleteTask in VsyncDispatcher Thread.
   // It prevents the problem that ipc system access VsyncEventParent's data
   // when main thread starts to delete the VsyncEventParent.
-  VsyncDispatcherHost::GetInstance()->GetMessageLoop()->PostTask(FROM_HERE, NewRunnableMethod(
-                                                                 this,
-                                                                 &VsyncEventParent::DestroyTask));
+  VsyncDispatcher::GetInstance()->AsVsyncDispatcherHost()
+      ->GetMessageLoop()->PostTask(FROM_HERE, NewRunnableMethod(
+                                   this,
+                                   &VsyncEventParent::DestroyTask));
 }
 
 IToplevelProtocol*

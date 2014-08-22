@@ -16,14 +16,6 @@
 
 namespace mozilla {
 
-static void
-VsyncCallback(void)
-{
-  // We can't get the same timer as the hwc does at gecko. So we get the
-  // timestamp again here.
-  VsyncDispatcherHost::GetInstance()->NotifyVsync(base::TimeTicks::HighResNow().ToInternalValue());
-}
-
 GonkVsyncDispatcher::GonkVsyncDispatcher()
   : mVsyncInited(false)
   , mUseHWVsync(false)
@@ -51,7 +43,7 @@ GonkVsyncDispatcher::StartupVsyncEvent()
     // init hw vsync event
     if (HwcComposer2D::GetInstance()->RegisterHwcEventCallback()) {
       mVsyncRate = HwcComposer2D::GetInstance()->GetHWVsyncRate();
-      HwcComposer2D::GetInstance()->RegisterVsyncCallback(VsyncCallback);
+      HwcComposer2D::GetInstance()->RegisterVsyncDispatcher(this);
       HwcComposer2D::GetInstance()->EnableVsync(true);
       mUseHWVsync = true;
       LOGI("GonkVsyncDispatcher: use hwc vsync");
@@ -73,7 +65,7 @@ GonkVsyncDispatcher::ShutdownVsyncEvent()
   MOZ_ASSERT(mVsyncInited, "VsyncEvent is not initialized.");
 
   if (mUseHWVsync) {
-    HwcComposer2D::GetInstance()->UnregisterVsyncCallback();
+    HwcComposer2D::GetInstance()->UnregisterVsyncDispatcher();
   }
   else {
     //TODO: release software vsync event here.

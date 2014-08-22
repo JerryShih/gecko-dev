@@ -4,8 +4,8 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this file,
  * You can obtain one at http://mozilla.org/MPL/2.0/. */
 
-#ifndef mozilla_VsyncDispatcherHost_h
-#define mozilla_VsyncDispatcherHost_h
+#ifndef mozilla_VsyncDispatcherHostImpl_h
+#define mozilla_VsyncDispatcherHostImpl_h
 
 #include "nsAutoPtr.h"
 #include "nsTArray.h"
@@ -22,36 +22,49 @@ namespace mozilla {
 
 class ObserverListHelper;
 
-namespace layers {
-class VsyncEventParent;
-}
-
 /*
  * The host side vsync dispatcher implementation.
  * We need to implement the platform dependent vsync related function for each
  * platform(ex: StartUpVsyncEvent()).
  */
-class VsyncDispatcherHost : public VsyncDispatcher
-                          , public CompositorTrigger
-                          , public RefreshDriverTrigger
+class VsyncDispatcherHostImpl : public VsyncDispatcher
+                              , public VsyncDispatcherHost
+                              , public InputDispatchTrigger
+                              , public CompositorTrigger
+                              , public RefreshDriverTrigger
 {
-  friend class layers::VsyncEventParent;
   friend class ObserverListHelper;
 
   // We would like to create and delete the VsyncEventChild at main thread.
-  NS_INLINE_DECL_THREADSAFE_REFCOUNTING_WITH_MAIN_THREAD_DESTRUCTION(VsyncDispatcherHost);
+  NS_INLINE_DECL_THREADSAFE_REFCOUNTING_WITH_MAIN_THREAD_DESTRUCTION(VsyncDispatcherHostImpl);
 
 public:
-  static VsyncDispatcherHost* GetInstance();
+  static VsyncDispatcherHostImpl* GetInstance();
 
   virtual void Startup() MOZ_OVERRIDE;
   virtual void Shutdown() MOZ_OVERRIDE;
 
+protected:
+  VsyncDispatcherHostImpl();
+  virtual ~VsyncDispatcherHostImpl();
+
+  bool IsInVsyncDispatcherHostThread();
+
+protected:
+  uint32_t mVsyncRate;
+
+private:
+  // We should implement these function to startup/shutdown the platform
+  // dependent vsync event generator.
+  virtual void StartupVsyncEvent() = 0;
+  virtual void ShutdownVsyncEvent() = 0;
+  virtual void EnableVsyncEvent(bool aEnable) = 0;
+
   // All vsync observers should call sync unregister call before they
   // call destructor.
   // Enable/disable input dispatcher to do input dispatch at vsync.
-  void EnableInputDispatcher();
-  void DisableInputDispatcher(bool aSync);
+  virtual void EnableInputDispatcher() MOZ_OVERRIDE;
+  virtual void DisableInputDispatcher(bool aSync) MOZ_OVERRIDE;
 
   // Reg/Unregister compositor for vsync composing.
   virtual void RegisterCompositor(VsyncObserver* aCompositor) MOZ_OVERRIDE;
@@ -67,34 +80,22 @@ public:
   // This function is called by vsync event generator.
   // It will post a notify task to vsync dispatcher thread.
   // The timestamp is microsecond.
-  void NotifyVsync(int64_t aTimestampUS);
+  virtual void NotifyVsync(int64_t aTimestampUS) MOZ_OVERRIDE;
+
+  // Set IPC parent. It should be called at vsync dispatcher thread.
+  virtual void RegisterVsyncEventParent(layers::VsyncEventParent* aVsyncEventParent) MOZ_OVERRIDE;
+  virtual void UnregisterVsyncEventParent(layers::VsyncEventParent* aVsyncEventParent) MOZ_OVERRIDE;
 
   // Get VsyncDispatcher's message loop
-  MessageLoop* GetMessageLoop();
+  virtual MessageLoop* GetMessageLoop() MOZ_OVERRIDE;
 
-protected:
-  VsyncDispatcherHost();
-  virtual ~VsyncDispatcherHost();
+  virtual VsyncDispatcherHost* AsVsyncDispatcherHost() MOZ_OVERRIDE;
 
-  bool IsInVsyncDispatcherHostThread();
-
-protected:
-  uint32_t mVsyncRate;
-
-private:
+  virtual InputDispatchTrigger* AsInputDispatchTrigger() MOZ_OVERRIDE;
   virtual RefreshDriverTrigger* AsRefreshDriverTrigger() MOZ_OVERRIDE;
   virtual CompositorTrigger* AsCompositorTrigger() MOZ_OVERRIDE;
 
   void CreateVsyncDispatchThread();
-
-  // Startup/shutdown the platform dependent vsync event generator.
-  virtual void StartupVsyncEvent() = 0;
-  virtual void ShutdownVsyncEvent() = 0;
-  virtual void EnableVsyncEvent(bool aEnable) = 0;
-
-  // Set IPC parent. It should be called at vsync dispatcher thread.
-  void RegisterVsyncEventParent(layers::VsyncEventParent* aVsyncEventParent);
-  void UnregisterVsyncEventParent(layers::VsyncEventParent* aVsyncEventParent);
 
   // Generate frame number and call dispatch event.
   void NotifyVsyncTask(int64_t aTimestampUS);
@@ -123,7 +124,7 @@ private:
   void EnableVsyncNotificationIfhasObserver();
 
 private:
-  static nsRefPtr<VsyncDispatcherHost> mVsyncDispatcherHost;
+  static nsRefPtr<VsyncDispatcherHostImpl> mVsyncDispatcherHost;
 
   bool mInited;
 
@@ -142,4 +143,4 @@ private:
 
 } // namespace mozilla
 
-#endif // mozilla_VsyncDispatcherHost_h
+#endif // mozilla_VsyncDispatcherHostImpl_h

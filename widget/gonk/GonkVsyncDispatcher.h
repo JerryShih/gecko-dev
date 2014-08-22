@@ -7,16 +7,15 @@
 #ifndef mozilla_GonkVsyncDispatcher_h
 #define mozilla_GonkVsyncDispatcher_h
 
-#include "mozilla/VsyncDispatcherHost.h"
+#include "mozilla/VsyncDispatcherHostImpl.h"
 
 namespace mozilla {
 
-class GonkVsyncDispatcher MOZ_FINAL : public VsyncDispatcherHost
+class GonkVsyncDispatcher MOZ_FINAL : public VsyncDispatcherHostImpl
 {
-  friend class VsyncDispatcherHost;
+  friend class VsyncDispatcherHostImpl;
 
 private:
-  // Singleton pattern. Hide constructor and destructor.
   GonkVsyncDispatcher();
   ~GonkVsyncDispatcher();
 

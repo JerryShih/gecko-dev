@@ -4,8 +4,8 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this file,
  * You can obtain one at http://mozilla.org/MPL/2.0/. */
 
-#ifndef mozilla_VsyncDispatcherClient_h
-#define mozilla_VsyncDispatcherClient_h
+#ifndef mozilla_VsyncDispatcherClientImpl_h
+#define mozilla_VsyncDispatcherClientImpl_h
 
 #include "ThreadSafeRefcountingWithMainThreadDestruction.h"
 #include "VsyncDispatcher.h"
@@ -14,32 +14,32 @@ namespace mozilla {
 
 class ObserverListHelper;
 
-namespace layers {
-class VsyncEventChild;
-}
-
 /*
  * The client side vsync dispatcher implementation.
  *
  * We use the main thread as the VsyncDispatcherClient work thread, and all
  * user should use VsyncDispatcherClient at the main thread.
  */
-class VsyncDispatcherClient MOZ_FINAL : public VsyncDispatcher
-                                      , public RefreshDriverTrigger
+class VsyncDispatcherClientImpl MOZ_FINAL : public VsyncDispatcher
+                                          , public VsyncDispatcherClient
+                                          , public RefreshDriverTrigger
 {
-  friend class layers::VsyncEventChild;
   friend class ObserverListHelper;
 
   // We would like to create and delete the VsyncEventChild at main thread.
-  NS_INLINE_DECL_THREADSAFE_REFCOUNTING_WITH_MAIN_THREAD_DESTRUCTION(VsyncDispatcherClient);
+  NS_INLINE_DECL_THREADSAFE_REFCOUNTING_WITH_MAIN_THREAD_DESTRUCTION(VsyncDispatcherClientImpl);
 
 public:
-  static VsyncDispatcherClient* GetInstance();
+  static VsyncDispatcherClientImpl* GetInstance();
 
   virtual void Startup() MOZ_OVERRIDE;
   virtual void Shutdown() MOZ_OVERRIDE;
 
-  void SetVsyncRate(uint32_t aVsyncRate);
+private:
+  VsyncDispatcherClientImpl();
+  virtual ~VsyncDispatcherClientImpl();
+
+  virtual void SetVsyncRate(uint32_t aVsyncRate) MOZ_OVERRIDE;
   virtual uint32_t GetVsyncRate() MOZ_OVERRIDE;
 
   // Register refresh driver timer to do tick at vsync.
@@ -47,16 +47,14 @@ public:
   virtual void RegisterTimer(VsyncObserver* aTimer) MOZ_OVERRIDE;
   virtual void UnregisterTimer(VsyncObserver* aTimer, bool aSync) MOZ_OVERRIDE;
 
-private:
-  VsyncDispatcherClient();
-  virtual ~VsyncDispatcherClient();
+  virtual VsyncDispatcherClient* AsVsyncDispatcherClient() MOZ_OVERRIDE;
 
   virtual RefreshDriverTrigger* AsRefreshDriverTrigger() MOZ_OVERRIDE;
 
-  bool IsInVsyncDispatcherClientThread();
-
   // Set IPC child. It should be called at vsync dispatcher thread.
-  void SetVsyncEventChild(layers::VsyncEventChild* aVsyncEventChild);
+  virtual void SetVsyncEventChild(layers::VsyncEventChild* aVsyncEventChild) MOZ_OVERRIDE;
+
+  bool IsInVsyncDispatcherClientThread();
 
   // Dispatch vsync to observer
   // This function should run at vsync dispatcher thread
@@ -75,7 +73,7 @@ private:
   void EnableVsyncNotificationIfhasObserver();
 
 private:
-  static nsRefPtr<VsyncDispatcherClient> mVsyncDispatcherClient;
+  static nsRefPtr<VsyncDispatcherClientImpl> mVsyncDispatcherClient;
 
   uint32_t mVsyncRate;
 
@@ -91,4 +89,4 @@ private:
 
 } // namespace mozilla
 
-#endif // mozilla_VsyncDispatcherClient_h
+#endif // mozilla_VsyncDispatcherClientImpl_h

@@ -4,7 +4,7 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
-#include "VsyncDispatcherClient.h"
+#include "VsyncDispatcherClientImpl.h"
 #include "VsyncDispatcherHelper.h"
 #include "mozilla/layers/VsyncEventChild.h"
 #include "base/message_loop.h"
@@ -15,15 +15,15 @@ namespace mozilla {
 
 using namespace layers;
 
-nsRefPtr<VsyncDispatcherClient> VsyncDispatcherClient::mVsyncDispatcherClient;
+nsRefPtr<VsyncDispatcherClientImpl> VsyncDispatcherClientImpl::mVsyncDispatcherClient;
 
-/*static*/ VsyncDispatcherClient*
-VsyncDispatcherClient::GetInstance()
+/*static*/ VsyncDispatcherClientImpl*
+VsyncDispatcherClientImpl::GetInstance()
 {
   if (!mVsyncDispatcherClient) {
     // Because we use NS_INLINE_DECL_THREADSAFE_REFCOUNTING_WITH_MAIN_THREAD_DESTRUCTION,
     // the first call of GetInstance() should at main thread.
-    mVsyncDispatcherClient = new VsyncDispatcherClient();
+    mVsyncDispatcherClient = new VsyncDispatcherClientImpl();
     MOZ_RELEASE_ASSERT(mVsyncDispatcherClient, "Create VDClient failed.");
   }
 
@@ -31,7 +31,7 @@ VsyncDispatcherClient::GetInstance()
 }
 
 void
-VsyncDispatcherClient::Startup()
+VsyncDispatcherClientImpl::Startup()
 {
   MOZ_ASSERT(IsInVsyncDispatcherClientThread(), "Call VDClient at wrong thread.");
   MOZ_ASSERT(!mInited, "VDClient is already initialized.");
@@ -40,7 +40,7 @@ VsyncDispatcherClient::Startup()
 }
 
 void
-VsyncDispatcherClient::Shutdown()
+VsyncDispatcherClientImpl::Shutdown()
 {
   MOZ_ASSERT(IsInVsyncDispatcherClientThread());
   MOZ_ASSERT(mInited, "VDClient is not initialized.");
@@ -51,7 +51,7 @@ VsyncDispatcherClient::Shutdown()
   mVsyncDispatcherClient = nullptr;
 }
 
-VsyncDispatcherClient::VsyncDispatcherClient()
+VsyncDispatcherClientImpl::VsyncDispatcherClientImpl()
   : mVsyncRate(0)
   , mInited(false)
   , mVsyncEventChild(nullptr)
@@ -59,19 +59,25 @@ VsyncDispatcherClient::VsyncDispatcherClient()
 {
 }
 
-VsyncDispatcherClient::~VsyncDispatcherClient()
+VsyncDispatcherClientImpl::~VsyncDispatcherClientImpl()
 {
   mVsyncEventChild = nullptr;
 }
 
+VsyncDispatcherClient*
+VsyncDispatcherClientImpl::AsVsyncDispatcherClient()
+{
+  return this;
+}
+
 RefreshDriverTrigger*
-VsyncDispatcherClient::AsRefreshDriverTrigger()
+VsyncDispatcherClientImpl::AsRefreshDriverTrigger()
 {
   return this;
 }
 
 void
-VsyncDispatcherClient::DispatchVsyncEvent(int64_t aTimestampUS, uint32_t aFrameNumber)
+VsyncDispatcherClientImpl::DispatchVsyncEvent(int64_t aTimestampUS, uint32_t aFrameNumber)
 {
   MOZ_ASSERT(mInited, "VDClient is not initialized.");
   MOZ_ASSERT(IsInVsyncDispatcherClientThread(), "Call VDClient::DispatchVsyncEvent at wrong thread.");
@@ -89,13 +95,13 @@ VsyncDispatcherClient::DispatchVsyncEvent(int64_t aTimestampUS, uint32_t aFrameN
 }
 
 void
-VsyncDispatcherClient::TickRefreshDriver(int64_t aTimestampUS, uint32_t aFrameNumber)
+VsyncDispatcherClientImpl::TickRefreshDriver(int64_t aTimestampUS, uint32_t aFrameNumber)
 {
   //TODO: tick all registered refresh driver in content process
 }
 
 int
-VsyncDispatcherClient::GetVsyncObserverCount() const
+VsyncDispatcherClientImpl::GetVsyncObserverCount() const
 {
   //TODO: If we have more type of vsync observer, we need to count all of them here
 
@@ -103,7 +109,7 @@ VsyncDispatcherClient::GetVsyncObserverCount() const
 }
 
 void
-VsyncDispatcherClient::SetVsyncEventChild(VsyncEventChild* aVsyncEventChild)
+VsyncDispatcherClientImpl::SetVsyncEventChild(VsyncEventChild* aVsyncEventChild)
 {
   MOZ_ASSERT(mInited, "VDClient is not initialized.");
   MOZ_ASSERT(IsInVsyncDispatcherClientThread(), "Call SetVsyncEventChild at wrong thread.");
@@ -112,7 +118,7 @@ VsyncDispatcherClient::SetVsyncEventChild(VsyncEventChild* aVsyncEventChild)
 }
 
 void
-VsyncDispatcherClient::EnableVsyncEvent(bool aEnable)
+VsyncDispatcherClientImpl::EnableVsyncEvent(bool aEnable)
 {
   if (mVsyncEventChild) {
     if (aEnable) {
@@ -124,7 +130,7 @@ VsyncDispatcherClient::EnableVsyncEvent(bool aEnable)
 }
 
 void
-VsyncDispatcherClient::EnableVsyncNotificationIfhasObserver()
+VsyncDispatcherClientImpl::EnableVsyncNotificationIfhasObserver()
 {
   // We check the observer number here to enable/disable vsync ipc notificatoin
   if (!!GetVsyncObserverCount() !=  mVsyncEventNeeded) {
@@ -134,19 +140,19 @@ VsyncDispatcherClient::EnableVsyncNotificationIfhasObserver()
 }
 
 bool
-VsyncDispatcherClient::IsInVsyncDispatcherClientThread()
+VsyncDispatcherClientImpl::IsInVsyncDispatcherClientThread()
 {
   return NS_IsMainThread();
 }
 
 void
-VsyncDispatcherClient::RegisterTimer(VsyncObserver* aTimer)
+VsyncDispatcherClientImpl::RegisterTimer(VsyncObserver* aTimer)
 {
   //TODO: register a refresh driver timer
 }
 
 void
-VsyncDispatcherClient::UnregisterTimer(VsyncObserver* aTimer, bool aSync)
+VsyncDispatcherClientImpl::UnregisterTimer(VsyncObserver* aTimer, bool aSync)
 {
   //TODO: unregister a refresh driver timer.
   //      If we use sync mode, We should be blocked here until
@@ -154,7 +160,7 @@ VsyncDispatcherClient::UnregisterTimer(VsyncObserver* aTimer, bool aSync)
 }
 
 void
-VsyncDispatcherClient::SetVsyncRate(uint32_t aVsyncRate)
+VsyncDispatcherClientImpl::SetVsyncRate(uint32_t aVsyncRate)
 {
   MOZ_ASSERT(IsInVsyncDispatcherClientThread());
 
@@ -162,7 +168,7 @@ VsyncDispatcherClient::SetVsyncRate(uint32_t aVsyncRate)
 }
 
 uint32_t
-VsyncDispatcherClient::GetVsyncRate()
+VsyncDispatcherClientImpl::GetVsyncRate()
 {
   MOZ_ASSERT(IsInVsyncDispatcherClientThread());
 

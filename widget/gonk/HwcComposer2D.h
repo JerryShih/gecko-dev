@@ -32,6 +32,8 @@
 
 namespace mozilla {
 
+class VsyncDispatcherHost;
+
 namespace gl {
     class GLContext;
 }
@@ -96,14 +98,13 @@ public:
 #if ANDROID_VERSION >= 17
     bool RegisterHwcEventCallback();
 
-    typedef void (*HWVsyncCallback)(void);
-
-    // Register a vsync event callback.
-    // We should register the callback before we enable vsync.
-    void RegisterVsyncCallback(HWVsyncCallback aHWVsyncCallback);
-    void UnregisterVsyncCallback();
-
+    // Hwc vsync event handle function
     void Vsync(int aDisplay, int64_t aTimestamp);
+
+    // Register a VsyncDispatcher.
+    // We should register that before we enable vsync.
+    void RegisterVsyncDispatcher(VsyncDispatcherHost* aVsyncDispatcherHost);
+    void UnregisterVsyncDispatcher();
 
     // Vsync event rate per second.
     uint32_t GetHWVsyncRate() const;
@@ -145,7 +146,7 @@ private:
     android::sp<android::Fence> mPrevRetireFence;
     android::sp<android::Fence> mPrevDisplayFence;
 
-    HWVsyncCallback         mVsyncCallback;
+    VsyncDispatcherHost*    mVsyncDispatcher;
     uint32_t                mVsyncRate;
 #endif
     nsTArray<layers::LayerComposite*> mHwcLayerMap;
