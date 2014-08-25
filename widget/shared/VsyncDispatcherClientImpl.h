@@ -4,9 +4,10 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this file,
  * You can obtain one at http://mozilla.org/MPL/2.0/. */
 
-#ifndef mozilla_VsyncDispatcherClientImpl_h
-#define mozilla_VsyncDispatcherClientImpl_h
+#ifndef mozilla_widget_shared_VsyncDispatcherClientImpl_h
+#define mozilla_widget_shared_VsyncDispatcherClientImpl_h
 
+#include "mozilla/StaticPtr.h"
 #include "ThreadSafeRefcountingWithMainThreadDestruction.h"
 #include "VsyncDispatcher.h"
 
@@ -26,7 +27,7 @@ class VsyncDispatcherClientImpl MOZ_FINAL : public VsyncDispatcher
 {
   friend class ObserverListHelper;
 
-  // We would like to create and delete the VsyncEventChild at main thread.
+  // We would like to create and delete the VsyncDispatcherClientImpl at main thread.
   NS_INLINE_DECL_THREADSAFE_REFCOUNTING_WITH_MAIN_THREAD_DESTRUCTION(VsyncDispatcherClientImpl);
 
 public:
@@ -54,7 +55,7 @@ private:
   // Set IPC child. It should be called at vsync dispatcher thread.
   virtual void SetVsyncEventChild(layers::VsyncEventChild* aVsyncEventChild) MOZ_OVERRIDE;
 
-  bool IsInVsyncDispatcherClientThread();
+  bool IsInVsyncDispatcherThread();
 
   // Dispatch vsync to observer
   // This function should run at vsync dispatcher thread
@@ -64,7 +65,7 @@ private:
   void TickRefreshDriver(int64_t aTimestampUS, uint32_t aFrameNumber);
 
   // Return total registered object number.
-  int GetVsyncObserverCount() const;
+  int GetVsyncObserverCount();
 
   void EnableVsyncEvent(bool aEnable);
 
@@ -73,7 +74,7 @@ private:
   void EnableVsyncNotificationIfhasObserver();
 
 private:
-  static nsRefPtr<VsyncDispatcherClientImpl> mVsyncDispatcherClient;
+  static StaticRefPtr<VsyncDispatcherClientImpl> sVsyncDispatcherClient;
 
   uint32_t mVsyncRate;
 
@@ -89,4 +90,4 @@ private:
 
 } // namespace mozilla
 
-#endif // mozilla_VsyncDispatcherClientImpl_h
+#endif // mozilla_widget_shared_VsyncDispatcherClientImpl_h

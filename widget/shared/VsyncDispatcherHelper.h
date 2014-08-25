@@ -4,8 +4,8 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this file,
  * You can obtain one at http://mozilla.org/MPL/2.0/. */
 
-#ifndef mozilla_VsyncDispatcherHelper_h
-#define mozilla_VsyncDispatcherHelper_h
+#ifndef mozilla_widget_shared_VsyncDispatcherHelper_h
+#define mozilla_widget_shared_VsyncDispatcherHelper_h
 
 #include "base/task.h"
 #include "nsTArray.h"
@@ -21,136 +21,170 @@ namespace mozilla {
 class ObserverListHelper
 {
 public:
+  // Add/remove observer at dispatcher thread.
   template <typename DispatcherType, typename Type>
-  static void Add(DispatcherType* aDispatcher, nsTArray<Type*>* aList, Type* aItem)
-  {
-    if (!aList->Contains(aItem)) {
-      aList->AppendElement(aItem);
-    }
-
-    aDispatcher->EnableVsyncNotificationIfhasObserver();
-  }
-
+  static void Add(DispatcherType* aDispatcher, nsTArray<Type*>* aList, Type* aItem);
   template <typename DispatcherType, typename Type>
-  static void Remove(DispatcherType* aDispatcher, nsTArray<Type*>* aList, Type* aItem)
-  {
-    typedef nsTArray<Type*> ArrayType;
-    typename ArrayType::index_type index = aList->IndexOf(aItem);
+  static void Remove(DispatcherType* aDispatcher, nsTArray<Type*>* aList, Type* aItem);
 
-    if (index != ArrayType::NoIndex) {
-      aList->RemoveElementAt(index);
-    }
-
-    aDispatcher->EnableVsyncNotificationIfhasObserver();
-  }
-
+  // Wait the add/remove task at dispatcher thread finished.
   template <typename DispatcherType, typename Type>
-  static void AsyncAdd(DispatcherType* aDispatcher,
+  static void SyncAdd(const char* aTaskName, DispatcherType* aDispatcher,
                       nsTArray<Type*>* aList,
-                      Type* aItem)
-  {
-    aDispatcher->GetMessageLoop()->PostTask(FROM_HERE,
-                                            NewRunnableFunction(&ObserverListHelper::Add<DispatcherType, Type>,
-                                            aDispatcher,
-                                            aList,
-                                            aItem));
-  }
-
+                      Type* aItem);
   template <typename DispatcherType, typename Type>
-  static void AsyncRemove(DispatcherType* aDispatcher,
+  static void SyncRemove(const char* aTaskName,
+                         DispatcherType* aDispatcher,
                          nsTArray<Type*>* aList,
-                         Type* aItem)
-  {
-    aDispatcher->GetMessageLoop()->PostTask(FROM_HERE,
-                                            NewRunnableFunction(&ObserverListHelper::Remove<DispatcherType, Type>,
-                                            aDispatcher,
-                                            aList,
-                                            aItem));
-  }
-
-  template <typename DispatcherType, typename Type>
-  static void WaitForAsyncAdd(const char* aTaskName,
-                              DispatcherType* aDispatcher,
-                              nsTArray<Type*>* aList,
-                              Type* aItem)
-  {
-    // Deadlock.
-    MOZ_ASSERT(!aDispatcher->IsInVsyncDispatcherHostThread());
-
-    Monitor monitor(aTaskName);
-    MonitorAutoLock lock(monitor);
-    bool done = false;
-
-    aDispatcher->GetMessageLoop()->PostTask(FROM_HERE,
-                                            NewRunnableFunction(&ObserverListHelper::AddWithNotify<DispatcherType, Type>,
-                                            aDispatcher,
-                                            aList,
-                                            aItem,
-                                            &monitor,
-                                            &done));
-    lock.Wait(PR_MillisecondsToInterval(32));
-    if (!done) {
-      printf_stderr("Wait task timeout: %s", aTaskName);
-    }
-  }
-
-  template <typename DispatcherType, typename Type>
-  static void WaitForAsyncRemove(const char* aTaskName,
-                                 DispatcherType* aDispatcher,
-                                 nsTArray<Type*>* aList,
-                                 Type* aItem)
-  {
-    // Deadlock.
-    MOZ_ASSERT(!aDispatcher->IsInVsyncDispatcherHostThread());
-
-    Monitor monitor(aTaskName);
-    MonitorAutoLock lock(monitor);
-    bool done = false;
-
-    aDispatcher->GetMessageLoop()->PostTask(FROM_HERE,
-                                            NewRunnableFunction(&ObserverListHelper::RemoveWithNotify<DispatcherType, Type>,
-                                            aDispatcher,
-                                            aList,
-                                            aItem,
-                                            &monitor,
-                                            &done));
-    lock.Wait(PR_MillisecondsToInterval(32));
-    if (!done) {
-      printf_stderr("Wait task timeout: %s", aTaskName);
-    }
-  }
+                         Type* aItem);
 
 private:
+  template <typename DispatcherType, typename Type>
+  static void AddInternal(DispatcherType* aDispatcher, nsTArray<Type*>* aList, Type* aItem);
+  template <typename DispatcherType, typename Type>
+  static void RemoveInternal(DispatcherType* aDispatcher, nsTArray<Type*>* aList, Type* aItem);
+
   template <typename DispatcherType, typename Type>
   static void AddWithNotify(DispatcherType* aDispatcher,
                             nsTArray<Type*>* aList,
                             Type* aItem,
                             Monitor* aMonitor,
-                            bool* aDone)
-  {
-    MonitorAutoLock lock(*aMonitor);
-
-    Add(aDispatcher, aList, aItem);
-
-    *aDone = true;
-    lock.Notify();
-  }
-
+                            bool* aDone);
   template <typename DispatcherType, typename Type>
   static void RemoveWithNotify(DispatcherType* aDispatcher,
                                nsTArray<Type*>* aList,
                                Type* aItem,
                                Monitor* aMonitor,
-                               bool* aDone)
-  {
-    MonitorAutoLock lock(*aMonitor);
-
-    Remove(aDispatcher, aList, aItem);
-
-    *aDone = true;
-    lock.Notify();
-  }
+                               bool* aDone);
 };
+
+template <typename DispatcherType, typename Type>
+void ObserverListHelper::AddInternal(DispatcherType* aDispatcher,
+                                     nsTArray<Type*>* aList,
+                                     Type* aItem)
+{
+  MOZ_ASSERT(!aList->Contains(aItem));
+
+  if (!aList->Contains(aItem)) {
+    aList->AppendElement(aItem);
+  }
+
+  aDispatcher->EnableVsyncNotificationIfhasObserver();
+}
+
+template <typename DispatcherType, typename Type>
+void ObserverListHelper::RemoveInternal(DispatcherType* aDispatcher,
+                                        nsTArray<Type*>* aList,
+                                        Type* aItem)
+{
+  MOZ_ASSERT(aList->Contains(aItem));
+
+  if (aList->Contains(aItem)) {
+    aList->RemoveElement(aItem);
+  }
+
+  aDispatcher->EnableVsyncNotificationIfhasObserver();
+}
+
+template <typename DispatcherType, typename Type>
+void ObserverListHelper::Add(DispatcherType* aDispatcher,
+                             nsTArray<Type*>* aList,
+                             Type* aItem)
+{
+  // If we are at VsyncDispatcher thread, we can just add it directly.
+  if (aDispatcher->IsInVsyncDispatcherThread()) {
+    AddInternal(aDispatcher, aList, aItem);
+
+    return;
+  }
+
+  // Post add task to dispatcher thread.
+  aDispatcher->GetMessageLoop()->PostTask(FROM_HERE,
+                                          NewRunnableFunction(&ObserverListHelper::AddInternal<DispatcherType, Type>,
+                                          aDispatcher,
+                                          aList,
+                                          aItem));
+}
+
+template <typename DispatcherType, typename Type>
+void ObserverListHelper::Remove(DispatcherType* aDispatcher,
+                                nsTArray<Type*>* aList,
+                                Type* aItem)
+{
+  if (aDispatcher->IsInVsyncDispatcherThread()) {
+    RemoveInternal(aDispatcher, aList, aItem);
+
+    return;
+  }
+
+  aDispatcher->GetMessageLoop()->PostTask(FROM_HERE,
+                                          NewRunnableFunction(&ObserverListHelper::RemoveInternal<DispatcherType, Type>,
+                                          aDispatcher,
+                                          aList,
+                                          aItem));
+}
+
+template <typename DispatcherType, typename Type>
+void ObserverListHelper::SyncAdd(const char* aTaskName,
+                                 DispatcherType* aDispatcher,
+                                 nsTArray<Type*>* aList,
+                                 Type* aItem)
+{
+  // If we are at VsyncDispatcher thread, we can just add it directly.
+  if (aDispatcher->IsInVsyncDispatcherHostThread()) {
+    AddInternal(aDispatcher, aList, aItem);
+
+    return;
+  }
+
+  Monitor monitor(aTaskName);
+  MonitorAutoLock lock(monitor);
+  bool done = false;
+
+  aDispatcher->GetMessageLoop()->PostTask(FROM_HERE,
+                                          NewRunnableFunction(&ObserverListHelper::AddWithNotify<DispatcherType, Type>,
+                                          aDispatcher,
+                                          aList,
+                                          aItem,
+                                          &monitor,
+                                          &done));
+
+  // We wait here until the done flag becomes true in AddWithNotify().
+  while (!done) {
+    lock.Wait(PR_MillisecondsToInterval(32));
+    printf_stderr("Wait add task timeout: %s", aTaskName);
+  }
+}
+
+template <typename DispatcherType, typename Type>
+void ObserverListHelper::SyncRemove(const char* aTaskName,
+                                    DispatcherType* aDispatcher,
+                                    nsTArray<Type*>* aList,
+                                    Type* aItem)
+{
+  if (aDispatcher->IsInVsyncDispatcherThread()) {
+    RemoveInternal(aDispatcher, aList, aItem);
+
+    return;
+  }
+
+  Monitor monitor(aTaskName);
+  MonitorAutoLock lock(monitor);
+  bool done = false;
+
+  aDispatcher->GetMessageLoop()->PostTask(FROM_HERE,
+                                          NewRunnableFunction(&ObserverListHelper::RemoveWithNotify<DispatcherType, Type>,
+                                          aDispatcher,
+                                          aList,
+                                          aItem,
+                                          &monitor,
+                                          &done));
+
+  while (!done) {
+    lock.Wait(PR_MillisecondsToInterval(32));
+    printf_stderr("Wait remove task timeout: %s", aTaskName);
+  }
+}
 
 template<typename T, typename Method, typename Params>
 class NSVsyncRunnableMethod : public nsCancelableRunnable
@@ -238,4 +272,4 @@ NewNSVsyncRunnableMethod(T* object, Method method, const A& a, const B& b, const
 
 } // namespace mozilla
 
-#endif // mozilla_VsyncDispatcherHelper_h
+#endif // mozilla_widget_shared_VsyncDispatcherHelper_h

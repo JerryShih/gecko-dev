@@ -76,7 +76,7 @@ GonkVsyncDispatcher::ShutdownVsyncEvent()
 void
 GonkVsyncDispatcher::EnableVsyncEvent(bool aEnable)
 {
-  MOZ_ASSERT(IsInVsyncDispatcherHostThread(), "Call EnableVsyncEvent at wrong thread");
+  MOZ_ASSERT(IsInVsyncDispatcherThread(), "Call EnableVsyncEvent at wrong thread");
   MOZ_ASSERT(XRE_GetProcessType() == GeckoProcessType_Default,
       "EnableVsyncEvent should be called in chrome");
   MOZ_ASSERT(mVsyncInited, "VsyncEvent is not initialized");

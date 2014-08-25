@@ -4,8 +4,8 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this file,
  * You can obtain one at http://mozilla.org/MPL/2.0/. */
 
-#ifndef mozilla_VsyncDispatcher_h
-#define mozilla_VsyncDispatcher_h
+#ifndef mozilla_widget_shared_VsyncDispatcher_h
+#define mozilla_widget_shared_VsyncDispatcher_h
 
 #include "ThreadSafeRefcountingWithMainThreadDestruction.h"
 
@@ -31,7 +31,9 @@ class VsyncObserver
   NS_INLINE_DECL_THREADSAFE_REFCOUNTING_WITH_MAIN_THREAD_DESTRUCTION(VsyncObserver);
 
 public:
-  virtual void VsyncTick(int64_t aTimestampUS, uint32_t aFrameNumber) = 0;
+  // VsyncTickTask() will run at each specific observer work thread.
+  // We can put our vsync aligned task in this function.
+  virtual void VsyncTickTask(int64_t aTimestampUS, uint32_t aFrameNumber) = 0;
 
 protected:
   virtual ~VsyncObserver() { }
@@ -133,4 +135,4 @@ protected:
 
 } // namespace mozilla
 
-#endif // mozilla_VsyncDispatcher_h
+#endif // mozilla_widget_shared_VsyncDispatcher_h

@@ -4,8 +4,8 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
-#ifndef MOZILLA_VSYNC_EVENT_PARENT_H
-#define MOZILLA_VSYNC_EVENT_PARENT_H
+#ifndef mozilla_layers_ipc_VsyncEventParent_h
+#define mozilla_layers_ipc_VsyncEventParent_h
 
 #include "mozilla/layers/PVsyncEventParent.h"
 #include "nsAutoPtr.h"
@@ -24,7 +24,6 @@ class VsyncEventParent MOZ_FINAL : public PVsyncEventParent
 public:
   static PVsyncEventParent* Create(Transport* aTransport, ProcessId aOtherProcess);
 
-  VsyncEventParent(Transport* aTransport);
   virtual ~VsyncEventParent();
 
   virtual bool RecvRegisterVsyncEvent() MOZ_OVERRIDE;
@@ -39,6 +38,8 @@ public:
                                            ProtocolCloneContext* aCtx) MOZ_OVERRIDE;
 
 private:
+  VsyncEventParent(Transport* aTransport);
+
   void DestroyTask();
   void MainThreadDestroyTask();
 
@@ -51,4 +52,4 @@ private:
 
 } //layers
 } //mozilla
-#endif  //MOZILLA_VSYNC_EVENT_PARENT_H
+#endif  //mozilla_layers_ipc_VsyncEventParent_h

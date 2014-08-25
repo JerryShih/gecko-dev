@@ -2032,8 +2032,7 @@ ContentParent::InitInternal(ProcessPriority aInitialPriority,
             MOZ_ASSERT(opened);
 
             if (gfxPrefs::FrameUniformityEnabled()) {
-                DebugOnly<bool> vsyncOpened = PVsyncEvent::Open(this);
-                MOZ_ASSERT(vsyncOpened);
+                MOZ_ALWAYS_TRUE(PVsyncEvent::Open(this));
             }
 #endif
         }

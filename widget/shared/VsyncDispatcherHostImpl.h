@@ -4,10 +4,10 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this file,
  * You can obtain one at http://mozilla.org/MPL/2.0/. */
 
-#ifndef mozilla_VsyncDispatcherHostImpl_h
-#define mozilla_VsyncDispatcherHostImpl_h
+#ifndef mozilla_widget_shared_VsyncDispatcherHostImpl_h
+#define mozilla_widget_shared_VsyncDispatcherHostImpl_h
 
-#include "nsAutoPtr.h"
+#include "mozilla/StaticPtr.h"
 #include "nsTArray.h"
 #include "ThreadSafeRefcountingWithMainThreadDestruction.h"
 #include "VsyncDispatcher.h"
@@ -35,7 +35,7 @@ class VsyncDispatcherHostImpl : public VsyncDispatcher
 {
   friend class ObserverListHelper;
 
-  // We would like to create and delete the VsyncEventChild at main thread.
+  // We would like to create and delete the VsyncDispatcherHostImpl at main thread.
   NS_INLINE_DECL_THREADSAFE_REFCOUNTING_WITH_MAIN_THREAD_DESTRUCTION(VsyncDispatcherHostImpl);
 
 public:
@@ -48,10 +48,7 @@ protected:
   VsyncDispatcherHostImpl();
   virtual ~VsyncDispatcherHostImpl();
 
-  bool IsInVsyncDispatcherHostThread();
-
-protected:
-  uint32_t mVsyncRate;
+  bool IsInVsyncDispatcherThread();
 
 private:
   // We should implement these function to startup/shutdown the platform
@@ -60,8 +57,10 @@ private:
   virtual void ShutdownVsyncEvent() = 0;
   virtual void EnableVsyncEvent(bool aEnable) = 0;
 
-  // All vsync observers should call sync unregister call before they
-  // call destructor.
+  /*
+   * All vsync observers should call sync unregister call before they
+   * call destructor.
+   */
   // Enable/disable input dispatcher to do input dispatch at vsync.
   virtual void EnableInputDispatcher() MOZ_OVERRIDE;
   virtual void DisableInputDispatcher(bool aSync) MOZ_OVERRIDE;
@@ -117,14 +116,17 @@ private:
   void NotifyContentProcess(int64_t aTimestampUS, uint32_t aFrameNumber);
 
   // Return total registered object number.
-  int GetVsyncObserverCount() const;
+  int GetVsyncObserverCount();
 
   // Check the observer number in VsyncDispatcher to enable/disable vsync event
   // notification.
   void EnableVsyncNotificationIfhasObserver();
 
+protected:
+  uint32_t mVsyncRate;
+
 private:
-  static nsRefPtr<VsyncDispatcherHostImpl> mVsyncDispatcherHost;
+  static StaticRefPtr<VsyncDispatcherHostImpl> sVsyncDispatcherHost;
 
   bool mInited;
 
@@ -143,4 +145,4 @@ private:
 
 } // namespace mozilla
 
-#endif // mozilla_VsyncDispatcherHostImpl_h
+#endif // mozilla_widget_shared_VsyncDispatcherHostImpl_h
