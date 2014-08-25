@@ -4,8 +4,8 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
-#include "mozilla/VsyncDispatcher.h"
 #include "mozilla/layers/VsyncEventChild.h"
+#include "mozilla/VsyncDispatcher.h"
 #include "nsXULAppAPI.h"
 
 namespace mozilla {
@@ -84,5 +84,5 @@ VsyncEventChild::ActorDestroy(ActorDestroyReason aActorDestroyReason)
                                    &VsyncEventChild::DestroyTask));
 }
 
-} //layers
-} //mozilla
+} // namespace layers
+} // namespace mozilla

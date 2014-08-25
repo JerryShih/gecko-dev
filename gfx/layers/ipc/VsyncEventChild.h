@@ -4,8 +4,8 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
-#ifndef MOZILLA_GFX_VSYNCEVENTCHILD_H
-#define MOZILLA_GFX_VSYNCEVENTCHILD_H
+#ifndef mozilla_layers_ipc_VsyncEventChild_h
+#define mozilla_layers_ipc_VsyncEventChild_h
 
 #include "mozilla/layers/PVsyncEventChild.h"
 #include "nsAutoPtr.h"
@@ -25,7 +25,6 @@ public:
   static PVsyncEventChild* Create(Transport* aTransport,
                                   ProcessId aOtherProcess);
 
-  VsyncEventChild(Transport* aTransport);
   virtual ~VsyncEventChild();
 
   virtual bool RecvNotifyVsyncEvent(const VsyncData& aVsyncData) MOZ_OVERRIDE;
@@ -33,6 +32,8 @@ public:
   virtual void ActorDestroy(ActorDestroyReason aActorDestroyReason) MOZ_OVERRIDE;
 
 private:
+  VsyncEventChild(Transport* aTransport);
+
   void DestroyTask();
 
   Transport* mTransport;
@@ -42,6 +43,6 @@ private:
   nsRefPtr<VsyncEventChild> mVsyncEventChild;
 };
 
-} //layers
-} //mozilla
-#endif  //MOZILLA_GFX_VSYNCEVENTCHILD_H
+} // namespace layers
+} // namespatce mozilla
+#endif  // mozilla_layers_ipc_VsyncEventChild_h

@@ -5,9 +5,9 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
 #include "VsyncDispatcher.h"
+#include "nsXULAppAPI.h"
 #include "VsyncDispatcherClientImpl.h"
 #include "VsyncDispatcherHostImpl.h"
-#include "nsXULAppAPI.h"
 
 namespace mozilla {
 

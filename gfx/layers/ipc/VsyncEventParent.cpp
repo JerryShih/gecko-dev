@@ -30,6 +30,11 @@ VsyncEventParent::Create(Transport* aTransport, ProcessId aOtherProcess)
 
   ProcessHandle processHandle;
   if (!OpenProcessHandle(aOtherProcess, &processHandle)) {
+    if (aTransport) {
+      XRE_GetIOMessageLoop()->PostTask(FROM_HERE,
+                                       new DeleteTask<Transport>(aTransport));
+    }
+
     return nullptr;
   }
 
@@ -60,6 +65,10 @@ VsyncEventParent::~VsyncEventParent()
   if (mTransport) {
     XRE_GetIOMessageLoop()->PostTask(FROM_HERE,
                                      new DeleteTask<Transport>(mTransport));
+  }
+
+  if (OtherProcess()) {
+      CloseProcessHandle(OtherProcess());
   }
 }
 
@@ -131,5 +140,5 @@ VsyncEventParent::CloneToplevel(const InfallibleTArray<ProtocolFdMapping>& aFds,
   return nullptr;
 }
 
-} //layers
-} //mozilla
+} // namespace layers
+} // namespace mozilla
