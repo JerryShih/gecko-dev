@@ -77,7 +77,7 @@ protected:
 };
 
 // RefreshDriverTrigger will call all registered refresh driver timer
-// VsyncTick() when vsync event comes.
+// VsyncTickTask() when vsync event comes.
 class RefreshDriverTrigger
 {
 public:
@@ -88,7 +88,7 @@ protected:
   virtual ~RefreshDriverTrigger() { }
 };
 
-// CompositorTrigger will call registered CompositorParent VsyncTick()
+// CompositorTrigger will call registered CompositorParent VsyncTickTask()
 // when vsync event comes.
 class CompositorTrigger
 {
