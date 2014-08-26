@@ -52,7 +52,7 @@ public:
   virtual void Shutdown() = 0;
 
   // Vsync event rate per second.
-  virtual uint32_t GetVsyncRate() = 0;
+  virtual uint32_t GetVsyncRate() const = 0;
 
   virtual InputDispatchTrigger* AsInputDispatchTrigger();
   virtual RefreshDriverTrigger* AsRefreshDriverTrigger();

@@ -312,9 +312,8 @@ VsyncDispatcherHostImpl::UnregisterTimer(VsyncObserver* aTimer, bool aSync)
 }
 
 uint32_t
-VsyncDispatcherHostImpl::GetVsyncRate()
+VsyncDispatcherHostImpl::GetVsyncRate() const
 {
-  MOZ_ASSERT(IsInVsyncDispatcherThread());
   MOZ_ASSERT(mVsyncRate);
 
   return mVsyncRate;
