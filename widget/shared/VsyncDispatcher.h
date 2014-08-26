@@ -81,6 +81,8 @@ protected:
 class RefreshDriverTrigger
 {
 public:
+  // RefreshDriverTrigger is one-shot trigger. We should call RegisterTimer()
+  // again if we need next tick.
   virtual void RegisterTimer(VsyncObserver* aTimer) = 0;
   virtual void UnregisterTimer(VsyncObserver* aTimer, bool aSync = false) = 0;
 
@@ -93,6 +95,8 @@ protected:
 class CompositorTrigger
 {
 public:
+  // CompositorTrigger is one-shot trigger. We should call RegisterCompositor()
+  // again if we need next tick.
   virtual void RegisterCompositor(VsyncObserver* aCompositor) = 0;
   virtual void UnregisterCompositor(VsyncObserver* aCompositor, bool aSync = false) = 0;
 
