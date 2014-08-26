@@ -74,7 +74,7 @@ private:
   virtual void UnregisterTimer(VsyncObserver* aTimer, bool aSync) MOZ_OVERRIDE;
 
   // Return the vsync event fps.
-  virtual uint32_t GetVsyncRate() MOZ_OVERRIDE;
+  virtual uint32_t GetVsyncRate() const MOZ_OVERRIDE;
 
   // This function is called by vsync event generator.
   // It will post a notify task to vsync dispatcher thread.

@@ -41,7 +41,7 @@ private:
   virtual ~VsyncDispatcherClientImpl();
 
   virtual void SetVsyncRate(uint32_t aVsyncRate) MOZ_OVERRIDE;
-  virtual uint32_t GetVsyncRate() MOZ_OVERRIDE;
+  virtual uint32_t GetVsyncRate() const MOZ_OVERRIDE;
 
   // Register refresh driver timer to do tick at vsync.
   // We should call sync unregister before observer call destructor.

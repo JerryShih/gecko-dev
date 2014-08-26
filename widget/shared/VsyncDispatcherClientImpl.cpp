@@ -176,9 +176,9 @@ VsyncDispatcherClientImpl::SetVsyncRate(uint32_t aVsyncRate)
 }
 
 uint32_t
-VsyncDispatcherClientImpl::GetVsyncRate()
+VsyncDispatcherClientImpl::GetVsyncRate() const
 {
-  MOZ_ASSERT(IsInVsyncDispatcherThread());
+  MOZ_ASSERT(mVsyncRate);
 
   return mVsyncRate;
 }
