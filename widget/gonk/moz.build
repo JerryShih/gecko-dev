@@ -16,7 +16,6 @@
 
 EXPORTS += [
     'GonkPermission.h',
-    'GonkVsyncDispatcher.h',
     'OrientationObserver.h',
 ]
 
@@ -49,7 +48,7 @@ SOURCES += [
     'GfxInfo.cpp',
     'GonkMemoryPressureMonitoring.cpp',
     'GonkPermission.cpp',
-    'GonkVsyncDispatcher.cpp',
+    'GonkVsyncTimer.cpp',
     'HwcComposer2D.cpp',
     'HwcUtils.cpp',
     'nsAppShell.cpp',
@@ -61,7 +60,7 @@ SOURCES += [
     'OrientationObserver.cpp',
     'ParentProcessController.cpp',
     'ProcessOrientation.cpp',
-    'WidgetTraceEvent.cpp'
+    'WidgetTraceEvent.cpp',
 ]
 
 include('/ipc/chromium/chromium-config.mozbuild')

@@ -11,6 +11,12 @@
 
 namespace mozilla {
 
+uint32_t
+VsyncEventRegistry::GetObserverNum(void) const
+{
+  return mObserverListList.Length();
+}
+
 /*static*/ VsyncDispatcher*
 VsyncDispatcher::GetInstance()
 {
@@ -21,33 +27,35 @@ VsyncDispatcher::GetInstance()
   }
 }
 
-InputDispatchTrigger*
-VsyncDispatcher::AsInputDispatchTrigger()
+VsyncEventRegistry*
+VsyncDispatcher::GetRefreshDriverRegistry()
 {
+  MOZ_ASSERT(false, "GetRefreshDriverRegistry should be implemented");
+
   return nullptr;
 }
 
-RefreshDriverTrigger*
-VsyncDispatcher::AsRefreshDriverTrigger()
+VsyncEventRegistry*
+VsyncDispatcher::GetCompositorRegistry()
 {
-  return nullptr;
-}
+  MOZ_ASSERT(false, "GetCompositorRegistry should be implemented");
 
-CompositorTrigger*
-VsyncDispatcher::AsCompositorTrigger()
-{
   return nullptr;
 }
 
 VsyncDispatcherClient*
 VsyncDispatcher::AsVsyncDispatcherClient()
 {
+  MOZ_ASSERT(false, "Function should be implemented");
+
   return nullptr;
 }
 
 VsyncDispatcherHost*
 VsyncDispatcher::AsVsyncDispatcherHost()
 {
+  MOZ_ASSERT(false, "Function should be implemented");
+
   return nullptr;
 }
 

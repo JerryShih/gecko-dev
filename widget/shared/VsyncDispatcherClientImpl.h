@@ -14,18 +14,15 @@
 namespace mozilla {
 
 class ObserverListHelper;
+class RefreshDriverRegistryClient;
 
-/*
- * The client side vsync dispatcher implementation.
- *
- * We use the main thread as the VsyncDispatcherClient work thread, and all
- * user should use VsyncDispatcherClient at the main thread.
- */
-class VsyncDispatcherClientImpl MOZ_FINAL : public VsyncDispatcher
-                                          , public VsyncDispatcherClient
-                                          , public RefreshDriverTrigger
+// The client side vsync dispatcher implementation.
+// We use the main thread as the VsyncDispatcherClient work thread, and all
+// user should use VsyncDispatcherClient at the main thread.
+class VsyncDispatcherClientImpl MOZ_FINAL : public VsyncDispatcherClient
 {
   friend class ObserverListHelper;
+  friend class RefreshDriverRegistryClient;
 
   // We would like to create and delete the VsyncDispatcherClientImpl at main thread.
   NS_INLINE_DECL_THREADSAFE_REFCOUNTING_WITH_MAIN_THREAD_DESTRUCTION(VsyncDispatcherClientImpl);
@@ -40,17 +37,12 @@ private:
   VsyncDispatcherClientImpl();
   virtual ~VsyncDispatcherClientImpl();
 
+  virtual VsyncEventRegistry* GetRefreshDriverRegistry() MOZ_OVERRIDE;
+
   virtual void SetVsyncRate(uint32_t aVsyncRate) MOZ_OVERRIDE;
   virtual uint32_t GetVsyncRate() const MOZ_OVERRIDE;
 
-  // Register refresh driver timer to do tick at vsync.
-  // We should call sync unregister before observer call destructor.
-  virtual void RegisterTimer(VsyncObserver* aTimer) MOZ_OVERRIDE;
-  virtual void UnregisterTimer(VsyncObserver* aTimer, bool aSync) MOZ_OVERRIDE;
-
   virtual VsyncDispatcherClient* AsVsyncDispatcherClient() MOZ_OVERRIDE;
-
-  virtual RefreshDriverTrigger* AsRefreshDriverTrigger() MOZ_OVERRIDE;
 
   // Set IPC child. It should be called at vsync dispatcher thread.
   virtual void SetVsyncEventChild(layers::VsyncEventChild* aVsyncEventChild) MOZ_OVERRIDE;
@@ -59,10 +51,10 @@ private:
 
   // Dispatch vsync to observer
   // This function should run at vsync dispatcher thread
-  void DispatchVsyncEvent(int64_t aTimestampUS, uint32_t aFrameNumber);
+  void DispatchVsyncEvent(int64_t aTimestampUS, uint64_t aFrameNumber);
 
   // Tick refresh driver.
-  void TickRefreshDriver(int64_t aTimestampUS, uint32_t aFrameNumber);
+  void TickRefreshDriver();
 
   // Return total registered object number.
   int GetVsyncObserverCount();
@@ -77,15 +69,19 @@ private:
   static StaticRefPtr<VsyncDispatcherClientImpl> sVsyncDispatcherClient;
 
   uint32_t mVsyncRate;
-
   bool mInited;
+  bool mVsyncEventNeeded;
 
   // IPC child
   layers::VsyncEventChild* mVsyncEventChild;
 
-  //TODO: Put refresh driver list here.
+  // Refresh driver
+  RefreshDriverRegistryClient* mRefreshDriver;
 
-  bool mVsyncEventNeeded;
+  // Vsync event tick timestamp.
+  int64_t mCurrentTimestampUS;
+  // Monotonic increased frame number.
+  uint64_t mCurrentFrameNumber;
 };
 
 } // namespace mozilla

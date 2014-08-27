@@ -32,7 +32,7 @@
 
 namespace mozilla {
 
-class VsyncDispatcherHost;
+class VsyncTimerObserver;
 
 namespace gl {
     class GLContext;
@@ -96,15 +96,18 @@ public:
     void EnableVsync(bool aEnable);
 
 #if ANDROID_VERSION >= 17
-    bool RegisterHwcEventCallback();
+    // Init vsync, hotplug ... etc. callback.
+    bool InitHwcEventCallback();
+
+    // Register a vsync observer.
+    // We should register observer before we first call EnableVsync(true).
+    void RegisterVsyncObserver(VsyncTimerObserver* aVsyncObserver);
+    // Unregister the registered observer.
+    // We use this functoin for shutdown case.
+    void UnregisterVsyncObserver();
 
     // Hwc vsync event handle function
     void Vsync(int aDisplay, int64_t aTimestamp);
-
-    // Register a VsyncDispatcher.
-    // We should register that before we enable vsync.
-    void RegisterVsyncDispatcher(VsyncDispatcherHost* aVsyncDispatcherHost);
-    void UnregisterVsyncDispatcher();
 
     // Vsync event rate per second.
     uint32_t GetHWVsyncRate() const;
@@ -146,7 +149,7 @@ private:
     android::sp<android::Fence> mPrevRetireFence;
     android::sp<android::Fence> mPrevDisplayFence;
 
-    VsyncDispatcherHost*    mVsyncDispatcher;
+    VsyncTimerObserver*     mVsyncObserver;
     uint32_t                mVsyncRate;
 #endif
     nsTArray<layers::LayerComposite*> mHwcLayerMap;

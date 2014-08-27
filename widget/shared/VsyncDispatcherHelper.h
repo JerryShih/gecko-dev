@@ -35,12 +35,11 @@ public:
 
   // Wait the add/remove task at dispatcher thread finished.
   template <typename DispatcherType, typename Type>
-  static void SyncAdd(const char* aTaskName, DispatcherType* aDispatcher,
+  static void SyncAdd(DispatcherType* aDispatcher,
                       nsTArray<Type*>* aList,
                       Type* aItem);
   template <typename DispatcherType, typename Type>
-  static void SyncRemove(const char* aTaskName,
-                         DispatcherType* aDispatcher,
+  static void SyncRemove(DispatcherType* aDispatcher,
                          nsTArray<Type*>* aList,
                          Type* aItem);
 
@@ -120,8 +119,7 @@ void ObserverListHelper::AsyncRemove(DispatcherType* aDispatcher,
 }
 
 template <typename DispatcherType, typename Type>
-void ObserverListHelper::SyncAdd(const char* aTaskName,
-                                 DispatcherType* aDispatcher,
+void ObserverListHelper::SyncAdd(DispatcherType* aDispatcher,
                                  nsTArray<Type*>* aList,
                                  Type* aItem)
 {
@@ -132,7 +130,7 @@ void ObserverListHelper::SyncAdd(const char* aTaskName,
     return;
   }
 
-  Monitor monitor(aTaskName);
+  Monitor monitor("ObserverList SyncAdd");
   MonitorAutoLock lock(monitor);
   bool done = false;
 
@@ -147,13 +145,12 @@ void ObserverListHelper::SyncAdd(const char* aTaskName,
   // We wait here until the done flag becomes true in AddWithNotify().
   while (!done) {
     lock.Wait(PR_MillisecondsToInterval(32));
-    printf_stderr("Wait add task timeout: %s", aTaskName);
+    printf_stderr("Wait ObserverList SyncAdd timeout");
   }
 }
 
 template <typename DispatcherType, typename Type>
-void ObserverListHelper::SyncRemove(const char* aTaskName,
-                                    DispatcherType* aDispatcher,
+void ObserverListHelper::SyncRemove(DispatcherType* aDispatcher,
                                     nsTArray<Type*>* aList,
                                     Type* aItem)
 {
@@ -163,7 +160,7 @@ void ObserverListHelper::SyncRemove(const char* aTaskName,
     return;
   }
 
-  Monitor monitor(aTaskName);
+  Monitor monitor("ObserverList SyncRemove");
   MonitorAutoLock lock(monitor);
   bool done = false;
 
@@ -177,7 +174,7 @@ void ObserverListHelper::SyncRemove(const char* aTaskName,
 
   while (!done) {
     lock.Wait(PR_MillisecondsToInterval(32));
-    printf_stderr("Wait remove task timeout: %s", aTaskName);
+    printf_stderr("Wait ObserverList SyncRemove timeout");
   }
 }
 
