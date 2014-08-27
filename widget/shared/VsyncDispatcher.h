@@ -8,6 +8,7 @@
 #define mozilla_widget_shared_VsyncDispatcher_h
 
 #include "ThreadSafeRefcountingWithMainThreadDestruction.h"
+#include "nsArray.h"
 
 class MessageLoop;
 
@@ -18,31 +19,48 @@ class VsyncEventChild;
 class VsyncEventParent;
 };
 
-class InputDispatchTrigger;
-class CompositorTrigger;
-class RefreshDriverTrigger;
-
 class VsyncDispatcherClient;
 class VsyncDispatcherHost;
 
-// Vsync event observer
+// Every vsync event observer should inherit this base class.
 class VsyncObserver
 {
   NS_INLINE_DECL_THREADSAFE_REFCOUNTING_WITH_MAIN_THREAD_DESTRUCTION(VsyncObserver);
 
 public:
-  // VsyncTickTask() will run at each specific observer work thread.
-  // We can put our vsync aligned task in this function.
-  virtual void VsyncTickTask(int64_t aTimestampUS, uint32_t aFrameNumber) = 0;
+  // This function will be called by VsyncEventRegistry when a vsync event comes.
+  // We should implement this function for our vsync-aligned task.
+  virtual void VsyncTickTask(int64_t aTimestampUS, uint64_t aFrameNumber) = 0;
 
 protected:
   virtual ~VsyncObserver() { }
-
 };
 
-/*
- * VsyncDispatcher can dispatch vsync event to all registered observer.
- */
+// This class provide the registering interface for vsync observer.
+// It will also call observer's VsyncTickTask() when a vsync event comes.
+// Currently, we have CompositorRegistry and RefreshDriverRegistry.
+// These Registry classes are one-shot ticker. They only call VsyncTickTask()
+// once per Register(). If observer need another tick, it should call
+// Register() again.
+class VsyncEventRegistry
+{
+public:
+  uint32_t GetObserverNum(void) const;
+
+  // Register/Unregister vsync observer.
+  // All vsync observers should call sync unregister call before they
+  // call destructor.
+  virtual void Register(VsyncObserver* aVsyncObserver) = 0;
+  virtual void Unregister(VsyncObserver* VsyncObserver, bool aSync = false) = 0;
+
+protected:
+  virtual ~VsyncEventRegistry() {}
+
+  typedef nsTArray<VsyncObserver*> ObserverList;
+  ObserverList mObserverListList;
+};
+
+// VsyncDispatcher can dispatch vsync event to all registered observer.
 class VsyncDispatcher
 {
 public:
@@ -54,83 +72,49 @@ public:
   // Vsync event rate per second.
   virtual uint32_t GetVsyncRate() const = 0;
 
-  virtual InputDispatchTrigger* AsInputDispatchTrigger();
-  virtual RefreshDriverTrigger* AsRefreshDriverTrigger();
-  virtual CompositorTrigger* AsCompositorTrigger();
-
+  // Specialize VD to VDClient or VDHost.
   virtual VsyncDispatcherClient* AsVsyncDispatcherClient();
   virtual VsyncDispatcherHost* AsVsyncDispatcherHost();
+
+  virtual VsyncEventRegistry* GetRefreshDriverRegistry();
+  virtual VsyncEventRegistry* GetCompositorRegistry();
 
 protected:
   virtual ~VsyncDispatcher() { }
 };
 
-// Enable/disable input dispatch when vsync event comes.
-class InputDispatchTrigger
-{
-public:
-  virtual void EnableInputDispatcher() = 0;
-  virtual void DisableInputDispatcher(bool aSync = false) = 0;
-
-protected:
-  virtual ~InputDispatchTrigger() { }
-};
-
-// RefreshDriverTrigger will call all registered refresh driver timer
-// VsyncTickTask() when vsync event comes.
-class RefreshDriverTrigger
-{
-public:
-  // RefreshDriverTrigger is one-shot trigger. We should call RegisterTimer()
-  // again if we need next tick.
-  virtual void RegisterTimer(VsyncObserver* aTimer) = 0;
-  virtual void UnregisterTimer(VsyncObserver* aTimer, bool aSync = false) = 0;
-
-protected:
-  virtual ~RefreshDriverTrigger() { }
-};
-
-// CompositorTrigger will call registered CompositorParent VsyncTickTask()
-// when vsync event comes.
-class CompositorTrigger
-{
-public:
-  // CompositorTrigger is one-shot trigger. We should call RegisterCompositor()
-  // again if we need next tick.
-  virtual void RegisterCompositor(VsyncObserver* aCompositor) = 0;
-  virtual void UnregisterCompositor(VsyncObserver* aCompositor, bool aSync = false) = 0;
-
-protected:
-  virtual ~CompositorTrigger() { }
-};
-
-class VsyncDispatcherClient
+// The VDClient for content process
+class VsyncDispatcherClient : public VsyncDispatcher
 {
 public:
   // Dispatch vsync to all observer
-  virtual void DispatchVsyncEvent(int64_t aTimestampUS, uint32_t aFrameNumber) = 0;
+  virtual void DispatchVsyncEvent(int64_t aTimestampUS, uint64_t aFrameNumber) = 0;
 
-  // Set IPC child. It should be called at vsync dispatcher thread.
+  // Set vsync event IPC child.
   virtual void SetVsyncEventChild(layers::VsyncEventChild* aVsyncEventChild) = 0;
 
+  // Update the vsync rate getting from VDHost.
   virtual void SetVsyncRate(uint32_t aVsyncRate) = 0;
 
 protected:
   virtual ~VsyncDispatcherClient() { }
 };
 
-class VsyncDispatcherHost
+// The VDHost for chrome process
+class VsyncDispatcherHost : public VsyncDispatcher
 {
 public:
-  // Notify the VsyncDispatcher that there has one vsync event.
-  // VsyncDispatcher will start to dispatch vsync event to all observer.
-  virtual void NotifyVsync(int64_t aTimestampUS) = 0;
+  // Enable/disable input dispatch when vsync event comes.
+  // We only handle the input at chrome process, so VDClient doesn't have this
+  // interface.
+  virtual void EnableInputDispatcher() = 0;
+  virtual void DisableInputDispatcher(bool aSync = false) = 0;
 
-  // Set IPC parent.
+  // Set vsync event IPC parent.
   virtual void RegisterVsyncEventParent(layers::VsyncEventParent* aVsyncEventParent) = 0;
   virtual void UnregisterVsyncEventParent(layers::VsyncEventParent* aVsyncEventParent) = 0;
 
-  // Get VsyncDispatcher's message loop
+  // Get VsyncDispatcher's message loop.
   virtual MessageLoop* GetMessageLoop() = 0;
 
 protected:

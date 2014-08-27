@@ -27,10 +27,10 @@
 #include "mozilla/layers/ShadowLayerUtilsGralloc.h"
 #include "mozilla/layers/TextureHostOGL.h"  // for TextureHostOGL
 #include "mozilla/StaticPtr.h"
-#include "mozilla/VsyncDispatcher.h"
 #include "cutils/properties.h"
 #include "gfx2DGlue.h"
 #include "GeckoTouchDispatcher.h"
+#include "VsyncPlatformTimer.h"
 
 #if ANDROID_VERSION >= 17
 #include "libdisplay/FramebufferSurface.h"
@@ -110,7 +110,7 @@ HwcComposer2D::HwcComposer2D()
 #if ANDROID_VERSION >= 17
     , mPrevRetireFence(Fence::NO_FENCE)
     , mPrevDisplayFence(Fence::NO_FENCE)
-    , mVsyncDispatcher(nullptr)
+    , mVsyncObserver(nullptr)
     , mVsyncRate(0)
 #endif
     , mPrepared(false)
@@ -187,6 +187,8 @@ void
 HwcComposer2D::EnableVsync(bool aEnable)
 {
 #if ANDROID_VERSION >= 17
+    MOZ_ASSERT(mHasHWVsync);
+
     if (NS_IsMainThread()) {
         RunVsyncEventControl(aEnable);
     } else {
@@ -199,8 +201,10 @@ HwcComposer2D::EnableVsync(bool aEnable)
 
 #if ANDROID_VERSION >= 17
 bool
-HwcComposer2D::RegisterHwcEventCallback()
+HwcComposer2D::InitHwcEventCallback()
 {
+    MOZ_ASSERT(!mHasHWVsync);
+
     if (!gfxPrefs::FrameUniformityHWVsyncEnabled()) {
         return false;
     }
@@ -239,6 +243,7 @@ HwcComposer2D::RegisterHwcEventCallback()
 uint32_t
 HwcComposer2D::GetHWVsyncRate() const
 {
+    MOZ_ASSERT(mHasHWVsync);
     MOZ_ASSERT(mVsyncRate);
 
     return mVsyncRate;
@@ -247,6 +252,8 @@ HwcComposer2D::GetHWVsyncRate() const
 void
 HwcComposer2D::RunVsyncEventControl(bool aEnable)
 {
+    MOZ_ASSERT(mHasHWVsync);
+
     if (mHasHWVsync) {
         HwcDevice* device = (HwcDevice*)GetGonkDisplay()->GetHWCDevice();
         if (device && device->eventControl) {
@@ -258,30 +265,34 @@ HwcComposer2D::RunVsyncEventControl(bool aEnable)
 void
 HwcComposer2D::Vsync(int aDisplay, int64_t aTimestamp)
 {
+    MOZ_ASSERT(mHasHWVsync);
+
     GeckoTouchDispatcher::NotifyVsync(aTimestamp);
 
-    if (mVsyncDispatcher) {
-        // We can't get the same timer as the hwc does at gecko. So we get the
+    if (mVsyncObserver) {
+        // We can't get the same timer as the hwc does in gecko, so we get the
         // timestamp again here.
-        mVsyncDispatcher->NotifyVsync(base::TimeTicks::HighResNow().ToInternalValue());
+        // We use the Chromium timer. The time unit is microsecond.
+        mVsyncObserver->NotifyVsync(base::TimeTicks::HighResNow().ToInternalValue());
     }
 }
 
 void
-HwcComposer2D::RegisterVsyncDispatcher(VsyncDispatcherHost* aVsyncDispatcherHost)
+HwcComposer2D::RegisterVsyncObserver(VsyncTimerObserver* aVsyncObserver)
 {
     MOZ_ASSERT(NS_IsMainThread());
+    MOZ_ASSERT(!mVsyncObserver);
 
-    mVsyncDispatcher = aVsyncDispatcherHost;
+    mVsyncObserver = aVsyncObserver;
 }
 
 void
-HwcComposer2D::UnregisterVsyncDispatcher()
+HwcComposer2D::UnregisterVsyncObserver()
 {
     MOZ_ASSERT(NS_IsMainThread());
 
     EnableVsync(false);
-    mVsyncDispatcher = nullptr;
+    mVsyncObserver = nullptr;
 }
 // Called on the "invalidator" thread (run from HAL).
 void
