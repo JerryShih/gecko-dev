@@ -90,7 +90,7 @@ VsyncEventRegistryHost::Register(VsyncObserver* aVsyncObserver)
 void
 VsyncEventRegistryHost::Unregister(VsyncObserver* VsyncObserver, bool aSync)
 {
-  if (aSync) {
+  if (!aSync) {
     ObserverListHelper::AsyncRemove(this, &mObserverListList, VsyncObserver);
   } else {
     ObserverListHelper::SyncRemove(this,
