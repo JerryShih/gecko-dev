@@ -187,6 +187,10 @@ void
 HwcComposer2D::EnableVsync(bool aEnable)
 {
 #if ANDROID_VERSION >= 17
+    if (!gfxPrefs::FrameUniformityHWVsyncEnabled()) {
+        return;
+    }
+
     MOZ_ASSERT(mHasHWVsync);
 
     if (NS_IsMainThread()) {
