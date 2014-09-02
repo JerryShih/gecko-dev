@@ -27,6 +27,9 @@
 
 #include "mozilla/ArrayUtils.h"
 #include "mozilla/AutoRestore.h"
+#include "mozilla/VsyncDispatcher.h"
+#include "mozilla/VsyncDispatcherHelper.h"
+#include "gfxPrefs.h"
 #include "nsRefreshDriver.h"
 #include "nsITimer.h"
 #include "nsLayoutUtils.h"
@@ -50,6 +53,7 @@
 #include "mozilla/dom/ScriptSettings.h"
 #include "nsDocShell.h"
 #include "nsISimpleEnumerator.h"
+#include "ThreadSafeRefcountingWithMainThreadDestruction.h"
 
 using namespace mozilla;
 using namespace mozilla::widget;
@@ -189,6 +193,147 @@ protected:
     RefreshDriverTimer *timer = static_cast<RefreshDriverTimer*>(aClosure);
     timer->Tick();
   }
+};
+
+/*
+ * This timer does not have any the underlying timer.
+ * It only be triggered by VsyncObserver::TickTask().
+ */
+class VsyncRefreshDriverTimer MOZ_FINAL : public RefreshDriverTimer
+{
+public:
+  VsyncRefreshDriverTimer(double aRate)
+    : RefreshDriverTimer(aRate)
+    , mTickNeeded(false)
+  {
+    MOZ_ASSERT(NS_IsMainThread());
+  }
+
+  ~VsyncRefreshDriverTimer()
+  {
+    MOZ_ASSERT(NS_IsMainThread());
+
+    mTickNeeded = false;
+
+    MOZ_ASSERT(mVsyncObserver);
+    VsyncDispatcher::GetInstance()->GetRefreshDriverRegistry()->RemoveObserver(mVsyncObserver, false);
+    mVsyncObserver = nullptr;
+  }
+
+private:
+  class VsyncObserverImpl : public VsyncObserver
+  {
+    NS_INLINE_DECL_THREADSAFE_REFCOUNTING_WITH_MAIN_THREAD_DESTRUCTION(VsyncObserverImpl);
+  public:
+    VsyncObserverImpl(VsyncRefreshDriverTimer* aTimer)
+      : mTimer(aTimer)
+    {
+      MOZ_ASSERT(mTimer);
+    }
+
+    virtual bool VsyncTick(TimeStamp aTimestamp,
+                           uint64_t aFrameNumber) MOZ_OVERRIDE
+    {
+      if (NS_IsMainThread()) {
+        mTimer->VsyncTick(aTimestamp, aFrameNumber);
+      } else {
+        nsRefPtr<nsIRunnable> mainThreadTickTask =
+            NewNSVsyncRunnableMethod(this,
+                                     &VsyncObserverImpl::TickInternal,
+                                     aTimestamp,
+                                     aFrameNumber);
+        NS_DispatchToMainThread(mainThreadTickTask);
+      }
+
+      return true;
+    }
+
+  private:
+    ~VsyncObserverImpl() { }
+
+    void TickInternal(TimeStamp aTimestamp,
+                      uint64_t aFrameNumber)
+    {
+      mTimer->VsyncTick(aTimestamp, aFrameNumber);
+    }
+
+    VsyncRefreshDriverTimer* mTimer;
+  };
+
+  void VsyncTick(TimeStamp aTimestamp,
+                 uint64_t aFrameNumber)
+  {
+    MOZ_ASSERT(NS_IsMainThread());
+
+    if (mTickNeeded) {
+      // Use aTimestamp to construct JS timestamp.
+      TimeStamp timeStampRefNow = TimeStamp::Now();
+      int64_t jsRefNow = JS_Now();
+      TimeDuration diff = timeStampRefNow - aTimestamp;
+
+      int64_t jsnow = jsRefNow - diff.ToMicroseconds();
+      TimeStamp now = aTimestamp;
+
+      ScheduleNextTick(now);
+
+      mLastFireEpoch = jsnow;
+      mLastFireTime = now;
+
+      LOG("[%p] ticking drivers...", this);
+      nsTArray<nsRefPtr<nsRefreshDriver> > drivers(mRefreshDrivers);
+      // RD is short for RefreshDriver
+      profiler_tracing("Paint", "RD", TRACING_INTERVAL_START);
+      for (size_t i = 0; i < drivers.Length(); ++i) {
+        // don't poke this driver if it's in test mode
+        if (drivers[i]->IsTestControllingRefreshesEnabled()) {
+          continue;
+        }
+
+        TickDriver(drivers[i], jsnow, now);
+      }
+      profiler_tracing("Paint", "RD", TRACING_INTERVAL_END);
+      LOG("[%p] done.", this);
+    }
+  }
+
+  virtual void StartTimer() MOZ_OVERRIDE
+  {
+    MOZ_ASSERT(NS_IsMainThread());
+
+    // We use current time to init the last fire time.
+    mLastFireEpoch = JS_Now();
+    mLastFireTime = TimeStamp::Now();
+
+    mTickNeeded = true;
+
+    if (!mVsyncObserver) {
+      mVsyncObserver = new VsyncObserverImpl(this);
+    }
+    VsyncDispatcher::GetInstance()->GetRefreshDriverRegistry()->AddObserver(mVsyncObserver, false);
+  }
+
+  virtual void StopTimer() MOZ_OVERRIDE
+  {
+    MOZ_ASSERT(NS_IsMainThread());
+
+    mTickNeeded = false;
+
+    MOZ_ASSERT(mVsyncObserver);
+    VsyncDispatcher::GetInstance()->GetRefreshDriverRegistry()->RemoveObserver(mVsyncObserver, false);
+  }
+
+  virtual void ScheduleNextTick(TimeStamp aNowTime) MOZ_OVERRIDE
+  {
+    MOZ_ASSERT(NS_IsMainThread());
+
+    mTickNeeded = true;
+
+    MOZ_ASSERT(mVsyncObserver);
+    VsyncDispatcher::GetInstance()->GetRefreshDriverRegistry()->AddObserver(mVsyncObserver, false);
+  }
+
+  nsRefPtr<VsyncObserverImpl> mVsyncObserver;
+  bool mTickNeeded;
 };
 
 /*
@@ -566,8 +711,8 @@ GetFirstFrameDelay(imgIRequest* req)
   return static_cast<uint32_t>(delay);
 }
 
-static PreciseRefreshDriverTimer *sRegularRateTimer = nullptr;
-static InactiveRefreshDriverTimer *sThrottledRateTimer = nullptr;
+static RefreshDriverTimer* sRegularRateTimer = nullptr;
+static RefreshDriverTimer* sThrottledRateTimer = nullptr;
 
 #ifdef XP_WIN
 static int32_t sHighPrecisionTimerRequests = 0;
@@ -623,6 +768,22 @@ nsRefreshDriver::DefaultInterval()
 double
 nsRefreshDriver::GetRegularTimerInterval(bool *outIsDefault) const
 {
+  // If we enable the FrameUniformity, we should get the interval from
+  // vsync dispatcher
+  if (gfxPrefs::FrameUniformityEnabled() &&
+      gfxPrefs::FrameUniformityRefreshDriverVsyncEnabled())
+  {
+    uint32_t rate = VsyncDispatcher::GetInstance()->GetVsyncRate();
+
+    MOZ_ASSERT(rate>0);
+
+    if (rate > 0){
+      return 1000.0 / rate;
+    } else {  // Use default 60 frame rate
+      return 1000.0 / 60.0;
+    }
+  }
+
   int32_t rate = Preferences::GetInt("layout.frame_rate", -1);
   if (rate < 0) {
     rate = DEFAULT_FRAME_RATE;
@@ -671,7 +832,13 @@ nsRefreshDriver::ChooseTimer() const
   if (!sRegularRateTimer) {
     bool isDefault = true;
     double rate = GetRegularTimerInterval(&isDefault);
-#ifdef XP_WIN
+#ifdef MOZ_WIDGET_GONK
+    if (gfxPrefs::FrameUniformityEnabled() &&
+        gfxPrefs::FrameUniformityRefreshDriverVsyncEnabled())
+    {
+      sRegularRateTimer = new VsyncRefreshDriverTimer(rate);
+    }
+#elif defined(XP_WIN)
     if (PreciseRefreshDriverTimerWindowsDwmVsync::IsSupported()) {
       sRegularRateTimer = new PreciseRefreshDriverTimerWindowsDwmVsync(rate, isDefault);
     }
