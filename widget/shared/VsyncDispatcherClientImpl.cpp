@@ -43,11 +43,13 @@ private:
 RefreshDriverRegistryClient::RefreshDriverRegistryClient(VsyncDispatcherClientImpl* aVsyncDispatcher)
   : mVsyncDispatcher(aVsyncDispatcher)
 {
+  MOZ_ASSERT(NS_IsMainThread());
   MOZ_ASSERT(mVsyncDispatcher);
 }
 
 RefreshDriverRegistryClient::~RefreshDriverRegistryClient()
 {
+  MOZ_ASSERT(NS_IsMainThread());
   mObserverListList.Clear();
 }
 
@@ -122,11 +124,11 @@ VsyncDispatcherClientImpl::Shutdown()
 
   mInited = false;
 
-  // Release the VsyncDispatcherClient singleton.
-  sVsyncDispatcherClient = nullptr;
-
   delete mRefreshDriver;
   mRefreshDriver = nullptr;
+
+  // Release the VsyncDispatcherClient singleton.
+  sVsyncDispatcherClient = nullptr;
 }
 
 VsyncDispatcherClientImpl::VsyncDispatcherClientImpl()
@@ -155,6 +157,7 @@ VsyncDispatcherClientImpl::AsVsyncDispatcherClient()
 VsyncEventRegistry*
 VsyncDispatcherClientImpl::GetRefreshDriverRegistry()
 {
+  MOZ_ASSERT(mInited);
   MOZ_ASSERT(mRefreshDriver);
 
   return mRefreshDriver;

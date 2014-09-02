@@ -53,7 +53,6 @@ private:
   // This function should run at vsync dispatcher thread
   void DispatchVsyncEvent(int64_t aTimestampUS, uint64_t aFrameNumber);
 
-  // Tick refresh driver.
   void TickRefreshDriver();
 
   // Return total registered object number.

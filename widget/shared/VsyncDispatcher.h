@@ -30,26 +30,25 @@ class VsyncObserver
 public:
   // This function will be called by VsyncEventRegistry when a vsync event comes.
   // We should implement this function for our vsync-aligned task.
-  virtual void VsyncTickTask(int64_t aTimestampUS, uint64_t aFrameNumber) = 0;
+  virtual void TickTask(int64_t aTimestampUS, uint64_t aFrameNumber) = 0;
 
 protected:
   virtual ~VsyncObserver() { }
 };
 
 // This class provide the registering interface for vsync observer.
-// It will also call observer's VsyncTickTask() when a vsync event comes.
-// Currently, we have CompositorRegistry and RefreshDriverRegistry.
-// These Registry classes are one-shot ticker. They only call VsyncTickTask()
-// once per Register(). If observer need another tick, it should call
-// Register() again.
+// It will also call observer's TickTask() when a vsync event comes.
 class VsyncEventRegistry
 {
 public:
   uint32_t GetObserverNum(void) const;
 
   // Register/Unregister vsync observer.
+  // The Register() call is one-shot registry. We only call TickTask()
+  // once per Register(). If observer need another tick, it should call
+  // Register() again.
   // All vsync observers should call sync unregister call before they
-  // call destructor.
+  // call destructor, so we will not tick the observer after destroyed.
   virtual void Register(VsyncObserver* aVsyncObserver) = 0;
   virtual void Unregister(VsyncObserver* VsyncObserver, bool aSync = false) = 0;
 
@@ -73,9 +72,11 @@ public:
   virtual uint32_t GetVsyncRate() const = 0;
 
   // Specialize VD to VDClient or VDHost.
+  // We should only use VDHost at Chrome process.
   virtual VsyncDispatcherClient* AsVsyncDispatcherClient();
   virtual VsyncDispatcherHost* AsVsyncDispatcherHost();
 
+  // Get Registry for refresh driver and compositor.
   virtual VsyncEventRegistry* GetRefreshDriverRegistry();
   virtual VsyncEventRegistry* GetCompositorRegistry();
 
