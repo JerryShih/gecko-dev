@@ -344,7 +344,13 @@ CompositorRegistryHost::Dispatch(int64_t aTimestampNanosecond,
 {
   MOZ_ASSERT(IsInVsyncDispatcherThread());
 
-  //TODO: notify compositor parent to do compose
+  for (ObserverList::size_type i = 0; i < mObserverListList.Length(); ++i) {
+    VsyncObserver* compositor = mObserverListList[i];
+
+    compositor->TickVsync(aTimestampNanosecond, aTimestamp, aTimestampJS, aFrameNumber);
+  }
+
+  mObserverListList.Clear();
 }
 
 /*static*/ VsyncDispatcherHostImpl*

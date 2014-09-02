@@ -231,6 +231,7 @@ CompositorParent::CompositorParent(nsIWidget* aWidget,
   , mOverrideComposeReadiness(false)
   , mForceCompositionTask(nullptr)
   , mCompositorThreadHolder(sCompositorThreadHolder)
+  , mVsyncComposeNeeded(false)
 {
   MOZ_ASSERT(NS_IsMainThread());
   MOZ_ASSERT(CompositorThread(),
@@ -250,6 +251,39 @@ CompositorParent::CompositorParent(nsIWidget* aWidget,
 
   if (gfxPrefs::AsyncPanZoomEnabled()) {
     mApzcTreeManager = new APZCTreeManager();
+  }
+}
+
+bool
+CompositorParent::TickVsync(int64_t aTimestampNanosecond,
+                            TimeStamp aTimestamp,
+                            int64_t aTimestampJS,
+                            uint64_t aFrameNumber)
+{
+  // Post Tick task to comositor thread
+  CompositorLoop()->PostTask(FROM_HERE,
+                             NewRunnableMethod(this,
+                             &CompositorParent::TickVsyncInternal,
+                             aTimestampNanosecond,
+                             aTimestamp,
+                             aTimestampJS,
+                             aFrameNumber));
+
+  return true;
+}
+
+void
+CompositorParent::TickVsyncInternal(int64_t aTimestampNanosecond,
+                                   TimeStamp aTimestamp,
+                                   int64_t aTimestampJS,
+                                   uint64_t aFrameNumber)
+{
+  MOZ_ASSERT(IsInCompositorThread());
+
+  mTimestamp = aTimestamp;
+
+  if (mVsyncComposeNeeded) {
+    CompositeCallback();
   }
 }
 
@@ -373,7 +407,7 @@ CompositorParent::RecvFlushRendering()
 {
   // If we're waiting to do a composite, then cancel it
   // and do it immediately instead.
-  if (mCurrentCompositeTask) {
+  if (mCurrentCompositeTask || mVsyncComposeNeeded) {
     CancelCurrentCompositeTask();
     ForceComposeToTarget(nullptr);
   }
@@ -413,6 +447,10 @@ CompositorParent::RecvStopFrameTimeRecording(const uint32_t& aStartIndex,
 void
 CompositorParent::ActorDestroy(ActorDestroyReason why)
 {
+  if (gfxPrefs::FrameUniformityEnabled()) {
+    // sync unregister
+    VsyncDispatcher::GetInstance()->GetCompositorRegistry()->Unregister(this, true);
+  }
   CancelCurrentCompositeTask();
   if (mForceCompositionTask) {
     mForceCompositionTask->Cancel();
@@ -429,7 +467,6 @@ CompositorParent::ActorDestroy(ActorDestroyReason why)
     mCompositor = nullptr;
   }
 }
-
 
 void
 CompositorParent::ScheduleRenderOnCompositorThread()
@@ -494,6 +531,15 @@ CompositorParent::ForceComposition()
 void
 CompositorParent::CancelCurrentCompositeTask()
 {
+  if (mVsyncComposeNeeded) {
+    // If here is a pending vsync composition task, just set the
+    // mVsyncComposeNeeded to false. We don't need spend the cpu power to call
+    // CompositorTrigger::UnregisterCompositor() to cancel the vsync
+    // notification. Instead, we can just do nothing at next TickVsync()
+    // function.
+    mVsyncComposeNeeded = false;
+  }
+
   if (mCurrentCompositeTask) {
     mCurrentCompositeTask->Cancel();
     mCurrentCompositeTask = nullptr;
@@ -603,6 +649,32 @@ CalculateCompositionFrameRate()
 void
 CompositorParent::ScheduleComposition()
 {
+  MOZ_ASSERT(IsInCompositorThread(),
+      "ScheduleComposition can only be called on the compositor thread");
+
+  // With FrameUniformity, we will not schedule the composition task.
+  // Instead, we will do compose when vsync event trigger.
+  if (gfxPrefs::FrameUniformityEnabled()) {
+    if (mVsyncComposeNeeded || mPaused) {
+      return;
+    }
+
+#ifdef COMPOSITOR_PERFORMANCE_WARNING
+    uint32_t vsyncRate = VsyncDispatcher::GetInstance()->GetVsyncRate();
+    mExpectedComposeStartTime = TimeStamp::Now() +
+        TimeDuration::FromMilliseconds(1000.0 / vsyncRate);
+#endif
+
+    mVsyncComposeNeeded = true;
+
+    // Register compositer to vsync dispatcher
+    VsyncDispatcher::GetInstance()->GetCompositorRegistry()->Register(this);
+
+    return;
+  }
+
+  // Non-FrameUniformity case.
+  // Schedule the composition task.
   if (mCurrentCompositeTask || mPaused) {
     return;
   }
@@ -617,7 +689,6 @@ CompositorParent::ScheduleComposition()
   // If rate == 0 (ASAP mode), minFrameDelta must be 0 so there's no delay.
   TimeDuration minFrameDelta = TimeDuration::FromMilliseconds(
     rate == 0 ? 0.0 : std::max(0.0, 1000.0 / rate));
-
 
   mCurrentCompositeTask = NewRunnableMethod(this, &CompositorParent::CompositeCallback);
 
@@ -661,7 +732,16 @@ CompositorParent::CompositeToTarget(DrawTarget* aTarget, const nsIntRect* aRect)
   }
 #endif
 
-  mLastCompose = TimeStamp::Now();
+  // In CompositeToTarget(), we have already composed the current frame.
+  // We don't need to compose the current frame even though we receive another
+  // TickVsync().
+  mVsyncComposeNeeded = false;
+
+  if (gfxPrefs::FrameUniformityEnabled()) {
+    mLastCompose = mTimestamp;
+  } else {
+    mLastCompose = TimeStamp::Now();
+  }
 
   if (!CanComposite()) {
     DidComposite();
@@ -837,7 +917,7 @@ CompositorParent::ShadowLayersUpdated(LayerTransactionParent* aLayerTree,
     // However, we only do this update when a composite operation is already
     // scheduled in order to better match the behavior under regular sampling
     // conditions.
-    if (mIsTesting && root && mCurrentCompositeTask) {
+    if (mIsTesting && root && (mCurrentCompositeTask || mVsyncComposeNeeded)) {
       AutoResolveRefLayers resolve(mCompositionManager);
       bool requestNextFrame =
         mCompositionManager->TransformShadowTree(mTestTime);
@@ -869,7 +949,7 @@ CompositorParent::SetTestSampleTime(LayerTransactionParent* aLayerTree,
   mTestTime = aTime;
 
   // Update but only if we were already scheduled to animate
-  if (mCompositionManager && mCurrentCompositeTask) {
+  if (mCompositionManager && (mCurrentCompositeTask || mVsyncComposeNeeded)) {
     AutoResolveRefLayers resolve(mCompositionManager);
     bool requestNextFrame = mCompositionManager->TransformShadowTree(aTime);
     if (!requestNextFrame) {

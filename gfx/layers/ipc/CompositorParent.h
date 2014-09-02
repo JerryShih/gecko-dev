@@ -31,6 +31,7 @@
 #include "mozilla/layers/LayersMessages.h"  // for TargetConfig
 #include "mozilla/layers/PCompositorParent.h"
 #include "mozilla/layers/APZTestData.h"
+#include "mozilla/VsyncDispatcher.h"    // for VsyncObserver
 #include "nsAutoPtr.h"                  // for nsRefPtr
 #include "nsISupportsImpl.h"
 #include "nsSize.h"                     // for nsIntSize
@@ -88,14 +89,20 @@ private:
 };
 
 class CompositorParent MOZ_FINAL : public PCompositorParent,
-                                   public ShadowLayersManager
+                                   public ShadowLayersManager,
+                                   public VsyncObserver
 {
-  NS_INLINE_DECL_THREADSAFE_REFCOUNTING_WITH_MAIN_THREAD_DESTRUCTION(CompositorParent)
+  NS_INLINE_DECL_THREADSAFE_REFCOUNTING_WITH_MAIN_THREAD_DESTRUCTION(CompositorParent);
 
 public:
   explicit CompositorParent(nsIWidget* aWidget,
                             bool aUseExternalSurfaceSize = false,
                             int aSurfaceWidth = -1, int aSurfaceHeight = -1);
+
+  virtual bool TickVsync(int64_t aTimestampNanosecond,
+                         TimeStamp aTimestamp,
+                         int64_t aTimestampJS,
+                         uint64_t aFrameNumber) MOZ_OVERRIDE;
 
   // IToplevelProtocol::CloneToplevel()
   virtual IToplevelProtocol*
@@ -311,6 +318,13 @@ protected:
 
   void DidComposite();
 
+private:
+  void TickVsyncInternal(int64_t aTimestampNanosecond,
+                        TimeStamp aTimestamp,
+                        int64_t aTimestampJS,
+                        uint64_t aFrameNumber);
+
+protected:
   nsRefPtr<LayerManagerComposite> mLayerManager;
   nsRefPtr<Compositor> mCompositor;
   RefPtr<AsyncCompositionManager> mCompositionManager;
@@ -342,6 +356,10 @@ protected:
   nsRefPtr<APZCTreeManager> mApzcTreeManager;
 
   nsRefPtr<CompositorThreadHolder> mCompositorThreadHolder;
+
+  TimeStamp mTimestamp;
+
+  bool mVsyncComposeNeeded;
 
   DISALLOW_EVIL_CONSTRUCTORS(CompositorParent);
 };
