@@ -291,6 +291,24 @@ NewNSVsyncRunnableMethod(T* object, Method method, const A& a, const B& b, const
                                                                 MakeTuple(a, b, c));
 }
 
+template<typename T, typename Method, typename A, typename B, typename C, typename D>
+inline nsCancelableRunnable*
+NewNSVsyncRunnableMethod(T* object, Method method, const A& a, const B& b, const C& c, const D& d)
+{
+  return new NSVsyncRunnableMethod<T, Method, Tuple4<A, B, C, D> >(object,
+                                                                   method,
+                                                                   MakeTuple(a, b, c, d));
+}
+
+template<typename T, typename Method, typename A, typename B, typename C, typename D, typename E>
+inline nsCancelableRunnable*
+NewNSVsyncRunnableMethod(T* object, Method method, const A& a, const B& b, const C& c, const D& d, const E& e)
+{
+  return new NSVsyncRunnableMethod<T, Method, Tuple5<A, B, C, D, E> >(object,
+                                                                      method,
+                                                                      MakeTuple(a, b, c, d, e));
+}
+
 } // namespace mozilla
 
 #endif // mozilla_widget_shared_VsyncDispatcherHelper_h

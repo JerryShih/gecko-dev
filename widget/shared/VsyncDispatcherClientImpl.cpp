@@ -106,7 +106,25 @@ RefreshDriverRegistryClient::Dispatch(int64_t aTimestampNanosecond,
 {
   MOZ_ASSERT(mVsyncDispatcher->IsInVsyncDispatcherThread());
 
-  // TODO: tick all refresh driver.
+  // We might change the mObserverListList in TickVsync(). In content process,
+  // we do Dispatch() and TickVsync() at the same thread, so we keep a copy here.
+  ObserverList tempObserverList1(mTemporaryObserverList);
+  ObserverList tempObserverList2(mObserverList);
+
+  // The TickVsync() is not always triggered. We will not tick the refresh driver
+  // unless it registers again.
+  mTemporaryObserverList.Clear();
+
+  // Tick all content registered refresh drivers.
+  // VDClient and refresh driver use the same thread, so we tick the
+  // refresh driver directly.
+  for (ObserverList::size_type i = 0; i < tempObserverList1.Length(); i++) {
+    tempObserverList1[i]->TickVsync(aTimestampNanosecond, aTimestamp, aTimestampJS, aFrameNumber);
+  }
+  for (ObserverList::size_type i = 0; i < tempObserverList2.Length(); i++) {
+    tempObserverList2[i]->TickVsync(aTimestampNanosecond, aTimestamp, aTimestampJS, aFrameNumber);
+  }
+
 }
 
 void
@@ -238,6 +256,7 @@ VsyncDispatcherClientImpl::TickRefreshDriver()
 {
   MOZ_ASSERT(mInited);
   MOZ_ASSERT(IsInVsyncDispatcherThread());
+  MOZ_ASSERT(mRefreshDriver);
 
   mRefreshDriver->Dispatch(mCurrentTimestampNanosecond, mCurrentTimestamp, mCurrentTimestampJS, mCurrentFrameNumber);
 }

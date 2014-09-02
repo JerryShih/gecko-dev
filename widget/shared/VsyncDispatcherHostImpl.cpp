@@ -344,7 +344,19 @@ RefreshDriverRegistryHost::Dispatch(int64_t aTimestampNanosecond,
 {
   MOZ_ASSERT(IsInVsyncDispatcherThread());
 
-  //TODO: tick all registered refresh driver
+  // Tick all content registered refresh drivers.
+  //
+  // Unlike RefreshDriverRegistryClient::Dispatch(), chrome's refresh driver
+  // doesn't run at VsyncDispatcherThread. We always post a task to add/remove
+  // the the observer list, so we don't need a list copy here.
+  for (ObserverList::size_type i = 0; i < mObserverList.Length(); i++) {
+    mObserverList[i]->TickVsync(aTimestampNanosecond, aTimestamp, aTimestampJS, aFrameNumber);
+  }
+
+  for (ObserverList::size_type i = 0; i < mTemporaryObserverList.Length(); i++) {
+    mTemporaryObserverList[i]->TickVsync(aTimestampNanosecond, aTimestamp, aTimestampJS, aFrameNumber);
+  }
+  mTemporaryObserverList.Clear();
 }
 
 CompositorRegistryHost::CompositorRegistryHost(VsyncDispatcherHostImpl* aVsyncDispatcher)
