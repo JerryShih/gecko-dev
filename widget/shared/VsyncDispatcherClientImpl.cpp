@@ -170,7 +170,7 @@ VsyncDispatcherClientImpl::DispatchVsyncEvent(int64_t aTimestampUS, uint64_t aFr
   MOZ_ASSERT(IsInVsyncDispatcherThread(), "Call VDClient::DispatchVsyncEvent at wrong thread.");
 
   MOZ_ASSERT(aTimestampUS > mCurrentTimestampUS);
-  MOZ_ASSERT(aFrameNumber > aFrameNumber);
+  MOZ_ASSERT(aFrameNumber > mCurrentFrameNumber);
   mCurrentTimestampUS = aTimestampUS;
   mCurrentFrameNumber = aFrameNumber;
 
