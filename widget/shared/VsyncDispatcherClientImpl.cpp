@@ -137,6 +137,8 @@ VsyncDispatcherClientImpl::VsyncDispatcherClientImpl()
   , mVsyncEventNeeded(false)
   , mVsyncEventChild(nullptr)
   , mRefreshDriver(nullptr)
+  , mCurrentTimestampUS(0)
+  , mCurrentFrameNumber(0)
 {
   MOZ_ASSERT(NS_IsMainThread());
 }
