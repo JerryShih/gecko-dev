@@ -23,10 +23,9 @@ namespace mozilla {
 
 class ObserverListHelper;
 
+class VsyncEventRegistryHost;
 class RefreshDriverRegistryHost;
 class CompositorRegistryHost;
-
-class VsyncPlatformTimer;
 
 // The host side vsync dispatcher implementation.
 class VsyncDispatcherHostImpl MOZ_FINAL : public VsyncDispatcherHost
@@ -87,7 +86,6 @@ private:
   // Notify compositor to do compose.
   void Compose();
 
-  // Tick refresh driver.
   void TickRefreshDriver();
 
   // Sent vsync event to all registered content processes

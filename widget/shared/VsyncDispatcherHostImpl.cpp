@@ -228,6 +228,8 @@ VsyncDispatcherHostImpl::Shutdown()
   MOZ_ASSERT(mInited, "VDHost is not initialized.");
 
   mTimer->Shutdown();
+  delete mTimer;
+  mTimer = nullptr;
 
   // Wait all pending task in vsync dispatcher thread and delete the
   // vsync dispatcher thread.
@@ -236,20 +238,17 @@ VsyncDispatcherHostImpl::Shutdown()
   delete mVsyncDispatchHostThread;
   mVsyncDispatchHostThread = nullptr;
 
-  mInited = false;
-
-  // Release the VsyncDispatcher singleton.
-  sVsyncDispatcherHost = nullptr;
-
   delete mRefreshDriver;
   mRefreshDriver = nullptr;
   delete mCompositor;
   mCompositor = nullptr;
 
-  delete mTimer;
-  mTimer = nullptr;
-
   mVsyncEventParentList.Clear();
+
+  mInited = false;
+
+  // Release the VsyncDispatcher singleton.
+  sVsyncDispatcherHost = nullptr;
 }
 
 VsyncDispatcherHostImpl::VsyncDispatcherHostImpl()
