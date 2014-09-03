@@ -931,6 +931,7 @@ pref("devtools.debugger.unix-domain-socket", "/data/local/debugger-socket");
 #ifdef MOZ_WIDGET_GONK
 pref("gfx.frameuniformity", true);
 pref("gfx.frameuniformity.hw-vsync", true);
+pref("gfx.touch.resample", true);
 #endif
 
 // enable Skia/GL (OpenGL-accelerated 2D drawing) for large enough 2d canvases,
