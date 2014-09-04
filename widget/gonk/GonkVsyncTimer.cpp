@@ -16,11 +16,9 @@
 
 namespace mozilla {
 
-GonkVsyncTimer::GonkVsyncTimer()
-  : mObserver(nullptr)
+GonkVsyncTimer::GonkVsyncTimer(VsyncTimerObserver* aObserver)
+  : PlatformVsyncTimer(aObserver)
   , mInited(false)
-  , mUseHWVsync(false)
-  , mVsyncRate(0)
 {
 
 }
@@ -30,16 +28,7 @@ GonkVsyncTimer::~GonkVsyncTimer()
 
 }
 
-void
-GonkVsyncTimer::SetObserver(VsyncTimerObserver* aObserver)
-{
-  MOZ_ASSERT(!mInited);
-  MOZ_ASSERT(!mObserver);
-
-  mObserver = aObserver;
-}
-
-void
+bool
 GonkVsyncTimer::Startup()
 {
   MOZ_ASSERT(NS_IsMainThread());
@@ -47,24 +36,21 @@ GonkVsyncTimer::Startup()
   MOZ_ASSERT(!mInited);
   MOZ_ASSERT(mObserver);
 
+  bool result = false;
+
   mInited = true;
 
-  // Use hw event or software vsync event
   if (gfxPrefs::FrameUniformityHWVsyncEnabled()) {
-    // init hw vsync event
     if (HwcComposer2D::GetInstance()->InitHwcEventCallback()) {
       mVsyncRate = HwcComposer2D::GetInstance()->GetHWVsyncRate();
       HwcComposer2D::GetInstance()->RegisterVsyncObserver(mObserver);
-      HwcComposer2D::GetInstance()->EnableVsync(true);
-      mUseHWVsync = true;
+      result = true;
+
       LOGI("GonkVsyncTimer: use hwc vsync");
     }
   }
-  // Fallback to software vsync event
-  if (!mUseHWVsync) {
-    //TODO: init software vsync event here.
-    LOGI("GonkVsyncTimer: use soft vsync");
-  }
+
+  return result;
 }
 
 void
@@ -74,11 +60,7 @@ GonkVsyncTimer::Shutdown()
   MOZ_ASSERT(XRE_GetProcessType() == GeckoProcessType_Default);
   MOZ_ASSERT(mInited);
 
-  if (mUseHWVsync) {
-    HwcComposer2D::GetInstance()->UnregisterVsyncObserver();
-  } else {
-  //TODO: release software vsync event here.
-  }
+  HwcComposer2D::GetInstance()->UnregisterVsyncObserver();
 }
 
 void
@@ -87,12 +69,7 @@ GonkVsyncTimer::Enable(bool aEnable)
   MOZ_ASSERT(XRE_GetProcessType() == GeckoProcessType_Default);
   MOZ_ASSERT(mInited);
 
-  if (mUseHWVsync) {
-    HwcComposer2D::GetInstance()->EnableVsync(aEnable);
-  }
-  else {
-    //TODO: enable/disable the software vsync event here.
-  }
+  HwcComposer2D::GetInstance()->EnableVsync(aEnable);
 }
 
 uint32_t

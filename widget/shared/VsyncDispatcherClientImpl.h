@@ -19,7 +19,8 @@ class RefreshDriverRegistryClient;
 // The client side vsync dispatcher implementation.
 // We use the main thread as the VsyncDispatcherClient work thread, and all
 // user should use VsyncDispatcherClient at the main thread.
-class VsyncDispatcherClientImpl MOZ_FINAL : public VsyncDispatcherClient
+class VsyncDispatcherClientImpl MOZ_FINAL : public VsyncDispatcher
+                                          , public VsyncDispatcherClient
 {
   friend class ObserverListHelper;
   friend class RefreshDriverRegistryClient;

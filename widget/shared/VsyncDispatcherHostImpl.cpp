@@ -11,7 +11,6 @@
 #include "nsThreadUtils.h"
 #include "nsXULAppAPI.h"
 #include "VsyncDispatcherHelper.h"
-#include "VsyncPlatformTimer.h"
 
 namespace mozilla {
 
@@ -172,6 +171,7 @@ VsyncDispatcherHostImpl::GetInstance()
 VsyncDispatcherHost*
 VsyncDispatcherHostImpl::AsVsyncDispatcherHost()
 {
+  MOZ_ASSERT(XRE_GetProcessType() == GeckoProcessType_Default);
   MOZ_ASSERT(mInited);
 
   return this;
@@ -208,17 +208,17 @@ VsyncDispatcherHostImpl::Startup()
   // even when the main thread is busy.
   CreateVsyncDispatchThread();
 
-  // Get platform dependent vsync timer
-  mTimer = VsyncPlatformTimerFactory::GetTimer();
-  MOZ_ASSERT(mTimer);
-
-  // We only start up the vsync timer at chrome process.
+  // Get platform dependent vsync timer.
+  // We only use the vsync timer at chrome process.
   // Content side doesn't need to do this. Chrome will send the vsync event
   // to content via ipc channel.
-  mTimer->SetObserver(this);
-  mTimer->Startup();
+  PlatformVsyncTimerFactory::Init(this);
+  mTimer = PlatformVsyncTimerFactory::Create();
+  MOZ_ASSERT(mTimer);
   mVsyncRate = mTimer->GetVsyncRate();
   MOZ_ASSERT(mVsyncRate);
+  // Start the timer.
+  mTimer->Enable(true);
 }
 
 void

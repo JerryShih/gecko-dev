@@ -8,30 +8,24 @@
 #define mozilla_widget_gonk_GonkVsyncTimer_h
 
 #include "mozilla/Attributes.h"
-#include "VsyncPlatformTimer.h"
+#include "PlatformVsyncTimer.h"
 
 namespace mozilla {
 
-class GonkVsyncTimer : public VsyncPlatformTimer
+class GonkVsyncTimer MOZ_FINAL : public PlatformVsyncTimer
 {
 public:
-  GonkVsyncTimer();
+  GonkVsyncTimer(VsyncTimerObserver* aObserver);
   ~GonkVsyncTimer();
 
-  virtual void SetObserver(VsyncTimerObserver* aObserver) MOZ_OVERRIDE;
-
-  virtual void Startup() MOZ_OVERRIDE;
+  virtual bool Startup() MOZ_OVERRIDE;
   virtual void Shutdown() MOZ_OVERRIDE;
   virtual void Enable(bool aEnable) MOZ_OVERRIDE;
 
   virtual uint32_t GetVsyncRate() MOZ_OVERRIDE;
 
 private:
-  VsyncTimerObserver* mObserver;
-
   bool mInited;
-  bool mUseHWVsync;
-  uint32_t mVsyncRate;
 };
 
 } // namespace mozilla
