@@ -46,6 +46,7 @@ VsyncDispatcher::GetCompositorRegistry()
 VsyncDispatcherClient*
 VsyncDispatcher::AsVsyncDispatcherClient()
 {
+  MOZ_ASSERT(XRE_GetProcessType() != GeckoProcessType_Default);
   MOZ_ASSERT(false, "Function should be implemented");
 
   return nullptr;
@@ -54,6 +55,7 @@ VsyncDispatcher::AsVsyncDispatcherClient()
 VsyncDispatcherHost*
 VsyncDispatcher::AsVsyncDispatcherHost()
 {
+  MOZ_ASSERT(XRE_GetProcessType() == GeckoProcessType_Default);
   MOZ_ASSERT(false, "Function should be implemented");
 
   return nullptr;

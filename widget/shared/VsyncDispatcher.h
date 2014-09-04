@@ -71,8 +71,8 @@ public:
   // Vsync event rate per second.
   virtual uint32_t GetVsyncRate() const = 0;
 
-  // Specialize VD to VDClient or VDHost.
-  // We should only use VDHost at Chrome process.
+  // Get the VDClient or VDHost.
+  // We should only use VDHost at Chrome process and use VDClient at Content.
   virtual VsyncDispatcherClient* AsVsyncDispatcherClient();
   virtual VsyncDispatcherHost* AsVsyncDispatcherHost();
 
@@ -85,7 +85,7 @@ protected:
 };
 
 // The VDClient for content process
-class VsyncDispatcherClient : public VsyncDispatcher
+class VsyncDispatcherClient
 {
 public:
   // Dispatch vsync to all observer
@@ -102,7 +102,7 @@ protected:
 };
 
 // The VDHost for chrome process
-class VsyncDispatcherHost : public VsyncDispatcher
+class VsyncDispatcherHost
 {
 public:
   // Enable/disable input dispatch when vsync event comes.

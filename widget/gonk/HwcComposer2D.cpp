@@ -30,7 +30,7 @@
 #include "cutils/properties.h"
 #include "gfx2DGlue.h"
 #include "GeckoTouchDispatcher.h"
-#include "VsyncPlatformTimer.h"
+#include "PlatformVsyncTimer.h"
 
 #if ANDROID_VERSION >= 17
 #include "libdisplay/FramebufferSurface.h"

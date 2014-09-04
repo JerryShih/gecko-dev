@@ -151,6 +151,7 @@ VsyncDispatcherClientImpl::~VsyncDispatcherClientImpl()
 VsyncDispatcherClient*
 VsyncDispatcherClientImpl::AsVsyncDispatcherClient()
 {
+  MOZ_ASSERT(XRE_GetProcessType() != GeckoProcessType_Default);
   MOZ_ASSERT(mInited);
 
   return this;

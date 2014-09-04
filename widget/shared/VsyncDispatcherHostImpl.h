@@ -9,9 +9,9 @@
 
 #include "mozilla/StaticPtr.h"
 #include "nsTArray.h"
+#include "PlatformVsyncTimer.h"
 #include "ThreadSafeRefcountingWithMainThreadDestruction.h"
 #include "VsyncDispatcher.h"
-#include "VsyncPlatformTimer.h"
 
 class MessageLoop;
 
@@ -28,7 +28,8 @@ class RefreshDriverRegistryHost;
 class CompositorRegistryHost;
 
 // The host side vsync dispatcher implementation.
-class VsyncDispatcherHostImpl MOZ_FINAL : public VsyncDispatcherHost
+class VsyncDispatcherHostImpl MOZ_FINAL : public VsyncDispatcher
+                                        , public VsyncDispatcherHost
                                         , public VsyncTimerObserver
 {
   friend class ObserverListHelper;
@@ -119,7 +120,7 @@ private:
 
   CompositorRegistryHost* mCompositor;
 
-  VsyncPlatformTimer* mTimer;
+  PlatformVsyncTimer* mTimer;
 
   // Vsync event tick timestamp.
   int64_t mCurrentTimestampUS;
