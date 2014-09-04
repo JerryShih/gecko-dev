@@ -13,64 +13,59 @@
 
 namespace mozilla {
 
-static PlatformVsyncTimer*
-CreateHWTimer(VsyncTimerObserver* aObserver)
+/*static*/ PlatformVsyncTimer*
+PlatformVsyncTimerFactory::CreateHWTimer(VsyncTimerObserver* aObserver)
 {
-  // Create the platform dependent vsync timer here
+  PlatformVsyncTimer* timer = nullptr;
+
+  // Create the platform dependent vsync timer here.
 #ifdef MOZ_WIDGET_GONK
-  return new GonkVsyncTimer(aObserver);
+  timer = new GonkVsyncTimer(aObserver);
 #endif
 
-  return nullptr;
-}
+  if (timer) {
+    if (!timer->Startup()) {
+      // Startup timer failed.
+      delete timer;
+      timer = nullptr;
+    }
+  }
 
-static PlatformVsyncTimer*
-CreateSWTimer(VsyncTimerObserver* aObserver)
-{
-  // Create the sw vsync timer here
-
-  return nullptr;
-}
-
-VsyncTimerObserver* PlatformVsyncTimerFactory::mObserver = nullptr;
-
-/*static*/ void
-PlatformVsyncTimerFactory::Init(VsyncTimerObserver* aObserver)
-{
-  mObserver = aObserver;
+  return timer;
 }
 
 /*static*/ PlatformVsyncTimer*
-PlatformVsyncTimerFactory::Create()
+PlatformVsyncTimerFactory::CreateSWTimer(VsyncTimerObserver* aObserver)
 {
-  MOZ_ASSERT(mObserver, "We should call PlatformVsyncTimerFactory::Init() first.");
+  PlatformVsyncTimer* timer = nullptr;
 
+  // Create the sw vsync timer here.
+
+  // TODO: create the sw timer.
+
+  if (timer) {
+    // SW timer should not init failed.
+    MOZ_RELEASE_ASSERT(timer->Startup());
+  }
+
+  return timer;
+}
+
+/*static*/ PlatformVsyncTimer*
+PlatformVsyncTimerFactory::Create(VsyncTimerObserver* aObserver)
+{
   PlatformVsyncTimer* timer = nullptr;
 
   // We init the hw timer first, and then fallback to sw timer.
-  timer = ChooseTimer(CreateHWTimer(mObserver));
+  timer = CreateHWTimer(aObserver);
   if (!timer){
-    timer = ChooseTimer(CreateSWTimer(mObserver));
+    timer = CreateSWTimer(aObserver);
   }
 
   // Just assert if here is no matched timer.
   MOZ_RELEASE_ASSERT(timer, "No vsync timer implementation.");
 
   return timer;
-}
-
-/*static*/ PlatformVsyncTimer*
-PlatformVsyncTimerFactory::ChooseTimer(PlatformVsyncTimer* aTimer)
-{
-  if (aTimer) {
-    if (!aTimer->Startup()) {
-      // Startup timer failed. Delete the timer.
-      delete aTimer;
-      aTimer = nullptr;
-    }
-  }
-
-  return aTimer;
 }
 
 } // namespace mozilla

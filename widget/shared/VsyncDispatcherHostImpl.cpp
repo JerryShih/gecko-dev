@@ -212,8 +212,7 @@ VsyncDispatcherHostImpl::Startup()
   // We only use the vsync timer at chrome process.
   // Content side doesn't need to do this. Chrome will send the vsync event
   // to content via ipc channel.
-  PlatformVsyncTimerFactory::Init(this);
-  mTimer = PlatformVsyncTimerFactory::Create();
+  mTimer = PlatformVsyncTimerFactory::Create(this);
   MOZ_ASSERT(mTimer);
   mVsyncRate = mTimer->GetVsyncRate();
   MOZ_ASSERT(mVsyncRate);

@@ -16,14 +16,11 @@ class VsyncTimerObserver;
 class PlatformVsyncTimerFactory
 {
 public:
-  static void Init(VsyncTimerObserver* aObserver);
-
-  static PlatformVsyncTimer* Create();
+  static PlatformVsyncTimer* Create(VsyncTimerObserver* aObserver);
 
 private:
-  static PlatformVsyncTimer* ChooseTimer(PlatformVsyncTimer* aTimer);
-
-  static VsyncTimerObserver* mObserver;
+  static PlatformVsyncTimer* CreateHWTimer(VsyncTimerObserver* aObserver);
+  static PlatformVsyncTimer* CreateSWTimer(VsyncTimerObserver* aObserver);
 };
 
 // This is the base class which will be notified for every vsync event.
