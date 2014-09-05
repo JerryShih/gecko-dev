@@ -35,9 +35,10 @@ protected:
   ~VsyncTimerObserver() { };
 };
 
-// Platform dependent vsync timer. It will call the VsyncTimerCallback when the
-// vsync event comes.
+// A cross-platform vsync timer that provides the vsync events for
+// VsyncTimerObserver.
 // We need to call Enable(true) to start the timer at first.
+//
 // The implementation is at the platform specific folder.
 // Please check:
 //   widget/android/*VsyncTimer.h
@@ -56,18 +57,20 @@ public:
 
   virtual ~PlatformVsyncTimer() { }
 
-  // Shutdown the timer. After shutdown, the Enable() function is invalid.
+  // Shutdown the timer.
   virtual void Shutdown() = 0;
 
   // Enable/disable the vsync event.
+  // It will become no functionality after shutdown.
   virtual void Enable(bool aEnable) = 0;
 
-  // Query the vsync timer rate per second. It will return 0 if the timer is
-  // invalid.
+  // Query the vsync timer rate per second.
+  // Return 0 if failed.
   virtual uint32_t GetVsyncRate() = 0;
 
 private:
-  // Startup the timer. It will return false if we can't init the timer.
+  // Startup the timer.
+  // Return true if the timer initials successfully.
   virtual bool Startup() = 0;
 
 protected:

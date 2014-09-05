@@ -23,13 +23,13 @@ class VsyncDispatcherClient;
 class VsyncDispatcherHost;
 
 // Every vsync event observer should inherit this base class.
+// TickTask() will be called by VsyncEventRegistry when a vsync event comes.
+// We should implement this function for our vsync-aligned task.
 class VsyncObserver
 {
   NS_INLINE_DECL_THREADSAFE_REFCOUNTING_WITH_MAIN_THREAD_DESTRUCTION(VsyncObserver);
 
 public:
-  // This function will be called by VsyncEventRegistry when a vsync event comes.
-  // We should implement this function for our vsync-aligned task.
   virtual void TickTask(int64_t aTimestampUS, uint64_t aFrameNumber) = 0;
 
 protected:
@@ -59,7 +59,7 @@ protected:
   ObserverList mObserverListList;
 };
 
-// VsyncDispatcher can dispatch vsync event to all registered observer.
+// VsyncDispatcher is used to dispatch vsync events to the registered observers.
 class VsyncDispatcher
 {
 public:
@@ -94,7 +94,9 @@ public:
   // Set vsync event IPC child.
   virtual void SetVsyncEventChild(layers::VsyncEventChild* aVsyncEventChild) = 0;
 
-  // Update the vsync rate getting from VDHost.
+  // Set the vsync rate getting from VDHost. It will be used by IPC child at
+  // initial phase.
+  // VDClient will cache this value for Content process VsyncRate query.
   virtual void SetVsyncRate(uint32_t aVsyncRate) = 0;
 
 protected:
