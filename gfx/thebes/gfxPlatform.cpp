@@ -389,6 +389,9 @@ gfxPlatform::Init()
 #endif
 
 #ifdef MOZ_WIDGET_GONK
+    // Startup the vsync dispatcher host at Content process.
+    // Currently, we only have gonk implementation, so we only enable the
+    // dispatcher with GONK and OMTC.
     if (gfxPrefs::FrameUniformityEnabled() && UsesOffMainThreadCompositing() &&
         XRE_GetProcessType() == GeckoProcessType_Default)
     {

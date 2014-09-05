@@ -347,7 +347,7 @@ VsyncDispatcherHostImpl::DispatchVsyncEvent()
   DispatchInputEvent();
 
   // Do compose.
-  Compose();
+  DispatchCompose();
 
   // Send vsync event to content process
   NotifyContentProcess();
@@ -375,7 +375,7 @@ VsyncDispatcherHostImpl::DispatchInputEvent()
 }
 
 void
-VsyncDispatcherHostImpl::Compose()
+VsyncDispatcherHostImpl::DispatchCompose()
 {
   MOZ_ASSERT(mInited);
   MOZ_ASSERT(IsInVsyncDispatcherThread());

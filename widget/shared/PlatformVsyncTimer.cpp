@@ -25,7 +25,8 @@ PlatformVsyncTimerFactory::CreateHWTimer(VsyncTimerObserver* aObserver)
 
   if (timer) {
     if (!timer->Startup()) {
-      // Startup timer failed.
+      // Init hw timer failed.
+      // Delete the allocated timer.
       delete timer;
       timer = nullptr;
     }
@@ -39,9 +40,7 @@ PlatformVsyncTimerFactory::CreateSWTimer(VsyncTimerObserver* aObserver)
 {
   PlatformVsyncTimer* timer = nullptr;
 
-  // Create the sw vsync timer here.
-
-  // TODO: create the sw timer.
+  // TODO: create the sw timer here.
 
   if (timer) {
     // SW timer should not init failed.
@@ -62,7 +61,7 @@ PlatformVsyncTimerFactory::Create(VsyncTimerObserver* aObserver)
     timer = CreateSWTimer(aObserver);
   }
 
-  // Just assert if here is no matched timer.
+  // Assert here if here is no timer available.
   MOZ_RELEASE_ASSERT(timer, "No vsync timer implementation.");
 
   return timer;

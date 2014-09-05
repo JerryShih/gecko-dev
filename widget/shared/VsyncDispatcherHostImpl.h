@@ -85,7 +85,7 @@ private:
   void DispatchInputEvent();
 
   // Notify compositor to do compose.
-  void Compose();
+  void DispatchCompose();
 
   void TickRefreshDriver();
 
