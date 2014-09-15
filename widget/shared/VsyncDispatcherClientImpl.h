@@ -22,9 +22,6 @@ class RefreshDriverRegistryClient;
 class VsyncDispatcherClientImpl MOZ_FINAL : public VsyncDispatcher
                                           , public VsyncDispatcherClient
 {
-  friend class ObserverListHelper;
-  friend class RefreshDriverRegistryClient;
-
   // We would like to create and delete the VsyncDispatcherClientImpl at main thread.
   NS_INLINE_DECL_THREADSAFE_REFCOUNTING_WITH_MAIN_THREAD_DESTRUCTION(VsyncDispatcherClientImpl);
 
@@ -33,6 +30,12 @@ public:
 
   virtual void Startup() MOZ_OVERRIDE;
   virtual void Shutdown() MOZ_OVERRIDE;
+
+  // Check the observer number in VsyncDispatcher to enable/disable vsync event
+  // notification.
+  void EnableVsyncNotificationIfhasObserver();
+
+  bool IsInVsyncDispatcherThread();
 
 private:
   VsyncDispatcherClientImpl();
@@ -48,8 +51,6 @@ private:
   // Set IPC child. It should be called at vsync dispatcher thread.
   virtual void SetVsyncEventChild(layers::VsyncEventChild* aVsyncEventChild) MOZ_OVERRIDE;
 
-  bool IsInVsyncDispatcherThread();
-
   // Dispatch vsync to observer
   // This function should run at vsync dispatcher thread
   void DispatchVsyncEvent(int64_t aTimestampUS, uint64_t aFrameNumber);
@@ -61,9 +62,7 @@ private:
 
   void EnableVsyncEvent(bool aEnable);
 
-  // Check the observer number in VsyncDispatcher to enable/disable vsync event
-  // notification.
-  void EnableVsyncNotificationIfhasObserver();
+
 
 private:
   static StaticRefPtr<VsyncDispatcherClientImpl> sVsyncDispatcherClient;
