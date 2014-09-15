@@ -1,5 +1,4 @@
-/* -*- Mode: C++; tab-width: 8; indent-tabs-mode: nil; c-basic-offset: 2 -*- */
-/* vim: set sw=4 ts=8 et tw=80 : */
+/* -*- Mode: C++; tab-width: 2; indent-tabs-mode: nil; c-basic-offset: 2 -*- */
 /* This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
@@ -11,12 +10,6 @@
 
 namespace mozilla {
 
-uint32_t
-VsyncEventRegistry::GetObserverNum(void) const
-{
-  return mObserverListList.Length();
-}
-
 /*static*/ VsyncDispatcher*
 VsyncDispatcher::GetInstance()
 {
@@ -25,6 +18,14 @@ VsyncDispatcher::GetInstance()
   } else {
     return VsyncDispatcherClientImpl::GetInstance();
   }
+}
+
+VsyncEventRegistry*
+VsyncDispatcher::GetInputDispatcherRegistry()
+{
+  MOZ_ASSERT(false, "GetInputDispatcherRegistry should be implemented");
+
+  return nullptr;
 }
 
 VsyncEventRegistry*
