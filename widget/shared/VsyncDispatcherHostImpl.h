@@ -1,8 +1,7 @@
-/* -*- Mode: C++; tab-width: 8; indent-tabs-mode: nil; c-basic-offset: 2 -*- */
-/* vim: set sw=2 ts=8 et ft=cpp : */
+/* -*- Mode: C++; tab-width: 2; indent-tabs-mode: nil; c-basic-offset: 2 -*- */
 /* This Source Code Form is subject to the terms of the Mozilla Public
- * License, v. 2.0. If a copy of the MPL was not distributed with this file,
- * You can obtain one at http://mozilla.org/MPL/2.0/. */
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
 #ifndef mozilla_widget_shared_VsyncDispatcherHostImpl_h
 #define mozilla_widget_shared_VsyncDispatcherHostImpl_h
@@ -23,9 +22,11 @@ namespace mozilla {
 
 class ObserverListHelper;
 
+// Registries
 class VsyncEventRegistryHost;
-class RefreshDriverRegistryHost;
 class CompositorRegistryHost;
+class InputDispatcherRegistryHost;
+class RefreshDriverRegistryHost;
 
 // The host side vsync dispatcher implementation.
 class VsyncDispatcherHostImpl MOZ_FINAL : public VsyncDispatcher
@@ -48,7 +49,7 @@ public:
   // notification.
   void EnableVsyncNotificationIfhasObserver();
 
-  bool IsInVsyncDispatcherThread();
+  bool IsInVsyncDispatcherThread() const;
 
 private:
   VsyncDispatcherHostImpl();
@@ -61,10 +62,6 @@ private:
   // The timestamp is microsecond.
   virtual void NotifyVsync(int64_t aTimestampUS) MOZ_OVERRIDE;
 
-  // Enable/disable input dispatcher to do input dispatch at vsync.
-  virtual void EnableInputDispatcher() MOZ_OVERRIDE;
-  virtual void DisableInputDispatcher(bool aSync) MOZ_OVERRIDE;
-
   // Set IPC parent. It should be called at vsync dispatcher thread.
   virtual void RegisterVsyncEventParent(layers::VsyncEventParent* aVsyncEventParent) MOZ_OVERRIDE;
   virtual void UnregisterVsyncEventParent(layers::VsyncEventParent* aVsyncEventParent) MOZ_OVERRIDE;
@@ -72,6 +69,7 @@ private:
   // Return the vsync event fps.
   virtual uint32_t GetVsyncRate() const MOZ_OVERRIDE;
 
+  virtual VsyncEventRegistry* GetInputDispatcherRegistry() MOZ_OVERRIDE;
   virtual VsyncEventRegistry* GetRefreshDriverRegistry() MOZ_OVERRIDE;
   virtual VsyncEventRegistry* GetCompositorRegistry() MOZ_OVERRIDE;
 
@@ -113,8 +111,9 @@ private:
   typedef nsTArray<layers::VsyncEventParent*> VsyncEventParentList;
   VsyncEventParentList mVsyncEventParentList;
 
+  // Registries
+  InputDispatcherRegistryHost* mInputDispatcher;
   RefreshDriverRegistryHost* mRefreshDriver;
-
   CompositorRegistryHost* mCompositor;
 
   PlatformVsyncTimer* mTimer;

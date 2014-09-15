@@ -1,5 +1,4 @@
-/* -*- Mode: C++; tab-width: 8; indent-tabs-mode: nil; c-basic-offset: 2 -*- */
-/* vim: set sw=4 ts=8 et tw=80 : */
+/* -*- Mode: C++; tab-width: 2; indent-tabs-mode: nil; c-basic-offset: 2 -*- */
 /* This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
@@ -32,16 +31,49 @@ public:
   virtual void Dispatch(int64_t aTimestampUS, uint64_t aFrameNumber) = 0;
 
   virtual void Register(VsyncObserver* aVsyncObserver) MOZ_OVERRIDE;
-  virtual void Unregister(VsyncObserver* VsyncObserver, bool aSync) MOZ_OVERRIDE;
+  virtual void Unregister(VsyncObserver* aVsyncObserver, bool aSync) MOZ_OVERRIDE;
+
+  virtual uint32_t GetObserverNum() const MOZ_OVERRIDE;
 
 protected:
   void EnableVsyncNotificationIfhasObserver();
 
-  bool IsInVsyncDispatcherThread();
+  bool IsInVsyncDispatcherThread() const;
 
   MessageLoop* GetMessageLoop();
 
+protected:
   VsyncDispatcherHostImpl* mVsyncDispatcher;
+
+  typedef nsTArray<VsyncObserver*> ObserverList;
+  ObserverList mObserverListList;
+};
+
+// The vsync event registry for InputDispatcher
+class InputDispatcherRegistryHost MOZ_FINAL : public VsyncEventRegistry
+{
+public:
+  InputDispatcherRegistryHost(VsyncDispatcherHostImpl* aVsyncDispatcher);
+  ~InputDispatcherRegistryHost();
+
+  // Tick registered InputDispatcher. Return true if input dispatcher dispatches
+  // one task.
+  bool Dispatch(int64_t aTimestampUS, uint64_t aFrameNumber);
+
+  virtual void Register(VsyncObserver* aVsyncObserver) MOZ_OVERRIDE;
+  virtual void Unregister(VsyncObserver* aVsyncObserver, bool aSync) MOZ_OVERRIDE;
+
+  virtual uint32_t GetObserverNum() const MOZ_OVERRIDE;
+
+private:
+  static void SetObserver(VsyncObserver** aLVsyncObserver,
+                          VsyncObserver* aRVsyncObserver,
+                          Monitor* aMonitor = nullptr,
+                          bool* aDone = nullptr);
+
+private:
+  VsyncDispatcherHostImpl* mVsyncDispatcher;
+  VsyncObserver* mObserver;
 };
 
 // The vsync event registry for RefreshDriver
@@ -87,15 +119,23 @@ VsyncEventRegistryHost::Register(VsyncObserver* aVsyncObserver)
 }
 
 void
-VsyncEventRegistryHost::Unregister(VsyncObserver* VsyncObserver, bool aSync)
+VsyncEventRegistryHost::Unregister(VsyncObserver* aVsyncObserver, bool aSync)
 {
   if (!aSync) {
-    ObserverListHelper::AsyncRemove(this, &mObserverListList, VsyncObserver);
+    ObserverListHelper::AsyncRemove(this, &mObserverListList, aVsyncObserver);
   } else {
     ObserverListHelper::SyncRemove(this,
                                    &mObserverListList,
-                                   VsyncObserver);
+                                   aVsyncObserver);
   }
+}
+
+uint32_t
+VsyncEventRegistryHost::GetObserverNum() const
+{
+  MOZ_ASSERT(IsInVsyncDispatcherThread());
+
+  return mObserverListList.Length();
 }
 
 void
@@ -107,7 +147,7 @@ VsyncEventRegistryHost::EnableVsyncNotificationIfhasObserver()
 }
 
 bool
-VsyncEventRegistryHost::IsInVsyncDispatcherThread()
+VsyncEventRegistryHost::IsInVsyncDispatcherThread() const
 {
   return mVsyncDispatcher->IsInVsyncDispatcherThread();
 }
@@ -116,6 +156,121 @@ MessageLoop*
 VsyncEventRegistryHost::GetMessageLoop()
 {
   return mVsyncDispatcher->GetMessageLoop();
+}
+
+InputDispatcherRegistryHost::InputDispatcherRegistryHost(VsyncDispatcherHostImpl* aVsyncDispatcher)
+  : mVsyncDispatcher(aVsyncDispatcher)
+  , mObserver(nullptr)
+{
+  MOZ_ASSERT(NS_IsMainThread());
+  MOZ_ASSERT(mVsyncDispatcher);
+}
+
+InputDispatcherRegistryHost::~InputDispatcherRegistryHost()
+{
+  MOZ_ASSERT(NS_IsMainThread());
+  Unregister(mObserver, true);
+}
+
+bool
+InputDispatcherRegistryHost::Dispatch(int64_t aTimestampUS, uint64_t aFrameNumber)
+{
+  MOZ_ASSERT(mVsyncDispatcher->IsInVsyncDispatcherThread());
+
+  //TODO: dispatch input
+
+  return true;
+}
+
+void
+InputDispatcherRegistryHost::Register(VsyncObserver* aVsyncObserver)
+{
+  if (mVsyncDispatcher->IsInVsyncDispatcherThread()) {
+    SetObserver(&mObserver, aVsyncObserver);
+    return;
+  }
+
+  MessageLoop* loop = mVsyncDispatcher->GetMessageLoop();
+  loop->PostTask(FROM_HERE,
+                 NewRunnableFunction(&InputDispatcherRegistryHost::SetObserver,
+                                     &mObserver,
+                                     aVsyncObserver,
+                                     nullptr,
+                                     nullptr));
+}
+
+// Don't care aVsyncObserver in this function.
+void
+InputDispatcherRegistryHost::Unregister(VsyncObserver* aVsyncObserver, bool aSync)
+{
+  if (mVsyncDispatcher->IsInVsyncDispatcherThread()) {
+    // In Vsync Dispatcher Thread, we don't care aSync
+    SetObserver(&mObserver, nullptr);
+    return;
+  }
+
+  if (!aSync) {
+    MessageLoop* loop = mVsyncDispatcher->GetMessageLoop();
+    loop->PostTask(FROM_HERE,
+                   NewRunnableFunction(&InputDispatcherRegistryHost::SetObserver,
+                                       &mObserver,
+                                       nullptr,
+                                       nullptr,
+                                       nullptr));
+  } else {
+    Monitor monitor("InputDispatcherRegistryHost Unregister");
+    MonitorAutoLock lock(monitor);
+    bool done = false;
+
+    MessageLoop* loop = mVsyncDispatcher->GetMessageLoop();
+    loop->PostTask(FROM_HERE,
+                   NewRunnableFunction(&InputDispatcherRegistryHost::SetObserver,
+                                       &mObserver,
+                                       nullptr,
+                                       &monitor,
+                                       &done));
+
+    while (!done) {
+      lock.Wait(PR_MillisecondsToInterval(32));
+      printf_stderr("Wait InputDispatcherRegistryHost SetObserver timeout");
+    }
+  }
+}
+
+uint32_t
+InputDispatcherRegistryHost::GetObserverNum() const
+{
+  MOZ_ASSERT(mVsyncDispatcher->IsInVsyncDispatcherThread());
+
+  return mObserver ? 1 : 0;
+}
+
+// Assumption: InputDispatcherRegistryHost exists if this function is called
+/*static*/ void
+InputDispatcherRegistryHost::SetObserver(VsyncObserver** aLVsyncObserver,
+                                         VsyncObserver* aRVsyncObserver,
+                                         Monitor* aMonitor,
+                                         bool* aDone)
+{
+  MOZ_ASSERT(VsyncDispatcherHostImpl::GetInstance());
+  MOZ_ASSERT(VsyncDispatcherHostImpl::GetInstance()->IsInVsyncDispatcherThread());
+  // If we already have an input dispatcher, we should not receive another one.
+  MOZ_ASSERT(*aLVsyncObserver && aRVsyncObserver && (*aLVsyncObserver != aRVsyncObserver));
+
+  // If we get a Monitor, we use the sync mode. Notify the monitor after
+  // the assignment done.
+  if (aMonitor) {
+    MonitorAutoLock lock(*aMonitor);
+
+    *aLVsyncObserver = aRVsyncObserver;
+    *aDone = true;
+
+    lock.Notify();
+  } else {
+    *aLVsyncObserver = aRVsyncObserver;
+  }
+
+  VsyncDispatcherHostImpl::GetInstance()->EnableVsyncNotificationIfhasObserver();
 }
 
 RefreshDriverRegistryHost::RefreshDriverRegistryHost(VsyncDispatcherHostImpl* aVsyncDispatcher)
@@ -201,6 +356,7 @@ VsyncDispatcherHostImpl::Startup()
   mInited = true;
 
   // Init all vsync event registry;
+  mInputDispatcher = new InputDispatcherRegistryHost(this);
   mRefreshDriver = new RefreshDriverRegistryHost(this);
   mCompositor = new CompositorRegistryHost(this);
 
@@ -241,6 +397,8 @@ VsyncDispatcherHostImpl::Shutdown()
   mRefreshDriver = nullptr;
   delete mCompositor;
   mCompositor = nullptr;
+  delete mInputDispatcher;
+  mInputDispatcher = nullptr;
 
   mVsyncEventParentList.Clear();
 
@@ -256,6 +414,7 @@ VsyncDispatcherHostImpl::VsyncDispatcherHostImpl()
   , mVsyncEventNeeded(false)
   , mVsyncDispatchHostThread(nullptr)
   , mVsyncDispatchHostMessageLoop(nullptr)
+  , mInputDispatcher(nullptr)
   , mRefreshDriver(nullptr)
   , mCompositor(nullptr)
   , mTimer(nullptr)
@@ -268,6 +427,15 @@ VsyncDispatcherHostImpl::VsyncDispatcherHostImpl()
 VsyncDispatcherHostImpl::~VsyncDispatcherHostImpl()
 {
   MOZ_ASSERT(NS_IsMainThread());
+}
+
+VsyncEventRegistry*
+VsyncDispatcherHostImpl::GetInputDispatcherRegistry()
+{
+  MOZ_ASSERT(mInited);
+  MOZ_ASSERT(mInputDispatcher);
+
+  return mInputDispatcher;
 }
 
 VsyncEventRegistry*
@@ -362,16 +530,18 @@ VsyncDispatcherHostImpl::GetVsyncObserverCount()
   MOZ_ASSERT(mInited);
   MOZ_ASSERT(IsInVsyncDispatcherThread());
 
-  return mVsyncEventParentList.Length() + mRefreshDriver->GetObserverNum() +
-      mCompositor->GetObserverNum();
+  return mVsyncEventParentList.Length() + mInputDispatcher->GetObserverNum()
+                                        + mRefreshDriver->GetObserverNum()
+                                        + mCompositor->GetObserverNum();
 }
 
 void
 VsyncDispatcherHostImpl::DispatchInputEvent()
 {
+  MOZ_ASSERT(mInited);
   MOZ_ASSERT(IsInVsyncDispatcherThread());
 
-  //TODO: notify chrome to dispatch input
+  mInputDispatcher->Dispatch(mCurrentTimestampUS, mCurrentFrameNumber);
 }
 
 void
@@ -406,20 +576,6 @@ VsyncDispatcherHostImpl::NotifyContentProcess()
   }
 }
 
-void
-VsyncDispatcherHostImpl::EnableInputDispatcher()
-{
-  //TODO: enable input dispatcher
-}
-
-void
-VsyncDispatcherHostImpl::DisableInputDispatcher(bool aSync)
-{
-  //TODO: disable input dispatcher
-  //      With sync flag, we should block here until we actually disable the
-  //      InputDispatcher at vsync dispatcher thread.
-}
-
 MessageLoop*
 VsyncDispatcherHostImpl::GetMessageLoop()
 {
@@ -443,7 +599,7 @@ VsyncDispatcherHostImpl::EnableVsyncNotificationIfhasObserver()
 }
 
 bool
-VsyncDispatcherHostImpl::IsInVsyncDispatcherThread()
+VsyncDispatcherHostImpl::IsInVsyncDispatcherThread() const
 {
   return (mVsyncDispatchHostThread->thread_id() == PlatformThread::CurrentId());
 }

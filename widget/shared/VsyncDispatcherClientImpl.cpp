@@ -1,5 +1,4 @@
-/* -*- Mode: C++; tab-width: 8; indent-tabs-mode: nil; c-basic-offset: 2 -*- */
-/* vim: set sw=4 ts=8 et tw=80 : */
+/* -*- Mode: C++; tab-width: 2; indent-tabs-mode: nil; c-basic-offset: 2 -*- */
 /* This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
@@ -29,6 +28,8 @@ public:
   virtual void Register(VsyncObserver* aVsyncObserver) MOZ_OVERRIDE;
   virtual void Unregister(VsyncObserver* aVsyncObserver, bool aSync) MOZ_OVERRIDE;
 
+  virtual uint32_t GetObserverNum() const MOZ_OVERRIDE;
+
   // Tick all registered refresh driver
   void Dispatch(int64_t aTimestampUS, uint64_t aFrameNumber);
 
@@ -37,7 +38,11 @@ private:
 
   bool IsInVsyncDispatcherThread();
 
+private:
   VsyncDispatcherClientImpl* mVsyncDispatcher;
+
+  typedef nsTArray<VsyncObserver*> ObserverList;
+  ObserverList mObserverListList;
 };
 
 RefreshDriverRegistryClient::RefreshDriverRegistryClient(VsyncDispatcherClientImpl* aVsyncDispatcher)
@@ -69,6 +74,14 @@ RefreshDriverRegistryClient::Unregister(VsyncObserver* aVsyncObserver, bool aSyn
   // We only call unregister at vsync dispatcher thread, so ignore the sync flag
   // here.
   ObserverListHelper::Remove(this, &mObserverListList, aVsyncObserver);
+}
+
+uint32_t
+RefreshDriverRegistryClient::GetObserverNum() const
+{
+  MOZ_ASSERT(mVsyncDispatcher->IsInVsyncDispatcherThread());
+
+  return mObserverListList.Length();
 }
 
 void

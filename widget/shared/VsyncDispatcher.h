@@ -1,5 +1,4 @@
-/* -*- Mode: C++; tab-width: 8; indent-tabs-mode: nil; c-basic-offset: 2 -*- */
-/* vim: set sw=2 ts=8 et ft=cpp : */
+/* -*- Mode: C++; tab-width: 2; indent-tabs-mode: nil; c-basic-offset: 2 -*- */
 /* This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this file,
  * You can obtain one at http://mozilla.org/MPL/2.0/. */
@@ -27,8 +26,6 @@ class VsyncDispatcherHost;
 // We should implement this function for our vsync-aligned task.
 class VsyncObserver
 {
-  NS_INLINE_DECL_THREADSAFE_REFCOUNTING_WITH_MAIN_THREAD_DESTRUCTION(VsyncObserver);
-
 public:
   // The vsync-aligned task. Return true if there has a task ticked.
   virtual bool TickTask(int64_t aTimestampUS, uint64_t aFrameNumber) = 0;
@@ -42,7 +39,7 @@ protected:
 class VsyncEventRegistry
 {
 public:
-  uint32_t GetObserverNum(void) const;
+  virtual uint32_t GetObserverNum() const = 0;
 
   // Register/Unregister vsync observer.
   // The Register() call is one-shot registry. We only call TickTask()
@@ -51,13 +48,10 @@ public:
   // All vsync observers should call sync unregister call before they
   // call destructor, so we will not tick the observer after destroyed.
   virtual void Register(VsyncObserver* aVsyncObserver) = 0;
-  virtual void Unregister(VsyncObserver* VsyncObserver, bool aSync = false) = 0;
+  virtual void Unregister(VsyncObserver* aVsyncObserver, bool aSync = false) = 0;
 
 protected:
   virtual ~VsyncEventRegistry() {}
-
-  typedef nsTArray<VsyncObserver*> ObserverList;
-  ObserverList mObserverListList;
 };
 
 // VsyncDispatcher is used to dispatch vsync events to the registered observers.
@@ -78,6 +72,7 @@ public:
   virtual VsyncDispatcherHost* AsVsyncDispatcherHost();
 
   // Get Registry for refresh driver and compositor.
+  virtual VsyncEventRegistry* GetInputDispatcherRegistry();
   virtual VsyncEventRegistry* GetRefreshDriverRegistry();
   virtual VsyncEventRegistry* GetCompositorRegistry();
 
@@ -108,12 +103,6 @@ protected:
 class VsyncDispatcherHost
 {
 public:
-  // Enable/disable input dispatch when vsync event comes.
-  // We only handle the input at chrome process, so VDClient doesn't have this
-  // interface.
-  virtual void EnableInputDispatcher() = 0;
-  virtual void DisableInputDispatcher(bool aSync = false) = 0;
-
   // Set vsync event IPC parent.
   virtual void RegisterVsyncEventParent(layers::VsyncEventParent* aVsyncEventParent) = 0;
   virtual void UnregisterVsyncEventParent(layers::VsyncEventParent* aVsyncEventParent) = 0;
