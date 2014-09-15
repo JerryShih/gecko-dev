@@ -10,6 +10,7 @@ if CONFIG['MOZ_X11']:
 EXPORTS.mozilla += [
     'VsyncDispatcher.h',
     'VsyncDispatcherHelper.h',
+    'VsyncDispatcherTrace.h',
 ]
 
 UNIFIED_SOURCES += [
@@ -23,6 +24,7 @@ SOURCES += [
     'VsyncDispatcher.cpp',
     'VsyncDispatcherClientImpl.cpp',
     'VsyncDispatcherHostImpl.cpp',
+    'VsyncDispatcherTrace.cpp',
 ]
 
 # Include platform dependent vsync timer header

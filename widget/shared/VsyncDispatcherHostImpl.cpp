@@ -10,6 +10,7 @@
 #include "nsThreadUtils.h"
 #include "nsXULAppAPI.h"
 #include "VsyncDispatcherHelper.h"
+#include "VsyncDispatcherTrace.h"
 
 namespace mozilla {
 
