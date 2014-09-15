@@ -30,7 +30,8 @@ class VsyncObserver
   NS_INLINE_DECL_THREADSAFE_REFCOUNTING_WITH_MAIN_THREAD_DESTRUCTION(VsyncObserver);
 
 public:
-  virtual void TickTask(int64_t aTimestampUS, uint64_t aFrameNumber) = 0;
+  // The vsync-aligned task. Return true if there has a task ticked.
+  virtual bool TickTask(int64_t aTimestampUS, uint64_t aFrameNumber) = 0;
 
 protected:
   virtual ~VsyncObserver() { }

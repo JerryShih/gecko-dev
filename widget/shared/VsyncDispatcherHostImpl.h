@@ -32,9 +32,6 @@ class VsyncDispatcherHostImpl MOZ_FINAL : public VsyncDispatcher
                                         , public VsyncDispatcherHost
                                         , public VsyncTimerObserver
 {
-  friend class ObserverListHelper;
-  friend class VsyncEventRegistryHost;
-
   // We would like to create and delete the VsyncDispatcherHostImpl at main thread.
   NS_INLINE_DECL_THREADSAFE_REFCOUNTING_WITH_MAIN_THREAD_DESTRUCTION(VsyncDispatcherHostImpl);
 
@@ -43,6 +40,15 @@ public:
 
   virtual void Startup() MOZ_OVERRIDE;
   virtual void Shutdown() MOZ_OVERRIDE;
+
+  // Get VsyncDispatcher's message loop
+  virtual MessageLoop* GetMessageLoop() MOZ_OVERRIDE;
+
+  // Check the observer number in VsyncDispatcher to enable/disable vsync event
+  // notification.
+  void EnableVsyncNotificationIfhasObserver();
+
+  bool IsInVsyncDispatcherThread();
 
 private:
   VsyncDispatcherHostImpl();
@@ -65,9 +71,6 @@ private:
 
   // Return the vsync event fps.
   virtual uint32_t GetVsyncRate() const MOZ_OVERRIDE;
-
-  // Get VsyncDispatcher's message loop
-  virtual MessageLoop* GetMessageLoop() MOZ_OVERRIDE;
 
   virtual VsyncEventRegistry* GetRefreshDriverRegistry() MOZ_OVERRIDE;
   virtual VsyncEventRegistry* GetCompositorRegistry() MOZ_OVERRIDE;
@@ -94,12 +97,6 @@ private:
 
   // Return total registered object number.
   int GetVsyncObserverCount();
-
-  // Check the observer number in VsyncDispatcher to enable/disable vsync event
-  // notification.
-  void EnableVsyncNotificationIfhasObserver();
-
-  bool IsInVsyncDispatcherThread();
 
 private:
   static StaticRefPtr<VsyncDispatcherHostImpl> sVsyncDispatcherHost;
