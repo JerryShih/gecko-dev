@@ -9,6 +9,7 @@ if CONFIG['MOZ_X11']:
 
 EXPORTS.mozilla += [
     'VsyncDispatcher.h',
+    'VsyncDispatcherHelper.h',
 ]
 
 UNIFIED_SOURCES += [
