@@ -76,7 +76,7 @@ private:
   void CreateVsyncDispatchThread();
 
   // Generate frame number and call dispatch event.
-  void NotifyVsyncTask(int64_t aTimestampUS);
+  void NotifyVsyncTask(int64_t aTimestampUS, uint64_t aFrameNumber);
 
   // Dispatch vsync to observer
   // This function should run at vsync dispatcher thread
@@ -120,8 +120,10 @@ private:
 
   // Vsync event tick timestamp.
   int64_t mCurrentTimestampUS;
-  // Monotonic increased frame number.
+  // Vsync event current frame number.
   uint64_t mCurrentFrameNumber;
+  // Monotonic increased frame number.
+  uint64_t mVsyncFrameNumber;
 };
 
 } // namespace mozilla

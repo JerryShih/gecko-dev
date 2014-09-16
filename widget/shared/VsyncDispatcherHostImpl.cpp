@@ -420,6 +420,7 @@ VsyncDispatcherHostImpl::VsyncDispatcherHostImpl()
   , mTimer(nullptr)
   , mCurrentTimestampUS(0)
   , mCurrentFrameNumber(0)
+  , mVsyncFrameNumber(0)
 {
   MOZ_ASSERT(NS_IsMainThread());
 }
@@ -479,24 +480,26 @@ VsyncDispatcherHostImpl::NotifyVsync(int64_t aTimestampUS)
 {
   MOZ_ASSERT(mInited);
 
+  // We propose a monotonic increased frame number here.
+  // It helps us to identify the frame count for each vsync update.
+  ++mVsyncFrameNumber;
+
   GetMessageLoop()->PostTask(FROM_HERE,
                              NewRunnableMethod(this,
                              &VsyncDispatcherHostImpl::NotifyVsyncTask,
-                             aTimestampUS));
+                             aTimestampUS,
+                             mVsyncFrameNumber));
 }
 
 void
-VsyncDispatcherHostImpl::NotifyVsyncTask(int64_t aTimestampUS)
+VsyncDispatcherHostImpl::NotifyVsyncTask(int64_t aTimestampUS, uint64_t aFrameNumber)
 {
   MOZ_ASSERT(mInited);
   MOZ_ASSERT(IsInVsyncDispatcherThread());
 
   MOZ_ASSERT(aTimestampUS > mCurrentTimestampUS);
   mCurrentTimestampUS = aTimestampUS;
-
-  // We propose a monotonic increased frame number here.
-  // It helps us to identify the frame count for each vsync update.
-  ++mCurrentFrameNumber;
+  mCurrentFrameNumber = aFrameNumber;
 
   DispatchVsyncEvent();
 }
