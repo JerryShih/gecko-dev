@@ -568,6 +568,7 @@ VsyncDispatcherHostImpl::TickRefreshDriver()
 void
 VsyncDispatcherHostImpl::NotifyContentProcess()
 {
+  MOZ_ASSERT(mInited);
   MOZ_ASSERT(IsInVsyncDispatcherThread());
 
   VsyncData vsyncData(mCurrentTimestampUS, mCurrentFrameNumber);
