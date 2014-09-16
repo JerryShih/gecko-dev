@@ -38,6 +38,10 @@
 #include <unistd.h>
 #include <utils/Timers.h>
 
+// Debug
+#include "cutils/properties.h"
+#include "mozilla/VsyncDispatcherTrace.h"
+
 #define LOG(args...)                                            \
   __android_log_print(ANDROID_LOG_INFO, "Gonk" , ## args)
 
@@ -84,21 +88,38 @@ class DispatchTouchEventsMainThread : public nsRunnable
 {
 public:
   DispatchTouchEventsMainThread(GeckoTouchDispatcher* aTouchDispatcher,
-                                uint64_t aVsyncTime)
+                                uint64_t aVsyncTime,
+                                uint64_t aFrameNumber)
     : mTouchDispatcher(aTouchDispatcher)
     , mVsyncTime(aVsyncTime)
+    , mFrameNumber(aFrameNumber)
   {
   }
 
   NS_IMETHOD Run()
   {
-    mTouchDispatcher->DispatchTouchMoveEvents(mVsyncTime);
+    char propValue[PROPERTY_VALUE_MAX];
+    property_get("silk.i.lat", propValue, "0");
+    if (atoi(propValue) != 0) {
+      // End Latency
+      VSYNC_ASYNC_SYSTRACE_LABEL_END_PRINTF((int32_t)mFrameNumber, "Input_Latency (%u)", (uint32_t)mFrameNumber);
+    }
+
+    property_get("silk.i.scope", propValue, "0");
+    if (atoi(propValue) == 0) {
+      mTouchDispatcher->DispatchTouchMoveEvents(mVsyncTime);
+    } else {
+      // Scope
+      VSYNC_SCOPED_SYSTRACE_LABEL_PRINTF("Input (%u)", (uint32_t)mFrameNumber);
+      mTouchDispatcher->DispatchTouchMoveEvents(mVsyncTime);
+    }
     return NS_OK;
   }
 
 private:
   nsRefPtr<GeckoTouchDispatcher> mTouchDispatcher;
   uint64_t mVsyncTime;
+  uint64_t mFrameNumber;
 };
 
 class DispatchSingleTouchMainThread : public nsRunnable
@@ -137,7 +158,16 @@ GeckoTouchDispatcher::TickVsync(int64_t aTimestampNanosecond,
 
   if (haveTouchData) {
     // aTimestampUS is in microseconds, so we have to change its unit
-    NS_DispatchToMainThread(new DispatchTouchEventsMainThread(this, aTimestampNanosecond));
+    NS_DispatchToMainThread(new DispatchTouchEventsMainThread(this,
+                                                              aTimestampNanosecond,
+                                                              aFrameNumber));
+  } else {
+    char propValue[PROPERTY_VALUE_MAX];
+    property_get("silk.i.lat", propValue, "0");
+    if (atoi(propValue) != 0) {
+      // End Latency
+      VSYNC_ASYNC_SYSTRACE_LABEL_END_PRINTF((int32_t)aFrameNumber, "Input_Latency (%u)", (uint32_t)aFrameNumber);
+    }
   }
 
   return haveTouchData;

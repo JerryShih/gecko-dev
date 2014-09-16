@@ -61,6 +61,10 @@
 #include "mozilla/HalTypes.h"
 #include "mozilla/StaticPtr.h"
 
+// Debug
+#include "cutils/properties.h"
+#include "mozilla/VsyncDispatcherTrace.h"
+
 namespace mozilla {
 namespace layers {
 
@@ -282,8 +286,24 @@ CompositorParent::TickVsyncInternal(int64_t aTimestampNanosecond,
 
   mTimestamp = aTimestamp;
 
-  if (mVsyncComposeNeeded) {
-    CompositeCallback();
+  char propValue[PROPERTY_VALUE_MAX];
+  property_get("silk.c.lat", propValue, "0");
+  if (atoi(propValue) != 0) {
+    // End Latency
+    VSYNC_ASYNC_SYSTRACE_LABEL_END_PRINTF((int32_t)aFrameNumber, "Comp_Latency (%u)", (uint32_t)aFrameNumber);
+  }
+
+  property_get("silk.c.scope", propValue, "0");
+  if (atoi(propValue) != 0) {
+    if (mVsyncComposeNeeded) {
+      // Scope
+      VSYNC_SCOPED_SYSTRACE_LABEL_PRINTF("Compositor (%u)", (uint32_t)aFrameNumber);
+      CompositeCallback();
+    }
+  } else {
+    if (mVsyncComposeNeeded) {
+      CompositeCallback();
+    }
   }
 }
 

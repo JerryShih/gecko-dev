@@ -11,6 +11,10 @@
 #include "VsyncDispatcherHelper.h"
 #include "VsyncDispatcherTrace.h"
 
+// Debug
+#include "cutils/properties.h"
+#include "mozilla/VsyncDispatcherTrace.h"
+
 namespace mozilla {
 
 using namespace layers;
@@ -213,19 +217,42 @@ VsyncDispatcherClientImpl::DispatchVsyncEvent(int64_t aTimestampNanosecond,
   MOZ_ASSERT(aTimestamp > mCurrentTimestamp);
   MOZ_ASSERT(aTimestampJS > mCurrentTimestampJS);
   MOZ_ASSERT(aFrameNumber > mCurrentFrameNumber);
+
+  // End
+  char propValue[PROPERTY_VALUE_MAX];
+  property_get("silk.ipc", propValue, "0");
+  if (atoi(propValue) != 0) {
+    VSYNC_ASYNC_SYSTRACE_LABEL_END_PRINTF((int32_t)aFrameNumber, "IPC (%u)", (uint32_t)aFrameNumber);
+  }
+
   mCurrentTimestampNanosecond = aTimestampNanosecond;
   mCurrentTimestamp = aTimestamp;
   mCurrentTimestampJS = aTimestampJS;
   mCurrentFrameNumber = aFrameNumber;
 
-  if (!mVsyncEventNeeded) {
-    // If we received vsync event but there is no observer here, we disable
-    // the vsync event again.
-    EnableVsyncEvent(false);
-    return;
-  }
+  // Scope
+  property_get("silk.r.scope.client", propValue, "0");
+  if (atoi(propValue) != 0) {
+    VSYNC_SCOPED_SYSTRACE_LABEL_PRINTF("RefreshDrive.client (%u)", (uint32_t)aFrameNumber);
 
-  TickRefreshDriver();
+    if (!mVsyncEventNeeded) {
+      // If we received vsync event but there is no observer here, we disable
+      // the vsync event again.
+      EnableVsyncEvent(false);
+      return;
+    }
+
+    TickRefreshDriver();
+  } else {
+    if (!mVsyncEventNeeded) {
+      // If we received vsync event but there is no observer here, we disable
+      // the vsync event again.
+      EnableVsyncEvent(false);
+      return;
+    }
+
+    TickRefreshDriver();
+  }
 
   mVsyncEventNeeded = (GetVsyncObserverCount() > 0);
 }

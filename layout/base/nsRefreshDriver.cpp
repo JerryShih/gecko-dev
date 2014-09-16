@@ -54,6 +54,10 @@
 #include "nsDocShell.h"
 #include "nsISimpleEnumerator.h"
 
+// Debug
+#include "cutils/properties.h"
+#include "mozilla/VsyncDispatcherTrace.h"
+
 using namespace mozilla;
 using namespace mozilla::widget;
 
@@ -259,7 +263,21 @@ private:
                       int64_t aTimestampJS,
                       uint64_t aFrameNumber)
     {
-      mTimer->VsyncTick(aTimestampNanosecond, aTimestamp, aTimestampJS, aFrameNumber);
+      char propValue[PROPERTY_VALUE_MAX];
+      property_get("silk.r.lat", propValue, "0");
+      if (atoi(propValue) != 0) {
+        // Latency End
+        VSYNC_ASYNC_SYSTRACE_LABEL_END_PRINTF((int32_t)aFrameNumber, "RD_Latency (%u)", (uint32_t)aFrameNumber);
+      }
+
+      property_get("silk.r.scope", propValue, "0");
+      if (atoi(propValue) != 0) {
+        // Scope
+        VSYNC_SCOPED_SYSTRACE_LABEL_PRINTF("RefreshDriver (%u)", (uint32_t)aFrameNumber);
+        mTimer->VsyncTick(aTimestampNanosecond, aTimestamp, aTimestampJS, aFrameNumber);
+      } else {
+        mTimer->VsyncTick(aTimestampNanosecond, aTimestamp, aTimestampJS, aFrameNumber);
+      }
     }
 
     VsyncRefreshDriverTimer* mTimer;

@@ -10,7 +10,10 @@
 #include "nsThreadUtils.h"
 #include "nsXULAppAPI.h"
 #include "VsyncDispatcherHelper.h"
+
+// Debug
 #include "VsyncDispatcherTrace.h"
+#include "cutils/properties.h"
 
 namespace mozilla {
 
@@ -195,10 +198,18 @@ InputDispatcherRegistryHost::Dispatch(int64_t aTimestampNanosecond,
 
   bool isTicked = false;
   if (mObserver) {
+    char propValue[PROPERTY_VALUE_MAX];
+    property_get("silk.i.lat", propValue, "0");
+    if (atoi(propValue) != 0) {
+      // Begin Latency
+      VSYNC_ASYNC_SYSTRACE_LABEL_BEGIN_PRINTF((int32_t)aFrameNumber, "Input_Latency (%u)", (uint32_t)aFrameNumber);
+    }
+
     isTicked = mObserver->TickVsync(aTimestampNanosecond,
                                     aTimestamp,
                                     aTimestampJS,
                                     aFrameNumber);
+    mObserver = nullptr;
   }
   return isTicked;
 }
@@ -320,7 +331,15 @@ RefreshDriverRegistryHost::Dispatch(int64_t aTimestampNanosecond,
   // doesn't run at VsyncDispatcherThread. We always post a task to add/remove
   // the the observer list, so we don't need a list copy here.
   for (ObserverList::size_type i = 0; i < mObserverListList.Length(); i++) {
-    mObserverListList[i]->TickVsync(aTimestampNanosecond, aTimestamp, aTimestampJS, aFrameNumber);
+    char propValue[PROPERTY_VALUE_MAX];
+    property_get("silk.r.lat", propValue, "0");
+    if (atoi(propValue) != 0) {
+      // Begin Latency
+      VSYNC_ASYNC_SYSTRACE_LABEL_BEGIN_PRINTF((int32_t)aFrameNumber, "RD_Latency (%u)", (uint32_t)aFrameNumber);
+      mObserverListList[i]->TickVsync(aTimestampNanosecond, aTimestamp, aTimestampJS, aFrameNumber);
+    } else {
+      mObserverListList[i]->TickVsync(aTimestampNanosecond, aTimestamp, aTimestampJS, aFrameNumber);
+    }
   }
 
   mObserverListList.Clear();
@@ -346,9 +365,15 @@ CompositorRegistryHost::Dispatch(int64_t aTimestampNanosecond,
   MOZ_ASSERT(IsInVsyncDispatcherThread());
 
   for (ObserverList::size_type i = 0; i < mObserverListList.Length(); ++i) {
-    VsyncObserver* compositor = mObserverListList[i];
-
-    compositor->TickVsync(aTimestampNanosecond, aTimestamp, aTimestampJS, aFrameNumber);
+    char propValue[PROPERTY_VALUE_MAX];
+    property_get("silk.c.lat", propValue, "0");
+    if (atoi(propValue) != 0) {
+      // Begin Latency
+      VSYNC_ASYNC_SYSTRACE_LABEL_BEGIN_PRINTF((int32_t)aFrameNumber, "Comp_Latency (%u)", (uint32_t)aFrameNumber);
+      mObserverListList[i]->TickVsync(aTimestampNanosecond, aTimestamp, aTimestampJS, aFrameNumber);
+    } else {
+      mObserverListList[i]->TickVsync(aTimestampNanosecond, aTimestamp, aTimestampJS, aFrameNumber);
+    }
   }
 
   mObserverListList.Clear();
@@ -529,6 +554,13 @@ VsyncDispatcherHostImpl::NotifyVsync(int64_t aTimestampNanosecond,
   // We propose a monotonic increased frame number here.
   // It helps us to identify the frame count for each vsync update.
   ++mVsyncFrameNumber;
+  
+  // Begin id == time 32bit
+  char propValue[PROPERTY_VALUE_MAX];
+  property_get("silk.hw2vsync", propValue, "0");
+  if (atoi(propValue) != 0) {
+    VSYNC_ASYNC_SYSTRACE_LABEL_BEGIN_PRINTF((int32_t)mVsyncFrameNumber, "HwToVsync (%u)", (uint32_t)mVsyncFrameNumber);
+  }
 
   GetMessageLoop()->PostTask(FROM_HERE,
                              NewRunnableMethod(this,
@@ -556,7 +588,20 @@ VsyncDispatcherHostImpl::NotifyVsyncTask(int64_t aTimestampNanosecond,
   mCurrentTimestampJS = aTimestampJS;
   mCurrentFrameNumber = aFrameNumber;
 
-  DispatchVsyncEvent();
+  // End
+  char propValue[PROPERTY_VALUE_MAX];
+  property_get("silk.hw2vsync", propValue, "0");
+  if (atoi(propValue) != 0) {
+    VSYNC_ASYNC_SYSTRACE_LABEL_END_PRINTF((int32_t)mCurrentFrameNumber, "HwToVsync (%u)", (uint32_t)mCurrentFrameNumber);
+  }
+
+  property_get("silk.vd", propValue, "0");
+  if (atoi(propValue) != 0) {
+    VSYNC_SCOPED_SYSTRACE_LABEL_PRINTF("DispatchVsync (%u)", (uint32_t)mCurrentFrameNumber);
+    DispatchVsyncEvent();
+  } else {
+    DispatchVsyncEvent();
+  }
 }
 
 void
@@ -643,6 +688,13 @@ VsyncDispatcherHostImpl::NotifyContentProcess()
   // Send ipc to content process.
   for (VsyncEventParentList::size_type i = 0; i < mVsyncEventParentList.Length(); ++i) {
     VsyncEventParent* parent = mVsyncEventParentList[i];
+
+    char propValue[PROPERTY_VALUE_MAX];
+    property_get("silk.ipc", propValue, "0");
+    if (atoi(propValue) != 0) {
+      VSYNC_ASYNC_SYSTRACE_LABEL_BEGIN_PRINTF((int32_t)mCurrentFrameNumber, "IPC (%u)", (uint32_t)mCurrentFrameNumber);
+    }
+
     if (!parent->SendNotifyVsyncEvent(vsyncData)) {
       NS_WARNING("Send Notify Vsync Event Error");
     }
