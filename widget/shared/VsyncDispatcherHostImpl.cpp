@@ -255,7 +255,8 @@ InputDispatcherRegistryHost::SetObserver(VsyncObserver** aLVsyncObserver,
   MOZ_ASSERT(VsyncDispatcherHostImpl::GetInstance());
   MOZ_ASSERT(VsyncDispatcherHostImpl::GetInstance()->IsInVsyncDispatcherThread());
   // If we already have an input dispatcher, we should not receive another one.
-  MOZ_ASSERT(*aLVsyncObserver && aRVsyncObserver && (*aLVsyncObserver != aRVsyncObserver));
+  MOZ_ASSERT_IF(*aLVsyncObserver && aRVsyncObserver,
+                *aLVsyncObserver == aRVsyncObserver);
 
   // If we get a Monitor, we use the sync mode. Notify the monitor after
   // the assignment done.
@@ -576,7 +577,9 @@ VsyncDispatcherHostImpl::NotifyContentProcess()
   // Send ipc to content process.
   for (VsyncEventParentList::size_type i = 0; i < mVsyncEventParentList.Length(); ++i) {
     VsyncEventParent* parent = mVsyncEventParentList[i];
-    parent->SendNotifyVsyncEvent(vsyncData);
+    if (!parent->SendNotifyVsyncEvent(vsyncData)) {
+      NS_WARNING("Send Notify Vsync Event Error");
+    }
   }
 }
 
