@@ -266,8 +266,20 @@ private:
       char propValue[PROPERTY_VALUE_MAX];
       property_get("silk.r.lat", propValue, "0");
       if (atoi(propValue) != 0) {
-        // Latency End
-        VSYNC_ASYNC_SYSTRACE_LABEL_END_PRINTF((int32_t)aFrameNumber, "RD_Latency (%u)", (uint32_t)aFrameNumber);
+        property_get("silk.timer.log", propValue, "0");
+        if (atoi(propValue) == 0) {
+          // Latency End
+          VSYNC_ASYNC_SYSTRACE_LABEL_END_PRINTF((int32_t)aFrameNumber, "RD_Latency (%u)", (uint32_t)aFrameNumber);
+        }
+        else {
+          static VsyncLatencyLogger* logger = VsyncLatencyLogger::CreateLogger("Silk Host RD::TickTask");
+          TimeDuration diff = TimeStamp::Now() - aTimestamp;
+          logger->Update(aFrameNumber, (int64_t)diff.ToMicroseconds());
+          if(!(aFrameNumber % 256)){
+            logger->PrintStatistic();
+            logger->Reset();
+          }
+        }
       }
 
       property_get("silk.r.scope", propValue, "0");

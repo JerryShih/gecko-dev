@@ -165,8 +165,20 @@ GeckoTouchDispatcher::TickVsync(int64_t aTimestampNanosecond,
     char propValue[PROPERTY_VALUE_MAX];
     property_get("silk.i.lat", propValue, "0");
     if (atoi(propValue) != 0) {
-      // End Latency
-      VSYNC_ASYNC_SYSTRACE_LABEL_END_PRINTF((int32_t)aFrameNumber, "Input_Latency (%u)", (uint32_t)aFrameNumber);
+      property_get("silk.timer.log", propValue, "0");
+      if (atoi(propValue) == 0) {
+        // End Latency
+        VSYNC_ASYNC_SYSTRACE_LABEL_END_PRINTF((int32_t)aFrameNumber, "Input_Latency (%u)", (uint32_t)aFrameNumber);
+      }
+      else {
+        static VsyncLatencyLogger* logger = VsyncLatencyLogger::CreateLogger("Silk Touch::TickTask");
+        TimeDuration diff = TimeStamp::Now() - aTimestamp;
+        logger->Update(aFrameNumber, (int64_t)diff.ToMicroseconds());
+        if(!(aFrameNumber % 256)){
+          logger->PrintStatistic();
+          logger->Reset();
+        }
+      }
     }
   }
 
