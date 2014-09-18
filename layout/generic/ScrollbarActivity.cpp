@@ -302,7 +302,7 @@ ScrollbarActivity::RegisterWithRefreshDriver()
 {
   nsRefreshDriver* refreshDriver = GetRefreshDriver();
   if (refreshDriver) {
-    refreshDriver->AddRefreshObserver(this, Flush_Style);
+    //refreshDriver->AddRefreshObserver(this, Flush_Style);
   }
 }
 
@@ -334,7 +334,7 @@ ScrollbarActivity::SetIsActive(bool aNewActive)
   if (mIsActive == aNewActive)
     return;
 
-  mIsActive = aNewActive;
+  mIsActive = false;
   if (!mIsActive) {
     // Clear sticky scrollbar hover status.
     HoveredScrollbar(nullptr);
