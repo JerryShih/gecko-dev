@@ -102,7 +102,17 @@ public:
     property_get("silk.i.lat", propValue, "0");
     if (atoi(propValue) != 0) {
       // End Latency
-      VSYNC_ASYNC_SYSTRACE_LABEL_END_PRINTF((int32_t)mFrameNumber, "Input_Latency (%u)", (uint32_t)mFrameNumber);
+      property_get("silk.timer.log", propValue, "0");
+      if (atoi(propValue) == 0) {
+        VSYNC_ASYNC_SYSTRACE_LABEL_END_PRINTF((int32_t)mFrameNumber, "Input_Latency (%u)", (uint32_t)mFrameNumber);
+      } else {
+        static VsyncLatencyLogger* logger = VsyncLatencyLogger::CreateLogger("Silk Input::TickTask");
+        logger->Update(mFrameNumber, base::TimeTicks::HighResNow().ToInternalValue() - mVsyncTime/1000);
+        if(!(mFrameNumber % 256)){
+          logger->PrintStatistic();
+          logger->Reset();
+        }
+      }
     }
 
     property_get("silk.i.scope", propValue, "0");

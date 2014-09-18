@@ -224,9 +224,10 @@ VsyncDispatcherClientImpl::DispatchVsyncEvent(int64_t aTimestampNanosecond,
   if (atoi(propValue) != 0) {
     property_get("silk.timer.log", propValue, "0");
     if (atoi(propValue) == 0) {
-      VSYNC_ASYNC_SYSTRACE_LABEL_END_PRINTF((int32_t)aFrameNumber, "IPC (%u)", (uint32_t)aFrameNumber);
-    }
-    else {
+      VSYNC_ASYNC_SYSTRACE_LABEL_END_PRINTF((int32_t)aFrameNumber,
+                                            "VsyncToRefreshDriver_IPC (%u)",
+                                            (uint32_t)aFrameNumber);
+    } else {
       static VsyncLatencyLogger* logger = VsyncLatencyLogger::CreateLogger("Silk Client::DispatchVsyncEvent");
       TimeDuration diff = TimeStamp::Now() - aTimestamp;
       logger->Update(aFrameNumber, (int64_t)diff.ToMicroseconds());
@@ -245,7 +246,7 @@ VsyncDispatcherClientImpl::DispatchVsyncEvent(int64_t aTimestampNanosecond,
   // Scope
   property_get("silk.r.scope.client", propValue, "0");
   if (atoi(propValue) != 0) {
-    VSYNC_SCOPED_SYSTRACE_LABEL_PRINTF("RefreshDrive.client (%u)", (uint32_t)aFrameNumber);
+    VSYNC_SCOPED_SYSTRACE_LABEL_PRINTF("RefreshDriver.client (%u)", (uint32_t)aFrameNumber);
 
     if (!mVsyncEventNeeded) {
       // If we received vsync event but there is no observer here, we disable

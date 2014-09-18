@@ -199,8 +199,10 @@ InputDispatcherRegistryHost::Dispatch(int64_t aTimestampNanosecond,
   bool isTicked = false;
   if (mObserver) {
     char propValue[PROPERTY_VALUE_MAX];
+    char propValue2[PROPERTY_VALUE_MAX];
     property_get("silk.i.lat", propValue, "0");
-    if (atoi(propValue) != 0) {
+    property_get("silk.timer.log", propValue2, "0");
+    if (atoi(propValue) != 0 && atoi(propValue2) == 0) {
       // Begin Latency
       VSYNC_ASYNC_SYSTRACE_LABEL_BEGIN_PRINTF((int32_t)aFrameNumber, "Input_Latency (%u)", (uint32_t)aFrameNumber);
     }
@@ -332,14 +334,14 @@ RefreshDriverRegistryHost::Dispatch(int64_t aTimestampNanosecond,
   // the the observer list, so we don't need a list copy here.
   for (ObserverList::size_type i = 0; i < mObserverListList.Length(); i++) {
     char propValue[PROPERTY_VALUE_MAX];
+    char propValue2[PROPERTY_VALUE_MAX];
     property_get("silk.r.lat", propValue, "0");
-    if (atoi(propValue) != 0) {
+    property_get("silk.timer.log", propValue2, "0");
+    if (atoi(propValue) != 0 && atoi(propValue2) == 0) {
       // Begin Latency
-      VSYNC_ASYNC_SYSTRACE_LABEL_BEGIN_PRINTF((int32_t)aFrameNumber, "RD_Latency (%u)", (uint32_t)aFrameNumber);
-      mObserverListList[i]->TickVsync(aTimestampNanosecond, aTimestamp, aTimestampJS, aFrameNumber);
-    } else {
-      mObserverListList[i]->TickVsync(aTimestampNanosecond, aTimestamp, aTimestampJS, aFrameNumber);
+      VSYNC_ASYNC_SYSTRACE_LABEL_BEGIN_PRINTF((int32_t)aFrameNumber, "RefreshDriver_Latency (%u)", (uint32_t)aFrameNumber);
     }
+    mObserverListList[i]->TickVsync(aTimestampNanosecond, aTimestamp, aTimestampJS, aFrameNumber);
   }
 
   mObserverListList.Clear();
@@ -366,14 +368,14 @@ CompositorRegistryHost::Dispatch(int64_t aTimestampNanosecond,
 
   for (ObserverList::size_type i = 0; i < mObserverListList.Length(); ++i) {
     char propValue[PROPERTY_VALUE_MAX];
+    char propValue2[PROPERTY_VALUE_MAX];
     property_get("silk.c.lat", propValue, "0");
-    if (atoi(propValue) != 0) {
+    property_get("silk.timer.log", propValue2, "0");
+    if (atoi(propValue) != 0 && atoi(propValue2) == 0) {
       // Begin Latency
-      VSYNC_ASYNC_SYSTRACE_LABEL_BEGIN_PRINTF((int32_t)aFrameNumber, "Comp_Latency (%u)", (uint32_t)aFrameNumber);
-      mObserverListList[i]->TickVsync(aTimestampNanosecond, aTimestamp, aTimestampJS, aFrameNumber);
-    } else {
-      mObserverListList[i]->TickVsync(aTimestampNanosecond, aTimestamp, aTimestampJS, aFrameNumber);
+      VSYNC_ASYNC_SYSTRACE_LABEL_BEGIN_PRINTF((int32_t)aFrameNumber, "Compositor_Latency (%u)", (uint32_t)aFrameNumber);
     }
+    mObserverListList[i]->TickVsync(aTimestampNanosecond, aTimestamp, aTimestampJS, aFrameNumber);
   }
 
   mObserverListList.Clear();
@@ -554,12 +556,31 @@ VsyncDispatcherHostImpl::NotifyVsync(int64_t aTimestampNanosecond,
   // We propose a monotonic increased frame number here.
   // It helps us to identify the frame count for each vsync update.
   ++mVsyncFrameNumber;
-  
-  // Begin id == time 32bit
+
   char propValue[PROPERTY_VALUE_MAX];
-  property_get("silk.hw2vsync", propValue, "0");
+  property_get("silk.vsync", propValue, "0");
   if (atoi(propValue) != 0) {
-    VSYNC_ASYNC_SYSTRACE_LABEL_BEGIN_PRINTF((int32_t)mVsyncFrameNumber, "HwToVsync (%u)", (uint32_t)mVsyncFrameNumber);
+    static bool start = false;
+    if (start) {
+      VSYNC_ASYNC_SYSTRACE_LABEL_END_PRINTF((int32_t)mVsyncFrameNumber-1,
+                                              "VsyncDuration (%u)",
+                                              (uint32_t)mVsyncFrameNumber-1);
+    }
+
+    VSYNC_ASYNC_SYSTRACE_LABEL_BEGIN_PRINTF((int32_t)mVsyncFrameNumber,
+                                            "VsyncDuration (%u)",
+                                            (uint32_t)mVsyncFrameNumber);
+    start = true;
+  }
+
+  // Begin
+  char propValue2[PROPERTY_VALUE_MAX];
+  property_get("silk.hw2vsync", propValue, "0");
+  property_get("silk.timer.log", propValue2, "0");
+  if (atoi(propValue) != 0 && atoi(propValue2) == 0) {
+    VSYNC_ASYNC_SYSTRACE_LABEL_BEGIN_PRINTF((int32_t)mVsyncFrameNumber,
+                                            "HwToVsync_Latency (%u)",
+                                            (uint32_t)mVsyncFrameNumber);
   }
 
   GetMessageLoop()->PostTask(FROM_HERE,
@@ -594,9 +615,10 @@ VsyncDispatcherHostImpl::NotifyVsyncTask(int64_t aTimestampNanosecond,
   if (atoi(propValue) != 0) {
     property_get("silk.timer.log", propValue, "0");
     if (atoi(propValue) == 0) {
-      VSYNC_ASYNC_SYSTRACE_LABEL_END_PRINTF((int32_t)mCurrentFrameNumber, "HwToVsync (%u)", (uint32_t)mCurrentFrameNumber);
-    }
-    else {
+      VSYNC_ASYNC_SYSTRACE_LABEL_END_PRINTF((int32_t)mCurrentFrameNumber,
+                                            "HwToVsync_Latency (%u)",
+                                            (uint32_t)mCurrentFrameNumber);
+    } else {
       static VsyncLatencyLogger* logger = VsyncLatencyLogger::CreateLogger("Silk Host::NotifyVsyncTask");
       TimeDuration diff = TimeStamp::Now() - aTimestamp;
       logger->Update(aFrameNumber, (int64_t)diff.ToMicroseconds());
@@ -702,9 +724,13 @@ VsyncDispatcherHostImpl::NotifyContentProcess()
     VsyncEventParent* parent = mVsyncEventParentList[i];
 
     char propValue[PROPERTY_VALUE_MAX];
+    char propValue2[PROPERTY_VALUE_MAX];
     property_get("silk.ipc", propValue, "0");
-    if (atoi(propValue) != 0) {
-      VSYNC_ASYNC_SYSTRACE_LABEL_BEGIN_PRINTF((int32_t)mCurrentFrameNumber, "IPC (%u)", (uint32_t)mCurrentFrameNumber);
+    property_get("silk.timer.log", propValue2, "0");
+    if (atoi(propValue) != 0 && atoi(propValue2) == 0) {
+      VSYNC_ASYNC_SYSTRACE_LABEL_BEGIN_PRINTF((int32_t)mCurrentFrameNumber,
+                                              "VsyncToRefreshDriver_IPC (%u)",
+                                              (uint32_t)mCurrentFrameNumber);
     }
 
     if (!parent->SendNotifyVsyncEvent(vsyncData)) {

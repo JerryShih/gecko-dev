@@ -269,9 +269,10 @@ private:
         property_get("silk.timer.log", propValue, "0");
         if (atoi(propValue) == 0) {
           // Latency End
-          VSYNC_ASYNC_SYSTRACE_LABEL_END_PRINTF((int32_t)aFrameNumber, "RD_Latency (%u)", (uint32_t)aFrameNumber);
-        }
-        else {
+          VSYNC_ASYNC_SYSTRACE_LABEL_END_PRINTF((int32_t)aFrameNumber,
+                                                "RefreshDriver_Latency (%u)"
+                                                ,(uint32_t)aFrameNumber);
+        } else {
           static VsyncLatencyLogger* logger = VsyncLatencyLogger::CreateLogger("Silk Host RD::TickTask");
           TimeDuration diff = TimeStamp::Now() - aTimestamp;
           logger->Update(aFrameNumber, (int64_t)diff.ToMicroseconds());
