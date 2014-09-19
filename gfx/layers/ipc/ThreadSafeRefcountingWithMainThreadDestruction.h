@@ -7,6 +7,7 @@
 
 #include "MainThreadUtils.h"
 #include "nsThreadUtils.h"
+#include "base/message_loop.h"
 
 namespace mozilla {
 namespace layers {
