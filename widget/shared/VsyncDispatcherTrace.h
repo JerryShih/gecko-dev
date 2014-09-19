@@ -196,7 +196,12 @@ public:
 
     uint32_t index = GetStartDataIndex();
     for (uint32_t i = 0; i < mNum; ++i) {
-      mPrintRawFunc(mMsg.c_str(), mDataArray[index].mFrameNumber, mDataArray[index].mDataValue);
+      if (mPrintRawFunc) {
+        mPrintRawFunc(mMsg.c_str(), mDataArray[index].mFrameNumber, mDataArray[index].mDataValue);
+      }
+      else {
+        PrintRawDefault(mMsg.c_str(), mDataArray[index].mFrameNumber, mDataArray[index].mDataValue);
+      }
       index = (index + 1) % DataNum;
     }
   }
@@ -210,13 +215,24 @@ public:
     uint32_t maxIndex = GetMaxIndex();
     uint32_t minIndex = GetMinIndex();
 
-    mPrintStatisticFunc(mMsg.c_str(),
-                        GetAVG(),
-                        GetSTD(),
-                        mDataArray[maxIndex].mFrameNumber,
-                        mDataArray[maxIndex].mDataValue,
-                        mDataArray[minIndex].mFrameNumber,
-                        mDataArray[minIndex].mDataValue);
+    if (mPrintStatisticFunc) {
+      mPrintStatisticFunc(mMsg.c_str(),
+                          GetAVG(),
+                          GetSTD(),
+                          mDataArray[maxIndex].mFrameNumber,
+                          mDataArray[maxIndex].mDataValue,
+                          mDataArray[minIndex].mFrameNumber,
+                          mDataArray[minIndex].mDataValue);
+    }
+    else {
+      PrintStatisticDefault(mMsg.c_str(),
+                            GetAVG(),
+                            GetSTD(),
+                            mDataArray[maxIndex].mFrameNumber,
+                            mDataArray[maxIndex].mDataValue,
+                            mDataArray[minIndex].mFrameNumber,
+                            mDataArray[minIndex].mDataValue);
+    }
   }
 
 private:
@@ -252,6 +268,32 @@ private:
     DataType mDataValue;
     uint32_t mFrameNumber;
   };
+
+  void PrintRawDefault(const char* aMsg, uint32_t aFrameNumber, int64_t aDataValue)
+  {
+    printf_stderr("%-20s, (%d, %5.3f)",
+                  aMsg,
+                  aFrameNumber,
+                  aDataValue * 0.001f);
+  }
+  void PrintStatisticDefault(const char* aMsg,
+                             float aAvg,
+                             float aStd,
+                             uint32_t aMaxFrameNumber,
+                             int64_t aMaxDataValue,
+                             uint32_t aMinFrameNumber,
+                             int64_t aMinDataValue)
+  {
+    printf_stderr("%-20s, avg:%5.3f, std:%5.3f, cv:%5.3f%% max:(%d, %5.3f), min:(%d, %5.3f)",
+                  aMsg,
+                  aAvg * 0.001f,
+                  aStd * 0.001f,
+                  aStd / aAvg * 100.0f,
+                  aMaxFrameNumber,
+                  aMaxDataValue * 0.001f,
+                  aMinFrameNumber,
+                  aMinDataValue * 0.001f);
+  }
 
   uint32_t GetStartDataIndex()
   {

@@ -86,6 +86,10 @@ private:
 
   // The system time at which the last touch event occured
   uint64_t mLastTouchTime;
+
+  // test for framework
+  int64_t mTimestampUS;
+  uint64_t mFrameNumber;
 };
 
 } // namespace mozilla

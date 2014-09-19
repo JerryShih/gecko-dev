@@ -41,6 +41,7 @@
 // Debug
 #include "cutils/properties.h"
 #include "mozilla/VsyncDispatcherTrace.h"
+#include "cmath"
 
 #define LOG(args...)                                            \
   __android_log_print(ANDROID_LOG_INFO, "Gonk" , ## args)
@@ -167,6 +168,8 @@ GeckoTouchDispatcher::TickVsync(int64_t aTimestampNanosecond,
                                 int64_t aTimestampJS,
                                 uint64_t aFrameNumber)
 {
+  mFrameNumber = aFrameNumber;
+
   MOZ_ASSERT(mResamplingEnabled);
   bool haveTouchData = false;
   {
@@ -175,7 +178,6 @@ GeckoTouchDispatcher::TickVsync(int64_t aTimestampNanosecond,
   }
 
   if (haveTouchData) {
-    // aTimestampUS is in microseconds, so we have to change its unit
     NS_DispatchToMainThread(new DispatchTouchEventsMainThread(this,
                                                               aTimestampNanosecond,
                                                               aFrameNumber));
@@ -221,6 +223,8 @@ GeckoTouchDispatcher::NotifyTouch(MultiTouchInput& aData, uint64_t aEventTime)
 void
 GeckoTouchDispatcher::DispatchTouchMoveEvents(uint64_t aVsyncTime)
 {
+  static ScreenIntPoint previousTouchPos;
+
   MultiTouchInput touchMove;
 
   {
@@ -243,6 +247,22 @@ GeckoTouchDispatcher::DispatchTouchMoveEvents(uint64_t aVsyncTime)
     } else {
       ResampleTouchMoves(touchMove, aVsyncTime);
     }
+  }
+
+
+  ScreenIntPoint currentTouchPos = touchMove.mTouches[0].mScreenPoint;
+  int diffX = currentTouchPos.x - previousTouchPos.x;
+  int diffY = currentTouchPos.y - previousTouchPos.y;
+  previousTouchPos = currentTouchPos;
+
+  float distance = std::sqrt((float)(diffX*diffX+diffY*diffY));
+  static DataStatistician<float, 256, false> aDataStatistician("Silk input resample", nullptr, nullptr);
+  aDataStatistician.Update(mFrameNumber,distance);
+
+  if(!(mFrameNumber % 256)){
+    aDataStatistician.PrintRawData();
+    aDataStatistician.PrintStatisticData();
+    aDataStatistician.Reset();
   }
 
   DispatchTouchEvent(touchMove);
