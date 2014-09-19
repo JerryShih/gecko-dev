@@ -271,7 +271,7 @@ private:
 
   void PrintRawDefault(const char* aMsg, uint32_t aFrameNumber, int64_t aDataValue)
   {
-    printf_stderr("%-20s, (%d, %5.3f)",
+    printf_stderr("%-20s, %d, %5.3f",
                   aMsg,
                   aFrameNumber,
                   aDataValue * 0.001f);

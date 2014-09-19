@@ -97,7 +97,7 @@ VsyncLatencyLogger::FlushStat(uint32_t aFrameNum)
 void
 VsyncLatencyLogger::PrintRawCallback(const char *aMsg, uint32_t aFrameNumber, int64_t aDataValue)
 {
-  printf_stderr("%-20s, (%d, %5.3fms)",
+  printf_stderr("%-20s, %d, %5.3fms",
                 aMsg,
                 aFrameNumber,
                 aDataValue * 0.001f);
