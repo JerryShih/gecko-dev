@@ -1619,6 +1619,7 @@ SetThreadPriority(pid_t aTid, hal::ThreadPriority aThreadPriority)
   const char* threadPriorityStr;
   switch (aThreadPriority) {
     case THREAD_PRIORITY_COMPOSITOR:
+    case THREAD_PRIORITY_VSYNC_DISPATCHER:
       threadPriorityStr = ThreadPriorityToString(aThreadPriority);
       break;
     default:
@@ -1677,7 +1678,8 @@ void
 SetCurrentThreadPriority(ThreadPriority aThreadPriority)
 {
   switch (aThreadPriority) {
-    case THREAD_PRIORITY_COMPOSITOR: {
+    case THREAD_PRIORITY_COMPOSITOR:
+    case THREAD_PRIORITY_VSYNC_DISPATCHER: {
       pid_t threadId = gettid();
       nsCOMPtr<nsIRunnable> runnable =
         new SetThreadPriorityRunnable(threadId, aThreadPriority);

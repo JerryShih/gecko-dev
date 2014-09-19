@@ -101,6 +101,9 @@ private:
   // Return total registered object number.
   int GetVsyncObserverCount();
 
+  // Set thread priority
+  void SetThreadPriority();
+
 private:
   static StaticRefPtr<VsyncDispatcherHostImpl> sVsyncDispatcherHost;
 

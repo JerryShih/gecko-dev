@@ -4,6 +4,7 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
 #include "VsyncDispatcherHostImpl.h"
+#include "mozilla/Hal.h"
 #include "mozilla/layers/VsyncEventParent.h"
 #include "base/message_loop.h"
 #include "base/thread.h"
@@ -415,6 +416,11 @@ VsyncDispatcherHostImpl::CreateVsyncDispatchThread()
 
   mVsyncDispatchHostMessageLoop = mVsyncDispatchHostThread->message_loop();
   MOZ_RELEASE_ASSERT(mVsyncDispatchHostMessageLoop, "Get VDHost message loop failed.");
+
+  // Set Thread priority
+	mVsyncDispatchHostMessageLoop->PostTask(FROM_HERE,
+	                                        NewRunnableMethod(this,
+		                                      &VsyncDispatcherHostImpl::SetThreadPriority));
 }
 
 void
@@ -692,6 +698,12 @@ VsyncDispatcherHostImpl::GetVsyncObserverCount()
   return mVsyncEventParentList.Length() + mInputDispatcher->GetObserverNum()
                                         + mRefreshDriver->GetObserverNum()
                                         + mCompositor->GetObserverNum();
+}
+
+void
+VsyncDispatcherHostImpl::SetThreadPriority()
+{
+	hal::SetCurrentThreadPriority(hal::THREAD_PRIORITY_VSYNC_DISPATCHER);
 }
 
 void

@@ -914,6 +914,8 @@ ThreadPriorityToString(ThreadPriority aPriority)
   switch (aPriority) {
     case THREAD_PRIORITY_COMPOSITOR:
       return "COMPOSITOR";
+    case THREAD_PRIORITY_VSYNC_DISPATCHER:
+      return "VSYNC_DISPATCHER";
     default:
       MOZ_ASSERT(false);
       return "???";

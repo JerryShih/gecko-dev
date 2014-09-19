@@ -111,6 +111,7 @@ enum ProcessCPUPriority {
  */
 enum ThreadPriority {
   THREAD_PRIORITY_COMPOSITOR,
+  THREAD_PRIORITY_VSYNC_DISPATCHER,
   NUM_THREAD_PRIORITY
 };
 
