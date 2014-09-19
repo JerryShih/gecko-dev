@@ -568,6 +568,7 @@ VsyncDispatcherHostImpl::NotifyVsync(int64_t aTimestampNanosecond,
       if (atoi(propValue) != 0 && logger) {
         logger->End(mVsyncFrameNumber-1);
         logger->Flush(mVsyncFrameNumber-1);
+        logger = nullptr;
       } else {
         VSYNC_ASYNC_SYSTRACE_LABEL_END_PRINTF((int32_t)mVsyncFrameNumber-1,
                                               "VsyncDuration (%u)",
