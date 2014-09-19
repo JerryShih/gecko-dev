@@ -255,14 +255,18 @@ GeckoTouchDispatcher::DispatchTouchMoveEvents(uint64_t aVsyncTime)
   int diffY = currentTouchPos.y - previousTouchPos.y;
   previousTouchPos = currentTouchPos;
 
-  float distance = std::sqrt((float)(diffX*diffX+diffY*diffY));
-  static DataStatistician<float, 256, false> aDataStatistician("Silk input resample", nullptr, nullptr);
-  aDataStatistician.Update(mFrameNumber,distance);
+  char propValue[PROPERTY_VALUE_MAX];
+  property_get("silk.timer.log.input", propValue, "0");
+  if (atoi(propValue) != 0) {
+    float distance = std::sqrt((float)(diffX*diffX+diffY*diffY));
+    static DataStatistician<float, 256, false> aDataStatistician("Silk input resample", nullptr, nullptr);
+    aDataStatistician.Update(mFrameNumber,distance);
 
-  if(!(mFrameNumber % 256)){
-    aDataStatistician.PrintRawData();
-    aDataStatistician.PrintStatisticData();
-    aDataStatistician.Reset();
+    if(!(mFrameNumber % 256)){
+      aDataStatistician.PrintRawData();
+      aDataStatistician.PrintStatisticData();
+      aDataStatistician.Reset();
+    }
   }
 
   DispatchTouchEvent(touchMove);

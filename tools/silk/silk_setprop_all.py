@@ -23,7 +23,8 @@ if __name__ == '__main__':
             0,  #ipc
             0,  #vsync.duration
             0,  #time.log
-            0   #time.log.raw
+            0,  #time.log.raw
+            0   #time.log.input
             ]
     tag = [
             'silk.hw2vsync',
@@ -38,7 +39,8 @@ if __name__ == '__main__':
             'silk.ipc',
             'silk.vsync',
             'silk.timer.log',
-            'silk.timer.log.raw'
+            'silk.timer.log.raw',
+            'silk.timer.log.input'
             ]
     print('Set properities...');
     silk_setprop(tag, value)
