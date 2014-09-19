@@ -103,24 +103,32 @@ public:
     if (atoi(propValue) != 0) {
       // End Latency
       property_get("silk.timer.log", propValue, "0");
-      if (atoi(propValue) == 0) {
-        VSYNC_ASYNC_SYSTRACE_LABEL_END_PRINTF((int32_t)mFrameNumber, "Input_Latency (%u)", (uint32_t)mFrameNumber);
-      } else {
+      if (atoi(propValue) != 0) {
         static VsyncLatencyLogger* logger = VsyncLatencyLogger::CreateLogger("Silk Input::TickTask");
         logger->Update(mFrameNumber, base::TimeTicks::HighResNow().ToInternalValue() - mVsyncTime/1000);
-        if(!(mFrameNumber % 256)){
-          logger->PrintStatistic();
-          logger->Reset();
-        }
+        logger->FlushStat(mFrameNumber);
+      } else {
+        VSYNC_ASYNC_SYSTRACE_LABEL_END_PRINTF((int32_t)mFrameNumber, "Input_Latency (%u)", (uint32_t)mFrameNumber);
       }
     }
 
     property_get("silk.i.scope", propValue, "0");
-    if (atoi(propValue) == 0) {
-      mTouchDispatcher->DispatchTouchMoveEvents(mVsyncTime);
-    } else {
+    if (atoi(propValue) != 0) {
       // Scope
-      VSYNC_SCOPED_SYSTRACE_LABEL_PRINTF("Input (%u)", (uint32_t)mFrameNumber);
+      property_get("silk.timer.log", propValue, "0");
+      static VsyncLatencyLogger* logger = nullptr;
+      if (atoi(propValue) != 0) {
+        logger = VsyncLatencyLogger::CreateLogger("Silk Input::TickTask Runtime");
+        logger->Start(mFrameNumber);
+      } else {
+        VSYNC_SCOPED_SYSTRACE_LABEL_PRINTF("Input (%u)", (uint32_t)mFrameNumber);
+      }
+      mTouchDispatcher->DispatchTouchMoveEvents(mVsyncTime);
+      if (atoi(propValue) != 0 && logger) {
+        logger->End(mFrameNumber);
+        logger->FlushStat(mFrameNumber);
+      }
+    } else {
       mTouchDispatcher->DispatchTouchMoveEvents(mVsyncTime);
     }
     return NS_OK;
@@ -173,22 +181,12 @@ GeckoTouchDispatcher::TickVsync(int64_t aTimestampNanosecond,
                                                               aFrameNumber));
   } else {
     char propValue[PROPERTY_VALUE_MAX];
+    char propValue2[PROPERTY_VALUE_MAX];
     property_get("silk.i.lat", propValue, "0");
-    if (atoi(propValue) != 0) {
-      property_get("silk.timer.log", propValue, "0");
-      if (atoi(propValue) == 0) {
-        // End Latency
-        VSYNC_ASYNC_SYSTRACE_LABEL_END_PRINTF((int32_t)aFrameNumber, "Input_Latency (%u)", (uint32_t)aFrameNumber);
-      }
-      else {
-        static VsyncLatencyLogger* logger = VsyncLatencyLogger::CreateLogger("Silk Touch::TickTask");
-        TimeDuration diff = TimeStamp::Now() - aTimestamp;
-        logger->Update(aFrameNumber, (int64_t)diff.ToMicroseconds());
-        if(!(aFrameNumber % 256)){
-          logger->PrintStatistic();
-          logger->Reset();
-        }
-      }
+    property_get("silk.timer.log", propValue2, "0");
+    if (atoi(propValue) != 0 && atoi(propValue2) == 0) {
+      // End Latency
+      VSYNC_ASYNC_SYSTRACE_LABEL_END_PRINTF((int32_t)aFrameNumber, "Input_Latency (%u)", (uint32_t)aFrameNumber);
     }
   }
 

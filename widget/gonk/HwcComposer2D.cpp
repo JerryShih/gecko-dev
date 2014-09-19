@@ -205,7 +205,6 @@ HwcComposer2D::EnableVsync(bool aEnable)
 bool
 HwcComposer2D::InitHwcEventCallback()
 {
-    printf_stderr("[Boris] InitHwcEventCallback");
     MOZ_ASSERT(!mHasHWVsync);
 
     if (!gfxPrefs::FrameUniformityHWVsyncEnabled()) {
@@ -240,7 +239,6 @@ HwcComposer2D::InitHwcEventCallback()
 
     mHasHWVsync = true;
 
-    printf_stderr("[Boris] InitHwcEventCallback success");
     return true;
 }
 

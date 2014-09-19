@@ -276,18 +276,26 @@ private:
           static VsyncLatencyLogger* logger = VsyncLatencyLogger::CreateLogger("Silk Host RD::TickTask");
           TimeDuration diff = TimeStamp::Now() - aTimestamp;
           logger->Update(aFrameNumber, (int64_t)diff.ToMicroseconds());
-          if(!(aFrameNumber % 256)){
-            logger->PrintStatistic();
-            logger->Reset();
-          }
+          logger->FlushStat(aFrameNumber);
         }
       }
 
       property_get("silk.r.scope", propValue, "0");
       if (atoi(propValue) != 0) {
         // Scope
-        VSYNC_SCOPED_SYSTRACE_LABEL_PRINTF("RefreshDriver (%u)", (uint32_t)aFrameNumber);
+        property_get("silk.timer.log", propValue, "0");
+        static VsyncLatencyLogger* logger = nullptr;
+        if (atoi(propValue) != 0) {
+          logger = VsyncLatencyLogger::CreateLogger("Silk Host RD::TickTask Runtime");
+          logger->Start(aFrameNumber);
+        } else {
+          VSYNC_SCOPED_SYSTRACE_LABEL_PRINTF("RefreshDriver (%u)", (uint32_t)aFrameNumber);
+        }
         mTimer->VsyncTick(aTimestampNanosecond, aTimestamp, aTimestampJS, aFrameNumber);
+        if (atoi(propValue) != 0 && logger) {
+          logger->End(aFrameNumber);
+          logger->FlushStat(aFrameNumber);
+        }
       } else {
         mTimer->VsyncTick(aTimestampNanosecond, aTimestamp, aTimestampJS, aFrameNumber);
       }

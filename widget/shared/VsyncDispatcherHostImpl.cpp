@@ -560,16 +560,29 @@ VsyncDispatcherHostImpl::NotifyVsync(int64_t aTimestampNanosecond,
   char propValue[PROPERTY_VALUE_MAX];
   property_get("silk.vsync", propValue, "0");
   if (atoi(propValue) != 0) {
+    property_get("silk.timer.log", propValue, "0");
     static bool start = false;
+    static VsyncLatencyLogger* logger = nullptr;
+
     if (start) {
-      VSYNC_ASYNC_SYSTRACE_LABEL_END_PRINTF((int32_t)mVsyncFrameNumber-1,
+      if (atoi(propValue) != 0 && logger) {
+        logger->End(mVsyncFrameNumber-1);
+        logger->FlushStat(mVsyncFrameNumber-1);
+      } else {
+        VSYNC_ASYNC_SYSTRACE_LABEL_END_PRINTF((int32_t)mVsyncFrameNumber-1,
                                               "VsyncDuration (%u)",
                                               (uint32_t)mVsyncFrameNumber-1);
+      }
     }
 
-    VSYNC_ASYNC_SYSTRACE_LABEL_BEGIN_PRINTF((int32_t)mVsyncFrameNumber,
-                                            "VsyncDuration (%u)",
-                                            (uint32_t)mVsyncFrameNumber);
+    if (atoi(propValue) != 0) {
+      logger = VsyncLatencyLogger::CreateLogger("Silk Vsync Duration");
+      logger->Start(mVsyncFrameNumber);
+    } else {
+      VSYNC_ASYNC_SYSTRACE_LABEL_BEGIN_PRINTF((int32_t)mVsyncFrameNumber,
+                                              "VsyncDuration (%u)",
+                                              (uint32_t)mVsyncFrameNumber);
+    }
     start = true;
   }
 
@@ -622,17 +635,25 @@ VsyncDispatcherHostImpl::NotifyVsyncTask(int64_t aTimestampNanosecond,
       static VsyncLatencyLogger* logger = VsyncLatencyLogger::CreateLogger("Silk Host::NotifyVsyncTask");
       TimeDuration diff = TimeStamp::Now() - aTimestamp;
       logger->Update(aFrameNumber, (int64_t)diff.ToMicroseconds());
-      if(!(aFrameNumber % 256)){
-        logger->PrintStatistic();
-        logger->Reset();
-      }
+      logger->FlushStat(aFrameNumber);
     }
   }
 
   property_get("silk.vd", propValue, "0");
   if (atoi(propValue) != 0) {
-    VSYNC_SCOPED_SYSTRACE_LABEL_PRINTF("DispatchVsync (%u)", (uint32_t)mCurrentFrameNumber);
+    static VsyncLatencyLogger* logger = nullptr;
+    property_get("silk.timer.log", propValue, "0");
+    if (atoi(propValue) != 0) {
+      logger = VsyncLatencyLogger::CreateLogger("Silk VsyncDispatcher Runtime");
+      logger->Start(aFrameNumber);
+    } else {
+      VSYNC_SCOPED_SYSTRACE_LABEL_PRINTF("DispatchVsync (%u)", (uint32_t)mCurrentFrameNumber);
+    }
     DispatchVsyncEvent();
+    if (atoi(propValue) != 0 && logger) {
+      logger->End(aFrameNumber);
+      logger->FlushStat(aFrameNumber);
+    }
   } else {
     DispatchVsyncEvent();
   }

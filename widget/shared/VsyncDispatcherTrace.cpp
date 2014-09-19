@@ -81,6 +81,19 @@ VsyncLatencyLogger::Reset()
   mStatistician.Reset();
 }
 
+bool
+VsyncLatencyLogger::FlushStat(uint32_t aFrameNum)
+{
+  bool ret = false;
+  const int n = 256; // magic number /o/
+  if(!(aFrameNum % n)){
+    PrintStatistic();
+    Reset();
+    ret = true;
+  }
+  return ret;
+}
+
 void
 VsyncLatencyLogger::PrintRawCallback(const char *aMsg, uint32_t aFrameNumber, int64_t aDataValue)
 {

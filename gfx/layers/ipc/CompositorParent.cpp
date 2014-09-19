@@ -299,10 +299,7 @@ CompositorParent::TickVsyncInternal(int64_t aTimestampNanosecond,
       static VsyncLatencyLogger* logger = VsyncLatencyLogger::CreateLogger("Silk Compose::TickTask");
       TimeDuration diff = TimeStamp::Now() - aTimestamp;
       logger->Update(aFrameNumber, (int64_t)diff.ToMicroseconds());
-      if(!(aFrameNumber % 256)){
-        logger->PrintStatistic();
-        logger->Reset();
-      }
+      logger->FlushStat(aFrameNumber);
     }
   }
 
@@ -310,8 +307,19 @@ CompositorParent::TickVsyncInternal(int64_t aTimestampNanosecond,
   if (atoi(propValue) != 0) {
     if (mVsyncComposeNeeded) {
       // Scope
-      VSYNC_SCOPED_SYSTRACE_LABEL_PRINTF("Compositor (%u)", (uint32_t)aFrameNumber);
+      property_get("silk.timer.log", propValue, "0");
+      static VsyncLatencyLogger* logger = nullptr;
+      if (atoi(propValue) != 0) {
+        logger = VsyncLatencyLogger::CreateLogger("Silk Compose::TickTask Runtime");
+        logger->Start(aFrameNumber);
+      } else {
+        VSYNC_SCOPED_SYSTRACE_LABEL_PRINTF("Compositor (%u)", (uint32_t)aFrameNumber);
+      }
       CompositeCallback();
+      if (atoi(propValue) != 0 && logger) {
+        logger->End(aFrameNumber);
+        logger->FlushStat(aFrameNumber);
+      }
     }
   } else {
     if (mVsyncComposeNeeded) {
