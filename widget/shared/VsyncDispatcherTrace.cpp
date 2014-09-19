@@ -8,6 +8,9 @@
 #include "base/time.h"
 #include "nsDebug.h"
 
+// Debug
+#include "cutils/properties.h"
+
 namespace mozilla {
 
 VsyncLatencyLogger::LoggerMap VsyncLatencyLogger::mLoggerMap;
@@ -82,12 +85,18 @@ VsyncLatencyLogger::Reset()
 }
 
 bool
-VsyncLatencyLogger::FlushStat(uint32_t aFrameNum)
+VsyncLatencyLogger::Flush(uint32_t aFrameNum)
 {
   bool ret = false;
   const int n = 256; // magic number /o/
   if(!(aFrameNum % n)){
-    PrintStatistic();
+    char propValue[PROPERTY_VALUE_MAX];
+    property_get("silk.timer.log.raw", propValue, "0");
+    if (atoi(propValue) == 0) {
+      PrintStatistic();
+    } else {
+      PrintRaw();
+    }
     Reset();
     ret = true;
   }

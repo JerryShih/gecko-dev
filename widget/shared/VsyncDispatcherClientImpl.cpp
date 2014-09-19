@@ -231,7 +231,7 @@ VsyncDispatcherClientImpl::DispatchVsyncEvent(int64_t aTimestampNanosecond,
       static VsyncLatencyLogger* logger = VsyncLatencyLogger::CreateLogger("Silk Client::DispatchVsyncEvent");
       TimeDuration diff = TimeStamp::Now() - aTimestamp;
       logger->Update(aFrameNumber, (int64_t)diff.ToMicroseconds());
-      logger->FlushStat(aFrameNumber);
+      logger->Flush(aFrameNumber);
     }
   }
 
@@ -263,7 +263,7 @@ VsyncDispatcherClientImpl::DispatchVsyncEvent(int64_t aTimestampNanosecond,
 
     if (atoi(propValue) != 0 && logger) {
       logger->End(aFrameNumber);
-      logger->FlushStat(aFrameNumber);
+      logger->Flush(aFrameNumber);
     }
   } else {
     if (!mVsyncEventNeeded) {

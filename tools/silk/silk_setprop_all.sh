@@ -12,6 +12,7 @@ value[8]=0  #rd.latency
 value[9]=0  #ipc
 value[10]=0 #vsync.duration
 value[11]=0 #time.log
+value[12]=0 #time.log.raw
 
 silk_setprop() {
   adb shell setprop silk.hw2vsync ${1}
@@ -26,6 +27,7 @@ silk_setprop() {
   adb shell setprop silk.ipc ${10}
   adb shell setprop silk.vsync ${11}
   adb shell setprop silk.timer.log ${12}
+  adb shell setprop silk.timer.log.raw ${13}
 }
 
 echo "set properities..."

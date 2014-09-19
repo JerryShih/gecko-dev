@@ -390,7 +390,7 @@ public:
   void PrintRaw();
   void PrintStatistic();
   void Reset();
-  bool FlushStat(uint32_t aFrameNum);
+  bool Flush(uint32_t aFrameNum);
 
 private:
   static void PrintRawCallback(const char* aMsg, uint32_t aFrameNumber, int64_t aDataValue);

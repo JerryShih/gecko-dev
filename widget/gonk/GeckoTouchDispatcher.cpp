@@ -107,7 +107,7 @@ public:
       if (atoi(propValue) != 0) {
         static VsyncLatencyLogger* logger = VsyncLatencyLogger::CreateLogger("Silk Input::TickTask");
         logger->Update(mFrameNumber, base::TimeTicks::HighResNow().ToInternalValue() - mVsyncTime/1000);
-        logger->FlushStat(mFrameNumber);
+        logger->Flush(mFrameNumber);
       } else {
         VSYNC_ASYNC_SYSTRACE_LABEL_END_PRINTF((int32_t)mFrameNumber, "Input_Latency (%u)", (uint32_t)mFrameNumber);
       }
@@ -127,7 +127,7 @@ public:
       mTouchDispatcher->DispatchTouchMoveEvents(mVsyncTime);
       if (atoi(propValue) != 0 && logger) {
         logger->End(mFrameNumber);
-        logger->FlushStat(mFrameNumber);
+        logger->Flush(mFrameNumber);
       }
     } else {
       mTouchDispatcher->DispatchTouchMoveEvents(mVsyncTime);

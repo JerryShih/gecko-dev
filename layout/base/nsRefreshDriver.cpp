@@ -276,7 +276,7 @@ private:
           static VsyncLatencyLogger* logger = VsyncLatencyLogger::CreateLogger("Silk Host RD::TickTask");
           TimeDuration diff = TimeStamp::Now() - aTimestamp;
           logger->Update(aFrameNumber, (int64_t)diff.ToMicroseconds());
-          logger->FlushStat(aFrameNumber);
+          logger->Flush(aFrameNumber);
         }
       }
 
@@ -294,7 +294,7 @@ private:
         mTimer->VsyncTick(aTimestampNanosecond, aTimestamp, aTimestampJS, aFrameNumber);
         if (atoi(propValue) != 0 && logger) {
           logger->End(aFrameNumber);
-          logger->FlushStat(aFrameNumber);
+          logger->Flush(aFrameNumber);
         }
       } else {
         mTimer->VsyncTick(aTimestampNanosecond, aTimestamp, aTimestampJS, aFrameNumber);
