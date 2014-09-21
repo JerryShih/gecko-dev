@@ -312,13 +312,12 @@ CompositorParent::TickVsyncInternal(int64_t aTimestampNanosecond,
       if (atoi(propValue) != 0) {
         logger = VsyncLatencyLogger::CreateLogger("Silk Compose::TickTask Runtime");
         logger->Start(aFrameNumber);
-      } else {
-        VSYNC_SCOPED_SYSTRACE_LABEL_PRINTF("Compositor (%u)", (uint32_t)aFrameNumber);
-      }
-      CompositeCallback();
-      if (atoi(propValue) != 0 && logger) {
+        CompositeCallback();
         logger->End(aFrameNumber);
         logger->Flush(aFrameNumber);
+      } else {
+        VSYNC_SCOPED_SYSTRACE_LABEL_PRINTF("Compositor (%u)", (uint32_t)aFrameNumber);
+        CompositeCallback();
       }
     }
   } else {

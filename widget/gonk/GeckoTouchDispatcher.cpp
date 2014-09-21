@@ -121,13 +121,12 @@ public:
       if (atoi(propValue) != 0) {
         logger = VsyncLatencyLogger::CreateLogger("Silk Input::TickTask Runtime");
         logger->Start(mFrameNumber);
-      } else {
-        VSYNC_SCOPED_SYSTRACE_LABEL_PRINTF("Input (%u)", (uint32_t)mFrameNumber);
-      }
-      mTouchDispatcher->DispatchTouchMoveEvents(mVsyncTime);
-      if (atoi(propValue) != 0 && logger) {
+        mTouchDispatcher->DispatchTouchMoveEvents(mVsyncTime);
         logger->End(mFrameNumber);
         logger->Flush(mFrameNumber);
+      } else {
+        VSYNC_SCOPED_SYSTRACE_LABEL_PRINTF("Input (%u)", (uint32_t)mFrameNumber);
+        mTouchDispatcher->DispatchTouchMoveEvents(mVsyncTime);
       }
     } else {
       mTouchDispatcher->DispatchTouchMoveEvents(mVsyncTime);

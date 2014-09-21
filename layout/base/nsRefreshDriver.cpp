@@ -288,13 +288,12 @@ private:
         if (atoi(propValue) != 0) {
           logger = VsyncLatencyLogger::CreateLogger("Silk Host RD::TickTask Runtime");
           logger->Start(aFrameNumber);
-        } else {
-          VSYNC_SCOPED_SYSTRACE_LABEL_PRINTF("RefreshDriver (%u)", (uint32_t)aFrameNumber);
-        }
-        mTimer->VsyncTick(aTimestampNanosecond, aTimestamp, aTimestampJS, aFrameNumber);
-        if (atoi(propValue) != 0 && logger) {
+          mTimer->VsyncTick(aTimestampNanosecond, aTimestamp, aTimestampJS, aFrameNumber);
           logger->End(aFrameNumber);
           logger->Flush(aFrameNumber);
+        } else {
+          VSYNC_SCOPED_SYSTRACE_LABEL_PRINTF("RefreshDriver (%u)", (uint32_t)aFrameNumber);
+          mTimer->VsyncTick(aTimestampNanosecond, aTimestamp, aTimestampJS, aFrameNumber);
         }
       } else {
         mTimer->VsyncTick(aTimestampNanosecond, aTimestamp, aTimestampJS, aFrameNumber);

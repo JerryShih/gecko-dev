@@ -248,22 +248,26 @@ VsyncDispatcherClientImpl::DispatchVsyncEvent(int64_t aTimestampNanosecond,
     if (atoi(propValue) != 0) {
       logger = VsyncLatencyLogger::CreateLogger("Silk Client RD::TickTask Runtime");
       logger->Start(aFrameNumber);
-    } else {
-      VSYNC_SCOPED_SYSTRACE_LABEL_PRINTF("RefreshDriver.client (%u)", (uint32_t)aFrameNumber);
-    }
+      if (!mVsyncEventNeeded) {
+        // If we received vsync event but there is no observer here, we disable
+        // the vsync event again.
+        EnableVsyncEvent(false);
+        return;
+      }
 
-    if (!mVsyncEventNeeded) {
-      // If we received vsync event but there is no observer here, we disable
-      // the vsync event again.
-      EnableVsyncEvent(false);
-      return;
-    }
-
-    TickRefreshDriver();
-
-    if (atoi(propValue) != 0 && logger) {
+      TickRefreshDriver();
       logger->End(aFrameNumber);
       logger->Flush(aFrameNumber);
+    } else {
+      VSYNC_SCOPED_SYSTRACE_LABEL_PRINTF("RefreshDriver.client (%u)", (uint32_t)aFrameNumber);
+      if (!mVsyncEventNeeded) {
+        // If we received vsync event but there is no observer here, we disable
+        // the vsync event again.
+        EnableVsyncEvent(false);
+        return;
+      }
+
+      TickRefreshDriver();
     }
   } else {
     if (!mVsyncEventNeeded) {
