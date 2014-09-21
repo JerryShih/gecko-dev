@@ -93,6 +93,7 @@
 #include "nsIDOMStyleSheet.h"
 #include "nsIStyleSheet.h"
 #include "nsContentPermissionHelper.h"
+#include "mozilla/VsyncDispatcherTrace.h"
 
 #ifdef XP_WIN
 #undef GetClassName
@@ -1466,6 +1467,8 @@ nsDOMWindowUtils::GarbageCollect(nsICycleCollectorListener *aListener,
 {
   PROFILER_LABEL("nsDOMWindowUtils", "GarbageCollect",
     js::ProfileEntry::Category::GC);
+  VSYNC_SCOPED_SYSTRACE_LABEL("nsDOMWindowUtils::GarbageCollect");
+
   MOZ_RELEASE_ASSERT(nsContentUtils::IsCallerChrome());
 
   nsJSContext::GarbageCollectNow(JS::gcreason::DOM_UTILS);

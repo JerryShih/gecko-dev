@@ -175,6 +175,7 @@
 #include "nsIFrameInlines.h"
 #include "mozilla/gfx/2D.h"
 #include "nsSubDocumentFrame.h"
+#include "mozilla/VsyncDispatcherTrace.h"
 
 #ifdef ANDROID
 #include "nsIDocShellTreeOwner.h"
@@ -6117,6 +6118,7 @@ PresShell::Paint(nsView*        aViewToPaint,
 {
   PROFILER_LABEL("PresShell", "Paint",
     js::ProfileEntry::Category::GRAPHICS);
+  VSYNC_SCOPED_SYSTRACE_LABEL("PresShell::Paint");
 
   NS_ASSERTION(!mIsDestroying, "painting a destroyed PresShell");
   NS_ASSERTION(aViewToPaint, "null view");

@@ -14,6 +14,7 @@
 #include "GeckoProfiler.h"
 #include "nsIDocument.h"
 #include "RestyleTrackerInlines.h"
+#include "mozilla/VsyncDispatcherTrace.h"
 
 namespace mozilla {
 
@@ -180,6 +181,7 @@ RestyleTracker::DoProcessRestyles()
 {
   PROFILER_LABEL("RestyleTracker", "ProcessRestyles",
     js::ProfileEntry::Category::CSS);
+  VSYNC_SCOPED_SYSTRACE_LABEL("RestyleTracker::DoProcessRestyles");
 
   mRestyleManager->BeginProcessingRestyles();
 

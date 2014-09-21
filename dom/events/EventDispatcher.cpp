@@ -32,6 +32,8 @@
 #include "mozilla/TouchEvents.h"
 #include "mozilla/unused.h"
 
+#include "mozilla/VsyncDispatcherTrace.h"
+
 namespace mozilla {
 
 using namespace dom;
@@ -395,6 +397,7 @@ EventDispatcher::Dispatch(nsISupports* aTarget,
 {
   PROFILER_LABEL("EventDispatcher", "Dispatch",
     js::ProfileEntry::Category::EVENTS);
+  VSYNC_SCOPED_SYSTRACE_LABEL("EventDispatcher::Dispatch");
 
   NS_ASSERTION(aEvent, "Trying to dispatch without WidgetEvent!");
   NS_ENSURE_TRUE(!aEvent->mFlags.mIsBeingDispatched,

@@ -69,6 +69,7 @@
 
 #include "mozilla/Preferences.h"
 #include "GeckoProfiler.h"
+#include "mozilla/VsyncDispatcherTrace.h"
 
 // Defines kKeyMapping and GetKeyNameIndex()
 #include "GonkKeyMapping.h"
@@ -978,6 +979,7 @@ nsAppShell::ProcessNextNativeEvent(bool mayWait)
 {
     PROFILER_LABEL("nsAppShell", "ProcessNextNativeEvent",
         js::ProfileEntry::Category::EVENTS);
+    VSYNC_SCOPED_SYSTRACE_LABEL("nsAppShell::ProcessNextNativeEvent");
 
     epoll_event events[16] = {{ 0 }};
 
@@ -985,6 +987,8 @@ nsAppShell::ProcessNextNativeEvent(bool mayWait)
     {
         PROFILER_LABEL("nsAppShell", "ProcessNextNativeEvent::Wait",
             js::ProfileEntry::Category::EVENTS);
+
+        VSYNC_SCOPED_SYSTRACE_LABEL("nsAppShell::ProcessNextNativeEvent::Wait");
 
         if ((event_count = epoll_wait(epollfd, events, 16,  mayWait ? -1 : 0)) <= 0)
             return true;
