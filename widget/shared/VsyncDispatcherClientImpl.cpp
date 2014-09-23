@@ -14,6 +14,7 @@
 // Debug
 #include "cutils/properties.h"
 #include "mozilla/VsyncDispatcherTrace.h"
+#include "gfxPrefs.h"
 
 namespace mozilla {
 
@@ -210,56 +211,67 @@ VsyncDispatcherClientImpl::DispatchVsyncEvent(int64_t aTimestampNanosecond,
                                               int64_t aTimestampJS,
                                               uint64_t aFrameNumber)
 {
-  MOZ_ASSERT(mInited);
-  MOZ_ASSERT(IsInVsyncDispatcherThread(), "Call VDClient::DispatchVsyncEvent at wrong thread.");
+  if (gfxPrefs::FrameUniformityRefreshDriverVsyncEnabled()) {
+    MOZ_ASSERT(mInited);
+    MOZ_ASSERT(IsInVsyncDispatcherThread(), "Call VDClient::DispatchVsyncEvent at wrong thread.");
 
-  MOZ_ASSERT(aTimestampNanosecond > mCurrentTimestampNanosecond);
-  MOZ_ASSERT(aTimestamp > mCurrentTimestamp);
-  MOZ_ASSERT(aTimestampJS > mCurrentTimestampJS);
-  MOZ_ASSERT(aFrameNumber > mCurrentFrameNumber);
+    MOZ_ASSERT(aTimestampNanosecond > mCurrentTimestampNanosecond);
+    MOZ_ASSERT(aTimestamp > mCurrentTimestamp);
+    MOZ_ASSERT(aTimestampJS > mCurrentTimestampJS);
+    MOZ_ASSERT(aFrameNumber > mCurrentFrameNumber);
 
-  // End
-  char propValue[PROPERTY_VALUE_MAX];
-  property_get("silk.ipc", propValue, "0");
-  if (atoi(propValue) != 0) {
-    property_get("silk.timer.log", propValue, "0");
-    if (atoi(propValue) == 0) {
-      VSYNC_ASYNC_SYSTRACE_LABEL_END_PRINTF((int32_t)aFrameNumber,
-                                            "VsyncToRefreshDriver_IPC (%u)",
-                                            (uint32_t)aFrameNumber);
-    } else {
-      static VsyncLatencyLogger* logger = VsyncLatencyLogger::CreateLogger("Silk Client::DispatchVsyncEvent");
-      TimeDuration diff = TimeStamp::Now() - aTimestamp;
-      logger->Update(aFrameNumber, (int64_t)diff.ToMicroseconds());
-      logger->Flush(aFrameNumber);
-    }
-  }
-
-  mCurrentTimestampNanosecond = aTimestampNanosecond;
-  mCurrentTimestamp = aTimestamp;
-  mCurrentTimestampJS = aTimestampJS;
-  mCurrentFrameNumber = aFrameNumber;
-
-  // Scope
-  property_get("silk.r.scope.client", propValue, "0");
-  if (atoi(propValue) != 0) {
-    property_get("silk.timer.log", propValue, "0");
-    static VsyncLatencyLogger* logger = nullptr;
+    // End
+    char propValue[PROPERTY_VALUE_MAX];
+    property_get("silk.ipc", propValue, "0");
     if (atoi(propValue) != 0) {
-      logger = VsyncLatencyLogger::CreateLogger("Silk Client RD::TickTask Runtime");
-      logger->Start(aFrameNumber);
-      if (!mVsyncEventNeeded) {
-        // If we received vsync event but there is no observer here, we disable
-        // the vsync event again.
-        EnableVsyncEvent(false);
-        return;
+      property_get("silk.timer.log", propValue, "0");
+      if (atoi(propValue) == 0) {
+        VSYNC_ASYNC_SYSTRACE_LABEL_END_PRINTF((int32_t)aFrameNumber,
+                                              "VsyncToRefreshDriver_IPC (%u)",
+                                              (uint32_t)aFrameNumber);
+      } else {
+        static VsyncLatencyLogger* logger = VsyncLatencyLogger::CreateLogger("Silk Client::DispatchVsyncEvent");
+        TimeDuration diff = TimeStamp::Now() - aTimestamp;
+        logger->Update(aFrameNumber, (int64_t)diff.ToMicroseconds());
+        logger->Flush(aFrameNumber);
       }
+    }
 
-      TickRefreshDriver();
-      logger->End(aFrameNumber);
-      logger->Flush(aFrameNumber);
+    mCurrentTimestampNanosecond = aTimestampNanosecond;
+    mCurrentTimestamp = aTimestamp;
+    mCurrentTimestampJS = aTimestampJS;
+    mCurrentFrameNumber = aFrameNumber;
+
+    // Scope
+    property_get("silk.r.scope.client", propValue, "0");
+    if (atoi(propValue) != 0) {
+      property_get("silk.timer.log", propValue, "0");
+      static VsyncLatencyLogger* logger = nullptr;
+      if (atoi(propValue) != 0) {
+        logger = VsyncLatencyLogger::CreateLogger("Silk Client RD::TickTask Runtime");
+        logger->Start(aFrameNumber);
+        if (!mVsyncEventNeeded) {
+          // If we received vsync event but there is no observer here, we disable
+          // the vsync event again.
+          EnableVsyncEvent(false);
+          return;
+        }
+
+        TickRefreshDriver();
+        logger->End(aFrameNumber);
+        logger->Flush(aFrameNumber);
+      } else {
+        VSYNC_SCOPED_SYSTRACE_LABEL_PRINTF("RefreshDriver.client (%u)", (uint32_t)aFrameNumber);
+        if (!mVsyncEventNeeded) {
+          // If we received vsync event but there is no observer here, we disable
+          // the vsync event again.
+          EnableVsyncEvent(false);
+          return;
+        }
+
+        TickRefreshDriver();
+      }
     } else {
-      VSYNC_SCOPED_SYSTRACE_LABEL_PRINTF("RefreshDriver.client (%u)", (uint32_t)aFrameNumber);
       if (!mVsyncEventNeeded) {
         // If we received vsync event but there is no observer here, we disable
         // the vsync event again.
@@ -269,18 +281,9 @@ VsyncDispatcherClientImpl::DispatchVsyncEvent(int64_t aTimestampNanosecond,
 
       TickRefreshDriver();
     }
-  } else {
-    if (!mVsyncEventNeeded) {
-      // If we received vsync event but there is no observer here, we disable
-      // the vsync event again.
-      EnableVsyncEvent(false);
-      return;
-    }
 
-    TickRefreshDriver();
+    mVsyncEventNeeded = (GetVsyncObserverCount() > 0);
   }
-
-  mVsyncEventNeeded = (GetVsyncObserverCount() > 0);
 }
 
 void

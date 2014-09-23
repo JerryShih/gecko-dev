@@ -810,15 +810,19 @@ nsRefreshDriver::GetRegularTimerInterval(bool *outIsDefault) const
 {
   // If we enable the FrameUniformity, we should get the interval from
   // vsync dispatcher
-  if (gfxPrefs::FrameUniformityEnabled()) {
-    uint32_t rate = VsyncDispatcher::GetInstance()->GetVsyncRate();
 
-    MOZ_ASSERT(rate>0);
+  if (gfxPrefs::FrameUniformityRefreshDriverVsyncEnabled()) {
+    if (gfxPrefs::FrameUniformityEnabled()) {
+      uint32_t rate = VsyncDispatcher::GetInstance()->GetVsyncRate();
 
-    if (rate > 0){
-      return 1000.0 / rate;
-    } else {  // Use default 60 frame rate
-      return 1000.0 / 60.0;
+      MOZ_ASSERT(rate>0);
+
+      if (rate > 0){
+        return 1000.0 / rate;
+      }
+      else {  // Use default 60 frame rate
+        return 1000.0 / 60.0;
+      }
     }
   }
 
@@ -872,7 +876,9 @@ nsRefreshDriver::ChooseTimer() const
     double rate = GetRegularTimerInterval(&isDefault);
 #ifdef MOZ_WIDGET_GONK
     if (gfxPrefs::FrameUniformityEnabled()) {
-      sRegularRateTimer = new VsyncRefreshDriverTimer(rate);
+      if (gfxPrefs::FrameUniformityRefreshDriverVsyncEnabled()) {
+        sRegularRateTimer = new VsyncRefreshDriverTimer(rate);
+      }
     }
 #elif defined(XP_WIN)
     if (PreciseRefreshDriverTimerWindowsDwmVsync::IsSupported()) {

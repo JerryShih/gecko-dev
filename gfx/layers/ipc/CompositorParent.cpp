@@ -692,25 +692,27 @@ CompositorParent::ScheduleComposition()
   MOZ_ASSERT(IsInCompositorThread(),
       "ScheduleComposition can only be called on the compositor thread");
 
-  // With FrameUniformity, we will not schedule the composition task.
-  // Instead, we will do compose when vsync event trigger.
-  if (gfxPrefs::FrameUniformityEnabled()) {
-    if (mVsyncComposeNeeded || mPaused) {
+  if (gfxPrefs::FrameUniformityCompositorVsyncEnabled()) {
+    // With FrameUniformity, we will not schedule the composition task.
+    // Instead, we will do compose when vsync event trigger.
+    if (gfxPrefs::FrameUniformityEnabled()) {
+      if (mVsyncComposeNeeded || mPaused) {
+        return;
+      }
+
+  #ifdef COMPOSITOR_PERFORMANCE_WARNING
+      uint32_t vsyncRate = VsyncDispatcher::GetInstance()->GetVsyncRate();
+      mExpectedComposeStartTime = TimeStamp::Now() +
+          TimeDuration::FromMilliseconds(1000.0 / vsyncRate);
+  #endif
+
+      mVsyncComposeNeeded = true;
+
+      // Register compositer to vsync dispatcher
+      VsyncDispatcher::GetInstance()->GetCompositorRegistry()->Register(this);
+
       return;
     }
-
-#ifdef COMPOSITOR_PERFORMANCE_WARNING
-    uint32_t vsyncRate = VsyncDispatcher::GetInstance()->GetVsyncRate();
-    mExpectedComposeStartTime = TimeStamp::Now() +
-        TimeDuration::FromMilliseconds(1000.0 / vsyncRate);
-#endif
-
-    mVsyncComposeNeeded = true;
-
-    // Register compositer to vsync dispatcher
-    VsyncDispatcher::GetInstance()->GetCompositorRegistry()->Register(this);
-
-    return;
   }
 
   // Non-FrameUniformity case.

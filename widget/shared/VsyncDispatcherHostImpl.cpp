@@ -15,6 +15,7 @@
 // Debug
 #include "VsyncDispatcherTrace.h"
 #include "cutils/properties.h"
+#include "gfxPrefs.h"
 
 namespace mozilla {
 
@@ -671,21 +672,32 @@ VsyncDispatcherHostImpl::DispatchVsyncEvent()
   MOZ_ASSERT(mInited);
   MOZ_ASSERT(IsInVsyncDispatcherThread());
 
+  char propValue[PROPERTY_VALUE_MAX];
+
   if (!mVsyncEventNeeded) {
     return;
   }
 
-  // Notify the main thread to handle input event.
-  DispatchInputEvent();
+  if (gfxPrefs::TouchResampling()) {
+    printf_stderr("bignose resample");
+    // Notify the main thread to handle input event.
+    DispatchInputEvent();
+  }
 
-  // Do compose.
-  DispatchCompose();
+  if (gfxPrefs::FrameUniformityCompositorVsyncEnabled()) {
+    printf_stderr("bignose compositor");
+    // Do compose.
+    DispatchCompose();
+  }
 
-  // Send vsync event to content process
-  NotifyContentProcess();
+  if (gfxPrefs::FrameUniformityRefreshDriverVsyncEnabled()) {
+    printf_stderr("bignose rd");
+    // Send vsync event to content process
+    NotifyContentProcess();
 
-  // Tick chrome refresh driver.
-  TickRefreshDriver();
+    // Tick chrome refresh driver.
+    TickRefreshDriver();
+  }
 }
 
 int
@@ -790,7 +802,12 @@ VsyncDispatcherHostImpl::EnableVsyncNotificationIfhasObserver()
   if (!!GetVsyncObserverCount() !=  mVsyncEventNeeded) {
     mVsyncEventNeeded = !mVsyncEventNeeded;
 
-    mTimer->Enable(mVsyncEventNeeded);
+    // don't disable the vsync source when we only enable RD-vsync.
+    // because the apzc will handle the scrolling and rd will still be inactive.
+    // this time, the vsync observer number is 0.
+    if (!(gfxPrefs::FrameUniformityRefreshDriverVsyncEnabled() && !gfxPrefs::TouchResampling() && !gfxPrefs::FrameUniformityCompositorVsyncEnabled())) {
+      mTimer->Enable(mVsyncEventNeeded);
+    }
   }
 }
 
