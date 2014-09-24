@@ -218,9 +218,24 @@ InputDispatcherRegistryHost::Dispatch(int64_t aTimestampNanosecond,
 {
   MOZ_ASSERT(mVsyncDispatcher->IsInVsyncDispatcherThread());
 
-  //TODO: dispatch input
+  bool isTicked = false;
 
-  return true;
+  if (mObserver) {
+    isTicked |= mObserver->TickVsync(aTimestampNanosecond,
+                                     aTimestamp,
+                                     aTimestampJS,
+                                     aFrameNumber);
+  }
+
+  if (mTemporaryObserver) {
+    isTicked |= mTemporaryObserver->TickVsync(aTimestampNanosecond,
+                                              aTimestamp,
+                                              aTimestampJS,
+                                              aFrameNumber);
+    // Directly assigned mTemporaryObserver as nullptr
+    mTemporaryObserver = nullptr;
+  }
+  return isTicked;
 }
 
 void
