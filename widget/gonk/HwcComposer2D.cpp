@@ -269,8 +269,6 @@ HwcComposer2D::Vsync(int aDisplay, int64_t aTimestamp)
 {
     MOZ_ASSERT(mHasHWVsync);
 
-    GeckoTouchDispatcher::NotifyVsync(aTimestamp);
-
     if (mVsyncObserver) {
         // We can't get the same timer as the hwc does in gecko, so we get the
         // timestamp again here.

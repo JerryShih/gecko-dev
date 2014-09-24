@@ -19,6 +19,8 @@
 #define GECKO_TOUCH_INPUT_DISPATCHER_h
 
 #include "InputData.h"
+
+#include "VsyncDispatcher.h"
 #include "Units.h"
 #include "mozilla/Mutex.h"
 #include <vector>
@@ -38,16 +40,20 @@ class WidgetMouseEvent;
 // this sample time, we extrapolate the last two touch events to the sample
 // time. The magic numbers defined as constants are taken from android
 // InputTransport.cpp.
-class GeckoTouchDispatcher
+class GeckoTouchDispatcher : public VsyncObserver
 {
   NS_INLINE_DECL_THREADSAFE_REFCOUNTING(GeckoTouchDispatcher)
 
 public:
   GeckoTouchDispatcher();
+  virtual ~GeckoTouchDispatcher();
   void NotifyTouch(MultiTouchInput& aData, uint64_t aEventTime);
   void DispatchTouchEvent(MultiTouchInput& aMultiTouch);
   void DispatchTouchMoveEvents(uint64_t aVsyncTime);
-  static bool NotifyVsync(uint64_t aVsyncTimestamp);
+  virtual bool TickVsync(int64_t aTimeStampNanosecond,
+                         TimeStamp aTimestamp,
+                         int64_t aTimeStampJS,
+                         uint64_t aFrameNumber) MOZ_OVERRIDE;
 
 private:
   int32_t InterpolateTouch(MultiTouchInput& aOutTouch, uint64_t aSampleTime);
