@@ -33,6 +33,7 @@
 #include "nsDebug.h"
 #include "nsThreadUtils.h"
 #include "nsWindow.h"
+#include "VsyncDispatcher.h"
 #include <sys/types.h>
 #include <unistd.h>
 #include <utils/Timers.h>
@@ -72,6 +73,11 @@ GeckoTouchDispatcher::GeckoTouchDispatcher()
   mMinResampleTime = gfxPrefs::TouchResampleMinTime();
   sTouchDispatcher = this;
   ClearOnShutdown(&sTouchDispatcher);
+}
+
+GeckoTouchDispatcher::~GeckoTouchDispatcher()
+{
+  VsyncDispatcher::GetInstance()->GetInputDispatcherRegistry()->Unregister(this, true);
 }
 
 class DispatchTouchEventsMainThread : public nsRunnable
@@ -116,23 +122,22 @@ private:
   MultiTouchInput mTouch;
 };
 
-// Timestamp is in nanoseconds
-/* static */ bool
-GeckoTouchDispatcher::NotifyVsync(uint64_t aVsyncTimestamp)
+bool
+GeckoTouchDispatcher::TickVsync(int64_t aTimestampNanosecond,
+                                TimeStamp aTimestamp,
+                                int64_t aTimestampJS,
+                                uint64_t aFrameNumber)
 {
-  if (sTouchDispatcher == nullptr) {
-    return false;
-  }
-
-  MOZ_ASSERT(sTouchDispatcher->mResamplingEnabled);
+  MOZ_ASSERT(mResamplingEnabled);
   bool haveTouchData = false;
   {
-    MutexAutoLock lock(sTouchDispatcher->mTouchQueueLock);
-    haveTouchData = !sTouchDispatcher->mTouchMoveEvents.empty();
+    MutexAutoLock lock(mTouchQueueLock);
+    haveTouchData = !mTouchMoveEvents.empty();
   }
 
   if (haveTouchData) {
-    NS_DispatchToMainThread(new DispatchTouchEventsMainThread(sTouchDispatcher, aVsyncTimestamp));
+    // aTimestampUS is in microseconds, so we have to change its unit
+    NS_DispatchToMainThread(new DispatchTouchEventsMainThread(this, aTimestampNanosecond));
   }
 
   return haveTouchData;
@@ -144,6 +149,9 @@ GeckoTouchDispatcher::NotifyTouch(MultiTouchInput& aData, uint64_t aEventTime)
 {
   if (mResamplingEnabled) {
     switch (aData.mType) {
+      case MultiTouchInput::MULTITOUCH_START:
+        VsyncDispatcher::GetInstance()->GetInputDispatcherRegistry()->Register(this);
+        break;
       case MultiTouchInput::MULTITOUCH_MOVE:
       {
         MutexAutoLock lock(mTouchQueueLock);
@@ -353,6 +361,7 @@ GeckoTouchDispatcher::DispatchTouchEvent(MultiTouchInput& aMultiTouch)
       aMultiTouch.mTouches.Length() == 1) {
     MutexAutoLock lock(mTouchQueueLock);
     mTouchMoveEvents.clear();
+    VsyncDispatcher::GetInstance()->GetInputDispatcherRegistry()->Unregister(this);
   } else if (aMultiTouch.mType == MultiTouchInput::MULTITOUCH_START &&
              aMultiTouch.mTouches.Length() == 1) {
     mTouchEventsFiltered = IsExpired(aMultiTouch);
