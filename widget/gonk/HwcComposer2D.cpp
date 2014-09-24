@@ -287,8 +287,6 @@ HwcComposer2D::Vsync(int aDisplay, nsecs_t aVsyncTimestamp)
       CompositorParent::PostInsertVsyncProfilerMarker(vsyncTime);
     }
 #endif
-
-    GeckoTouchDispatcher::NotifyVsync(aVsyncTimestamp);
     
     if (mVsyncObserver) {
         mVsyncObserver->NotifyVsync(vsyncTime);

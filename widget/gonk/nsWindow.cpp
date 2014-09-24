@@ -49,6 +49,7 @@
 #include "ParentProcessController.h"
 #include "nsThreadUtils.h"
 #include "HwcComposer2D.h"
+#include "VsyncDispatcher.h"
 
 #define LOG(args...)  __android_log_print(ANDROID_LOG_INFO, "Gonk" , ## args)
 #define LOGW(args...) __android_log_print(ANDROID_LOG_WARN, "Gonk", ## args)
@@ -713,18 +714,18 @@ ComputeOrientation(uint32_t aRotation, const nsIntSize& aScreenSize)
     bool naturallyPortrait = (aScreenSize.height > aScreenSize.width);
     switch (aRotation) {
     case nsIScreen::ROTATION_0_DEG:
-        return (naturallyPortrait ? eScreenOrientation_PortraitPrimary : 
+        return (naturallyPortrait ? eScreenOrientation_PortraitPrimary :
                 eScreenOrientation_LandscapePrimary);
     case nsIScreen::ROTATION_90_DEG:
         // Arbitrarily choosing 90deg to be primary "unnatural"
         // rotation.
-        return (naturallyPortrait ? eScreenOrientation_LandscapePrimary : 
+        return (naturallyPortrait ? eScreenOrientation_LandscapePrimary :
                 eScreenOrientation_PortraitPrimary);
     case nsIScreen::ROTATION_180_DEG:
-        return (naturallyPortrait ? eScreenOrientation_PortraitSecondary : 
+        return (naturallyPortrait ? eScreenOrientation_PortraitSecondary :
                 eScreenOrientation_LandscapeSecondary);
     case nsIScreen::ROTATION_270_DEG:
-        return (naturallyPortrait ? eScreenOrientation_LandscapeSecondary : 
+        return (naturallyPortrait ? eScreenOrientation_LandscapeSecondary :
                 eScreenOrientation_PortraitSecondary);
     default:
         MOZ_CRASH("Gonk screen must always have a known rotation");
