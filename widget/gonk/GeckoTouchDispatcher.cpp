@@ -66,8 +66,7 @@ GeckoTouchDispatcher::GeckoTouchDispatcher()
   gfxPrefs::GetSingleton();
 
   mEnabledUniformityInfo = gfxPrefs::UniformityInfo();
-  mResamplingEnabled = gfxPrefs::TouchResampling() &&
-                       gfxPrefs::FrameUniformityHWVsyncEnabled();
+  mResamplingEnabled = gfxPrefs::TouchResampling();
   mVsyncAdjust = gfxPrefs::TouchVsyncSampleAdjust();
   mMaxPredict = gfxPrefs::TouchResampleMaxPredict();
   mMinResampleTime = gfxPrefs::TouchResampleMinTime();
