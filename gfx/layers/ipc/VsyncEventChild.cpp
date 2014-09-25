@@ -66,7 +66,8 @@ VsyncEventChild::DestroyTask()
 bool VsyncEventChild::RecvNotifyVsyncEvent(const VsyncData& aVsyncData)
 {
   VsyncDispatcher::GetInstance()->AsVsyncDispatcherClient()
-      ->DispatchVsyncEvent(aVsyncData.timeStampUS(),
+      ->DispatchVsyncEvent(aVsyncData.timeStamp(),
+                           aVsyncData.timeStampJS(),
                            aVsyncData.frameNumber());
 
   return true;

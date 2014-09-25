@@ -5,13 +5,17 @@
 
 include ProtocolTypes;
 
+using class mozilla::TimeStamp from "mozilla/TimeStamp.h";
+
 namespace mozilla {
 namespace layers {
 
 struct VsyncData
 {
-  // The vsync event timetamp in microsecond.
-  int64_t timeStampUS;
+  // The vsync event timetamp in TimeStamp stuct.
+  TimeStamp timeStamp;
+  // The vsync event Timestamp in int64_t for JS.
+  int64_t timeStampJS;
   // The monotonic increased frame count for each vsync update.
   uint64_t frameNumber;
 };

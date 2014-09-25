@@ -6,6 +6,7 @@
 #ifndef mozilla_widget_shared_VsyncDispatcherClientImpl_h
 #define mozilla_widget_shared_VsyncDispatcherClientImpl_h
 
+#include "mozilla/TimeStamp.h"
 #include "mozilla/StaticPtr.h"
 #include "ThreadSafeRefcountingWithMainThreadDestruction.h"
 #include "VsyncDispatcher.h"
@@ -52,7 +53,9 @@ private:
 
   // Dispatch vsync to observer
   // This function should run at vsync dispatcher thread
-  void DispatchVsyncEvent(int64_t aTimestampUS, uint64_t aFrameNumber);
+  void DispatchVsyncEvent(TimeStamp aTimestamp,
+                          int64_t aTimestampJS,
+                          uint64_t aFrameNumber);
 
   void TickRefreshDriver();
 
@@ -75,7 +78,9 @@ private:
   RefreshDriverRegistryClient* mRefreshDriver;
 
   // Vsync event tick timestamp.
-  int64_t mCurrentTimestampUS;
+  TimeStamp mCurrentTimestamp;
+  // Vsync event tick timestamp in JS.
+  int64_t mCurrentTimestampJS;
   // Monotonic increased frame number.
   uint64_t mCurrentFrameNumber;
 };
