@@ -26,10 +26,12 @@
 #include "mozilla/layers/PLayerTransaction.h"
 #include "mozilla/layers/ShadowLayerUtilsGralloc.h"
 #include "mozilla/layers/TextureHostOGL.h"  // for TextureHostOGL
+#include "mozilla/TimeStamp.h"
 #include "mozilla/StaticPtr.h"
 #include "cutils/properties.h"
 #include "gfx2DGlue.h"
 #include "GeckoTouchDispatcher.h"
+#include "jsapi.h"
 #include "PlatformVsyncTimer.h"
 
 #if ANDROID_VERSION >= 17
@@ -272,8 +274,7 @@ HwcComposer2D::Vsync(int aDisplay, int64_t aTimestamp)
     if (mVsyncObserver) {
         // We can't get the same timer as the hwc does in gecko, so we get the
         // timestamp again here.
-        // We use the Chromium timer. The time unit is microsecond.
-        mVsyncObserver->NotifyVsync(base::TimeTicks::HighResNow().ToInternalValue());
+        mVsyncObserver->NotifyVsync(TimeStamp::Now(), JS_Now());
     }
 }
 

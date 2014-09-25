@@ -31,7 +31,7 @@ public:
   virtual uint32_t GetObserverNum() const MOZ_OVERRIDE;
 
   // Tick all registered refresh driver
-  void Dispatch(int64_t aTimestampUS, uint64_t aFrameNumber);
+  void Dispatch(TimeStamp aTimestamp, int64_t aTimestampJS, uint64_t aFrameNumber);
 
 private:
   void EnableVsyncNotificationIfhasObserver();
@@ -85,7 +85,9 @@ RefreshDriverRegistryClient::GetObserverNum() const
 }
 
 void
-RefreshDriverRegistryClient::Dispatch(int64_t aTimestampUS, uint64_t aFrameNumber)
+RefreshDriverRegistryClient::Dispatch(TimeStamp aTimestamp,
+                                      int64_t aTimestampJS,
+                                      uint64_t aFrameNumber)
 {
   MOZ_ASSERT(mVsyncDispatcher->IsInVsyncDispatcherThread());
 
@@ -150,7 +152,7 @@ VsyncDispatcherClientImpl::VsyncDispatcherClientImpl()
   , mVsyncEventNeeded(false)
   , mVsyncEventChild(nullptr)
   , mRefreshDriver(nullptr)
-  , mCurrentTimestampUS(0)
+  , mCurrentTimestampJS(0)
   , mCurrentFrameNumber(0)
 {
   MOZ_ASSERT(NS_IsMainThread());
@@ -180,14 +182,18 @@ VsyncDispatcherClientImpl::GetRefreshDriverRegistry()
 }
 
 void
-VsyncDispatcherClientImpl::DispatchVsyncEvent(int64_t aTimestampUS, uint64_t aFrameNumber)
+VsyncDispatcherClientImpl::DispatchVsyncEvent(TimeStamp aTimestamp,
+                                              int64_t aTimestampJS,
+                                              uint64_t aFrameNumber)
 {
   MOZ_ASSERT(mInited);
   MOZ_ASSERT(IsInVsyncDispatcherThread(), "Call VDClient::DispatchVsyncEvent at wrong thread.");
 
-  MOZ_ASSERT(aTimestampUS > mCurrentTimestampUS);
+  MOZ_ASSERT(aTimestamp > mCurrentTimestamp);
+  MOZ_ASSERT(aTimestampJS > mCurrentTimestampJS);
   MOZ_ASSERT(aFrameNumber > mCurrentFrameNumber);
-  mCurrentTimestampUS = aTimestampUS;
+  mCurrentTimestamp = aTimestamp;
+  mCurrentTimestampJS = aTimestampJS;
   mCurrentFrameNumber = aFrameNumber;
 
   if (!mVsyncEventNeeded) {
@@ -208,7 +214,7 @@ VsyncDispatcherClientImpl::TickRefreshDriver()
   MOZ_ASSERT(mInited);
   MOZ_ASSERT(IsInVsyncDispatcherThread());
 
-  mRefreshDriver->Dispatch(mCurrentTimestampUS, mCurrentFrameNumber);
+  mRefreshDriver->Dispatch(mCurrentTimestamp, mCurrentTimestampJS, mCurrentFrameNumber);
 }
 
 int

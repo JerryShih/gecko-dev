@@ -13,6 +13,8 @@ class MessageLoop;
 
 namespace mozilla {
 
+class TimeStamp;
+
 namespace layers {
 class VsyncEventChild;
 class VsyncEventParent;
@@ -28,7 +30,9 @@ class VsyncObserver
 {
 public:
   // The vsync-aligned task. Return true if there has a task ticked.
-  virtual bool TickTask(int64_t aTimestampUS, uint64_t aFrameNumber) = 0;
+  virtual bool TickTask(TimeStamp aTimestamp,
+                        int64_t aTimeStampJS,
+                        uint64_t aFrameNumber) = 0;
 
 protected:
   virtual ~VsyncObserver() { }
@@ -85,7 +89,9 @@ class VsyncDispatcherClient
 {
 public:
   // Dispatch vsync to all observer
-  virtual void DispatchVsyncEvent(int64_t aTimestampUS, uint64_t aFrameNumber) = 0;
+  virtual void DispatchVsyncEvent(TimeStamp aTimestamp,
+                                  int64_t aTimeStampJS,
+                                  uint64_t aFrameNumber) = 0;
 
   // Set vsync event IPC child.
   virtual void SetVsyncEventChild(layers::VsyncEventChild* aVsyncEventChild) = 0;

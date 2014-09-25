@@ -11,6 +11,7 @@ namespace mozilla {
 class PlatformVsyncTimer;
 class PlatformVsyncTimerFactory;
 class VsyncTimerObserver;
+class TimeStamp;
 
 class PlatformVsyncTimerFactory
 {
@@ -26,9 +27,8 @@ private:
 class VsyncTimerObserver
 {
 public:
-  // Notify the the observer that there has one vsync event. the Time timestamp
-  // is microsecond.
-  virtual void NotifyVsync(int64_t aTimestampUS) = 0;
+  // Notify the the observer that there has one vsync event.
+  virtual void NotifyVsync(TimeStamp aTimestamp, int64_t aTimeStampJS) = 0;
 
 protected:
   ~VsyncTimerObserver() { };
