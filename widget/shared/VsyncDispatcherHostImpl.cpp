@@ -28,7 +28,8 @@ public:
   void Init(VsyncDispatcherHostImpl* aVsyncDispatcher);
 
   // Dispatch vsync event to all registered observer
-  virtual void Dispatch(TimeStamp aTimestamp,
+  virtual void Dispatch(int64_t aTimestampNanosecond,
+                        TimeStamp aTimestamp,
                         int64_t aTimestampJS,
                         uint64_t aFrameNumber) = 0;
 
@@ -60,7 +61,10 @@ public:
 
   // Tick registered InputDispatcher. Return true if input dispatcher dispatches
   // one task.
-  bool Dispatch(TimeStamp aTimestamp, int64_t aTimestampJS, uint64_t aFrameNumber);
+  bool Dispatch(int64_t aTimestampNanosecond,
+                TimeStamp aTimestamp,
+                int64_t aTimestampJS,
+                uint64_t aFrameNumber);
 
   virtual void Register(VsyncObserver* aVsyncObserver) MOZ_OVERRIDE;
   virtual void Unregister(VsyncObserver* aVsyncObserver, bool aSync) MOZ_OVERRIDE;
@@ -86,7 +90,8 @@ public:
   ~RefreshDriverRegistryHost();
 
   // Tick all registered refresh driver
-  virtual void Dispatch(TimeStamp aTimestamp,
+  virtual void Dispatch(int64_t aTimestampNanosecond,
+                        TimeStamp aTimestamp,
                         int64_t aTimestampJS,
                         uint64_t aFrameNumber) MOZ_OVERRIDE;
 };
@@ -99,7 +104,8 @@ public:
   ~CompositorRegistryHost();
 
   // Call compositor parent to do compose
-  virtual void Dispatch(TimeStamp aTimestamp,
+  virtual void Dispatch(int64_t aTimestampNanosecond,
+                        TimeStamp aTimestamp,
                         int64_t aTimestampJS,
                         uint64_t aFrameNumber) MOZ_OVERRIDE;
 };
@@ -179,7 +185,8 @@ InputDispatcherRegistryHost::~InputDispatcherRegistryHost()
 }
 
 bool
-InputDispatcherRegistryHost::Dispatch(TimeStamp aTimestamp,
+InputDispatcherRegistryHost::Dispatch(int64_t aTimestampNanosecond,
+                                      TimeStamp aTimestamp,
                                       int64_t aTimestampJS,
                                       uint64_t aFrameNumber)
 {
@@ -294,7 +301,8 @@ RefreshDriverRegistryHost::~RefreshDriverRegistryHost()
 }
 
 void
-RefreshDriverRegistryHost::Dispatch(TimeStamp aTimestamp,
+RefreshDriverRegistryHost::Dispatch(int64_t aTimestampNanosecond,
+                                    TimeStamp aTimestamp,
                                     int64_t aTimestampJS,
                                     uint64_t aFrameNumber)
 {
@@ -315,7 +323,10 @@ CompositorRegistryHost::~CompositorRegistryHost()
 }
 
 void
-CompositorRegistryHost::Dispatch(TimeStamp aTimestamp, int64_t aTimestampJS, uint64_t aFrameNumber)
+CompositorRegistryHost::Dispatch(int64_t aTimestampNanosecond,
+                                 TimeStamp aTimestamp,
+                                 int64_t aTimestampJS,
+                                 uint64_t aFrameNumber)
 {
   MOZ_ASSERT(IsInVsyncDispatcherThread());
 
@@ -429,6 +440,7 @@ VsyncDispatcherHostImpl::VsyncDispatcherHostImpl()
   , mRefreshDriver(nullptr)
   , mCompositor(nullptr)
   , mTimer(nullptr)
+  , mCurrentTimestampNanosecond(0)
   , mCurrentTimestampJS(0)
   , mCurrentFrameNumber(0)
   , mVsyncFrameNumber(0)
@@ -487,7 +499,9 @@ VsyncDispatcherHostImpl::UnregisterVsyncEventParent(VsyncEventParent* aVsyncEven
 }
 
 void
-VsyncDispatcherHostImpl::NotifyVsync(TimeStamp aTimestamp, int64_t aTimestampJS)
+VsyncDispatcherHostImpl::NotifyVsync(int64_t aTimestampNanosecond,
+                                     TimeStamp aTimestamp,
+                                     int64_t aTimestampJS)
 {
   MOZ_ASSERT(mInited);
 
@@ -498,21 +512,25 @@ VsyncDispatcherHostImpl::NotifyVsync(TimeStamp aTimestamp, int64_t aTimestampJS)
   GetMessageLoop()->PostTask(FROM_HERE,
                              NewRunnableMethod(this,
                              &VsyncDispatcherHostImpl::NotifyVsyncTask,
+                             aTimestampNanosecond,
                              aTimestamp,
                              aTimestampJS,
                              mVsyncFrameNumber));
 }
 
 void
-VsyncDispatcherHostImpl::NotifyVsyncTask(TimeStamp aTimestamp,
+VsyncDispatcherHostImpl::NotifyVsyncTask(int64_t aTimestampNanosecond,
+                                         TimeStamp aTimestamp,
                                          int64_t aTimestampJS,
                                          uint64_t aFrameNumber)
 {
   MOZ_ASSERT(mInited);
   MOZ_ASSERT(IsInVsyncDispatcherThread());
 
+  MOZ_ASSERT(aTimestampNanosecond > mCurrentTimestampNanosecond);
   MOZ_ASSERT(aTimestamp > mCurrentTimestamp);
   MOZ_ASSERT(aTimestampJS > mCurrentTimestampJS);
+  mCurrentTimestampNanosecond = aTimestampNanosecond;
   mCurrentTimestamp = aTimestamp;
   mCurrentTimestampJS = aTimestampJS;
   mCurrentFrameNumber = aFrameNumber;
@@ -560,7 +578,10 @@ VsyncDispatcherHostImpl::DispatchInputEvent()
   MOZ_ASSERT(mInited);
   MOZ_ASSERT(IsInVsyncDispatcherThread());
 
-  mInputDispatcher->Dispatch(mCurrentTimestamp, mCurrentTimestampJS, mCurrentFrameNumber);
+  mInputDispatcher->Dispatch(mCurrentTimestampNanosecond,
+                             mCurrentTimestamp,
+                             mCurrentTimestampJS,
+                             mCurrentFrameNumber);
 }
 
 void
@@ -569,7 +590,10 @@ VsyncDispatcherHostImpl::DispatchCompose()
   MOZ_ASSERT(mInited);
   MOZ_ASSERT(IsInVsyncDispatcherThread());
 
-  mCompositor->Dispatch(mCurrentTimestamp, mCurrentTimestampJS, mCurrentFrameNumber);
+  mCompositor->Dispatch(mCurrentTimestampNanosecond,
+                        mCurrentTimestamp,
+                        mCurrentTimestampJS,
+                        mCurrentFrameNumber);
 }
 
 void
@@ -578,7 +602,10 @@ VsyncDispatcherHostImpl::TickRefreshDriver()
   MOZ_ASSERT(mInited);
   MOZ_ASSERT(IsInVsyncDispatcherThread());
 
-  mRefreshDriver->Dispatch(mCurrentTimestamp, mCurrentTimestampJS, mCurrentFrameNumber);
+  mRefreshDriver->Dispatch(mCurrentTimestampNanosecond,
+                           mCurrentTimestamp,
+                           mCurrentTimestampJS,
+                           mCurrentFrameNumber);
 }
 
 void
@@ -587,7 +614,10 @@ VsyncDispatcherHostImpl::NotifyContentProcess()
   MOZ_ASSERT(mInited);
   MOZ_ASSERT(IsInVsyncDispatcherThread());
 
-  VsyncData vsyncData(mCurrentTimestamp, mCurrentTimestampJS, mCurrentFrameNumber);
+  VsyncData vsyncData(mCurrentTimestampNanosecond,
+                      mCurrentTimestamp,
+                      mCurrentTimestampJS,
+                      mCurrentFrameNumber);
 
   // Send ipc to content process.
   for (VsyncEventParentList::size_type i = 0; i < mVsyncEventParentList.Length(); ++i) {

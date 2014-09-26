@@ -53,7 +53,8 @@ private:
 
   // Dispatch vsync to observer
   // This function should run at vsync dispatcher thread
-  void DispatchVsyncEvent(TimeStamp aTimestamp,
+  void DispatchVsyncEvent(int64_t aTimestampNanosecond,
+                          TimeStamp aTimestamp,
                           int64_t aTimestampJS,
                           uint64_t aFrameNumber);
 
@@ -77,6 +78,8 @@ private:
   // Refresh driver
   RefreshDriverRegistryClient* mRefreshDriver;
 
+  // Vsync event tick timestamp in nanosecond.
+  int64_t mCurrentTimestampNanosecond;
   // Vsync event tick timestamp.
   TimeStamp mCurrentTimestamp;
   // Vsync event tick timestamp in JS.

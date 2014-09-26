@@ -24,29 +24,30 @@ class VsyncDispatcherClient;
 class VsyncDispatcherHost;
 
 // Every vsync event observer should inherit this base class.
-// TickTask() will be called by VsyncEventRegistry when a vsync event comes.
+// TickVsync() will be called by VsyncEventRegistry when a vsync event comes.
 // We should implement this function for our vsync-aligned task.
 class VsyncObserver
 {
 public:
   // The vsync-aligned task. Return true if there has a task ticked.
-  virtual bool TickTask(TimeStamp aTimestamp,
-                        int64_t aTimeStampJS,
-                        uint64_t aFrameNumber) = 0;
+  virtual bool TickVsync(int64_t aTimeStampNanosecond,
+                         TimeStamp aTimestamp,
+                         int64_t aTimeStampJS,
+                         uint64_t aFrameNumber) = 0;
 
 protected:
   virtual ~VsyncObserver() { }
 };
 
 // This class provide the registering interface for vsync observer.
-// It will also call observer's TickTask() when a vsync event comes.
+// It will also call observer's TickVsync() when a vsync event comes.
 class VsyncEventRegistry
 {
 public:
   virtual uint32_t GetObserverNum() const = 0;
 
   // Register/Unregister vsync observer.
-  // The Register() call is one-shot registry. We only call TickTask()
+  // The Register() call is one-shot registry. We only call TickVsync()
   // once per Register(). If observer need another tick, it should call
   // Register() again.
   // All vsync observers should call sync unregister call before they
@@ -89,7 +90,8 @@ class VsyncDispatcherClient
 {
 public:
   // Dispatch vsync to all observer
-  virtual void DispatchVsyncEvent(TimeStamp aTimestamp,
+  virtual void DispatchVsyncEvent(int64_t aTimestampNanosecond,
+                                  TimeStamp aTimestamp,
                                   int64_t aTimeStampJS,
                                   uint64_t aFrameNumber) = 0;
 
