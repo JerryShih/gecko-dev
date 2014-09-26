@@ -12,10 +12,12 @@ namespace layers {
 
 struct VsyncData
 {
+  // The vsync event timetamp in nanosecond.
+  int64_t timestampNanosecond;
   // The vsync event timetamp in TimeStamp stuct.
-  TimeStamp timeStamp;
+  TimeStamp timestamp;
   // The vsync event Timestamp in int64_t for JS.
-  int64_t timeStampJS;
+  int64_t timestampJS;
   // The monotonic increased frame count for each vsync update.
   uint64_t frameNumber;
 };

@@ -31,7 +31,10 @@ public:
   virtual uint32_t GetObserverNum() const MOZ_OVERRIDE;
 
   // Tick all registered refresh driver
-  void Dispatch(TimeStamp aTimestamp, int64_t aTimestampJS, uint64_t aFrameNumber);
+  void Dispatch(int64_t aTimestampNanosecond,
+                TimeStamp aTimestamp,
+                int64_t aTimestampJS,
+                uint64_t aFrameNumber);
 
 private:
   void EnableVsyncNotificationIfhasObserver();
@@ -85,7 +88,8 @@ RefreshDriverRegistryClient::GetObserverNum() const
 }
 
 void
-RefreshDriverRegistryClient::Dispatch(TimeStamp aTimestamp,
+RefreshDriverRegistryClient::Dispatch(int64_t aTimestampNanosecond,
+                                      TimeStamp aTimestamp,
                                       int64_t aTimestampJS,
                                       uint64_t aFrameNumber)
 {
@@ -152,6 +156,7 @@ VsyncDispatcherClientImpl::VsyncDispatcherClientImpl()
   , mVsyncEventNeeded(false)
   , mVsyncEventChild(nullptr)
   , mRefreshDriver(nullptr)
+  , mCurrentTimestampNanosecond(0)
   , mCurrentTimestampJS(0)
   , mCurrentFrameNumber(0)
 {
@@ -182,16 +187,19 @@ VsyncDispatcherClientImpl::GetRefreshDriverRegistry()
 }
 
 void
-VsyncDispatcherClientImpl::DispatchVsyncEvent(TimeStamp aTimestamp,
+VsyncDispatcherClientImpl::DispatchVsyncEvent(int64_t aTimestampNanosecond,
+                                              TimeStamp aTimestamp,
                                               int64_t aTimestampJS,
                                               uint64_t aFrameNumber)
 {
   MOZ_ASSERT(mInited);
   MOZ_ASSERT(IsInVsyncDispatcherThread(), "Call VDClient::DispatchVsyncEvent at wrong thread.");
 
+  MOZ_ASSERT(aTimestampNanosecond > mCurrentTimestampNanosecond);
   MOZ_ASSERT(aTimestamp > mCurrentTimestamp);
   MOZ_ASSERT(aTimestampJS > mCurrentTimestampJS);
   MOZ_ASSERT(aFrameNumber > mCurrentFrameNumber);
+  mCurrentTimestampNanosecond = aTimestampNanosecond;
   mCurrentTimestamp = aTimestamp;
   mCurrentTimestampJS = aTimestampJS;
   mCurrentFrameNumber = aFrameNumber;
@@ -214,7 +222,7 @@ VsyncDispatcherClientImpl::TickRefreshDriver()
   MOZ_ASSERT(mInited);
   MOZ_ASSERT(IsInVsyncDispatcherThread());
 
-  mRefreshDriver->Dispatch(mCurrentTimestamp, mCurrentTimestampJS, mCurrentFrameNumber);
+  mRefreshDriver->Dispatch(mCurrentTimestampNanosecond, mCurrentTimestamp, mCurrentTimestampJS, mCurrentFrameNumber);
 }
 
 int

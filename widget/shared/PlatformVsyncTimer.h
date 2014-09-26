@@ -28,7 +28,9 @@ class VsyncTimerObserver
 {
 public:
   // Notify the the observer that there has one vsync event.
-  virtual void NotifyVsync(TimeStamp aTimestamp, int64_t aTimeStampJS) = 0;
+  virtual void NotifyVsync(int64_t aTimestampNanosecond,
+                           TimeStamp aTimestamp,
+                           int64_t aTimeStampJS) = 0;
 
 protected:
   ~VsyncTimerObserver() { };

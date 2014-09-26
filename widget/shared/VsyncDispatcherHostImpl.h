@@ -60,8 +60,9 @@ private:
 
   // This function is called by vsync event generator.
   // It will post a notify task to vsync dispatcher thread.
-  // The timestamp is microsecond.
-  virtual void NotifyVsync(TimeStamp aTimestamp, int64_t aTimestampJS) MOZ_OVERRIDE;
+  virtual void NotifyVsync(int64_t aTimestampNanosecond,
+                           TimeStamp aTimestamp,
+                           int64_t aTimeStampJS) MOZ_OVERRIDE;
 
   // Set IPC parent. It should be called at vsync dispatcher thread.
   virtual void RegisterVsyncEventParent(layers::VsyncEventParent* aVsyncEventParent) MOZ_OVERRIDE;
@@ -77,7 +78,10 @@ private:
   void CreateVsyncDispatchThread();
 
   // Generate frame number and call dispatch event.
-  void NotifyVsyncTask(TimeStamp aTimestamp,int64_t aTimestampUS, uint64_t aFrameNumber);
+  void NotifyVsyncTask(int64_t aTimestampNanosecond,
+                       TimeStamp aTimestamp,
+                       int64_t aTimestampUS,
+                       uint64_t aFrameNumber);
 
   // Dispatch vsync to observer
   // This function should run at vsync dispatcher thread
@@ -119,12 +123,15 @@ private:
 
   PlatformVsyncTimer* mTimer;
 
+  // Vsync event tick timestamp in nanosecond.
+  int64_t mCurrentTimestampNanosecond;
   // Vsync event tick timestamp.
   TimeStamp mCurrentTimestamp;
   // Vsync event tick timestamp in JS.
   int64_t mCurrentTimestampJS;
   // Vsync event current frame number.
   uint64_t mCurrentFrameNumber;
+
   // Monotonic increased frame number.
   uint64_t mVsyncFrameNumber;
 };
