@@ -925,7 +925,7 @@ pref("devtools.debugger.unix-domain-socket", "/data/local/debugger-socket");
 // frame uniformity
 #ifdef MOZ_WIDGET_GONK
 pref("gfx.frameuniformity.enabled", true);
-pref("gfx.frameuniformity.force.sw-vsync", false);
+pref("gfx.frameuniformity.force.sw-vsync", true);
 pref("gfx.frameuniformity.hw-vsync.enabled", true);
 pref("gfx.touch.resample", true);
 #endif

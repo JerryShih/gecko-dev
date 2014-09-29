@@ -16,7 +16,7 @@
 #include "nsThread.h"
 #include "utils/Timers.h"
 
-#define VSYNC_FREQ 16666666 // ns (60 Hz)
+#define VSYNC_FREQ 16500000 // ns (60 Hz)
 #define NANO_SEC 1000000000 // 10^9 ns
 
 namespace mozilla {
@@ -185,7 +185,7 @@ VsyncRunnable::RunLoop()
     int64_t diff = now - last;
     static uint64_t count = 0;
     //printf_stderr("[Boris] SW Vsync (diff: %lld, freq: %lfHz)",diff, (double)NANO_SEC/(double)diff);
-    if (diff > 19000000 && diff < 100000000) {
+    if (diff > 17000000 && diff < 100000000) {
       ++count;
       printf_stderr("[Boris] diff is too much (%llu) (diff: %lld)",count, diff);
     }
