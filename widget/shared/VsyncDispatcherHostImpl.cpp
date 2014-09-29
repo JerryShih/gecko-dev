@@ -682,7 +682,8 @@ VsyncDispatcherHostImpl::EnableVsyncNotificationIfhasObserver()
   if (!!GetVsyncObserverCount() !=  mVsyncEventNeeded) {
     mVsyncEventNeeded = !mVsyncEventNeeded;
 
-    mTimer->Enable(mVsyncEventNeeded);
+    // For host, we always turn on the vsync event.
+    //mTimer->Enable(mVsyncEventNeeded);
   }
 }
 
