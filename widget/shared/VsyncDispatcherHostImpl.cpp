@@ -213,7 +213,8 @@ InputDispatcherRegistryHost::Dispatch(int64_t aTimestampNanosecond,
                                     aTimestamp,
                                     aTimestampJS,
                                     aFrameNumber);
-    mObserver = nullptr;
+    //TODO: handle non-one-shot case
+    //mObserver = nullptr;
   }
   return isTicked;
 }
@@ -679,19 +680,16 @@ VsyncDispatcherHostImpl::DispatchVsyncEvent()
   }
 
   if (gfxPrefs::TouchResampling()) {
-    printf_stderr("bignose resample");
     // Notify the main thread to handle input event.
     DispatchInputEvent();
   }
 
   if (gfxPrefs::FrameUniformityCompositorVsyncEnabled()) {
-    printf_stderr("bignose compositor");
     // Do compose.
     DispatchCompose();
   }
 
   if (gfxPrefs::FrameUniformityRefreshDriverVsyncEnabled()) {
-    printf_stderr("bignose rd");
     // Send vsync event to content process
     NotifyContentProcess();
 
