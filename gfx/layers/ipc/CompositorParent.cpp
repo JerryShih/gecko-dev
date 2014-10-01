@@ -779,7 +779,7 @@ CompositorParent::CompositeToTarget(DrawTarget* aTarget, const nsIntRect* aRect)
   // TickVsync().
   mVsyncComposeNeeded = false;
 
-  if (gfxPrefs::FrameUniformityEnabled()) {
+  if (gfxPrefs::FrameUniformityEnabled() && gfxPrefs::FrameUniformityCompositorVsyncEnabled()) {
     mLastCompose = mTimestamp;
   } else {
     mLastCompose = TimeStamp::Now();
