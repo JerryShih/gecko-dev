@@ -25,8 +25,11 @@ public:
   RefreshDriverRegistryClient(VsyncDispatcherClientImpl* aVsyncDispatcher);
   ~RefreshDriverRegistryClient();
 
-  virtual void Register(VsyncObserver* aVsyncObserver) MOZ_OVERRIDE;
-  virtual void Unregister(VsyncObserver* aVsyncObserver, bool aSync) MOZ_OVERRIDE;
+  virtual void AddObserver(VsyncObserver* aVsyncObserver,
+                           bool aAlwaysTrigger) MOZ_OVERRIDE;
+  virtual void RemoveObserver(VsyncObserver* aVsyncObserver,
+                              bool aAlwaysTrigger,
+                              bool aSync = false) MOZ_OVERRIDE;
 
   virtual uint32_t GetObserverNum() const MOZ_OVERRIDE;
 
@@ -41,11 +44,14 @@ private:
 
   bool IsInVsyncDispatcherThread();
 
+  typedef nsTArray<VsyncObserver*> ObserverList;
+  ObserverList* GetObserverList(bool aAlwaysTrigger);
+
 private:
   VsyncDispatcherClientImpl* mVsyncDispatcher;
 
-  typedef nsTArray<VsyncObserver*> ObserverList;
-  ObserverList mObserverListList;
+  ObserverList mObserverList;
+  ObserverList mTemporaryObserverList;
 };
 
 RefreshDriverRegistryClient::RefreshDriverRegistryClient(VsyncDispatcherClientImpl* aVsyncDispatcher)
@@ -58,25 +64,29 @@ RefreshDriverRegistryClient::RefreshDriverRegistryClient(VsyncDispatcherClientIm
 RefreshDriverRegistryClient::~RefreshDriverRegistryClient()
 {
   MOZ_ASSERT(NS_IsMainThread());
-  mObserverListList.Clear();
+  mObserverList.Clear();
+  mTemporaryObserverList.Clear();
 }
 
 void
-RefreshDriverRegistryClient::Register(VsyncObserver* aVsyncObserver)
+RefreshDriverRegistryClient::AddObserver(VsyncObserver* aVsyncObserver,
+                                         bool aAlwaysTrigger)
 {
   MOZ_ASSERT(mVsyncDispatcher->IsInVsyncDispatcherThread());
 
-  ObserverListHelper::Add(this, &mObserverListList, aVsyncObserver);
+  ObserverListHelper::Add(this, GetObserverList(aAlwaysTrigger), aVsyncObserver);
 }
 
 void
-RefreshDriverRegistryClient::Unregister(VsyncObserver* aVsyncObserver, bool aSync)
+RefreshDriverRegistryClient::RemoveObserver(VsyncObserver* aVsyncObserver,
+                                            bool aAlwaysTrigger,
+                                            bool aSync)
 {
   MOZ_ASSERT(mVsyncDispatcher->IsInVsyncDispatcherThread());
 
-  // We only call unregister at vsync dispatcher thread, so ignore the sync flag
+  // We only call RemoveObserver at vsync dispatcher thread, so ignore the sync flag
   // here.
-  ObserverListHelper::Remove(this, &mObserverListList, aVsyncObserver);
+  ObserverListHelper::Remove(this, GetObserverList(aAlwaysTrigger), aVsyncObserver);
 }
 
 uint32_t
@@ -84,7 +94,8 @@ RefreshDriverRegistryClient::GetObserverNum() const
 {
   MOZ_ASSERT(mVsyncDispatcher->IsInVsyncDispatcherThread());
 
-  return mObserverListList.Length();
+  return mObserverList.Length() +
+         mTemporaryObserverList.Length();
 }
 
 void
@@ -110,6 +121,12 @@ bool
 RefreshDriverRegistryClient::IsInVsyncDispatcherThread()
 {
   return mVsyncDispatcher->IsInVsyncDispatcherThread();
+}
+
+RefreshDriverRegistryClient::ObserverList*
+RefreshDriverRegistryClient::GetObserverList(bool aAlwaysTrigger)
+{
+  return aAlwaysTrigger ? &mObserverList : &mTemporaryObserverList;
 }
 
 /*static*/ VsyncDispatcherClientImpl*
