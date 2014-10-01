@@ -24,7 +24,7 @@ if __name__ == '__main__':
             0,  #vsync.duration
             0,  #time.log
             0,  #time.log.raw
-            0,  #time.log.input
+            0,  #input.pos
             0,  #scrollbar.hide
             ]
     tag = [
@@ -41,7 +41,7 @@ if __name__ == '__main__':
             'silk.vsync',
             'silk.timer.log',
             'silk.timer.log.raw',
-            'silk.timer.log.input',
+            'silk.input.pos',
             'silk.scrollbar.hide'
             ]
     print('Set properities...');

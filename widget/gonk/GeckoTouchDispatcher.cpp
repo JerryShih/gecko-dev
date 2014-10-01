@@ -255,7 +255,7 @@ GeckoTouchDispatcher::DispatchTouchMoveEvents(uint64_t aVsyncTime)
   previousTouchPos = currentTouchPos;
 
   char propValue[PROPERTY_VALUE_MAX];
-  property_get("silk.timer.log.input", propValue, "0");
+  property_get("silk.input.pos", propValue, "0");
   if (atoi(propValue) != 0) {
     float distance = std::sqrt((float)(diffX*diffX+diffY*diffY));
     static DataStatistician<float, 256, false> aDataStatistician("Silk input resample", nullptr, nullptr);
