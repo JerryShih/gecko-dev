@@ -559,6 +559,22 @@ VsyncDispatcherHostImpl::NotifyVsync(int64_t aTimestampNanosecond,
                                      TimeStamp aTimestamp,
                                      int64_t aTimestampJS)
 {
+  static int64_t last = aTimestampNanosecond; // initialization only once
+
+  int64_t diff = aTimestampNanosecond - last;
+  if (diff > 17000000) {
+    VSYNC_SCOPED_SYSTRACE_LABEL_PRINTF("VsyncLarge (%u), %f", (uint32_t)mCurrentFrameNumber,diff/1000000.0f);
+
+    printf_stderr("[Silk] vsync diff is too large (diff: %f ms)", diff/1000000.0f);
+  } else if (diff < 16000000) {
+    VSYNC_SCOPED_SYSTRACE_LABEL_PRINTF("VsyncSmall (%u), %f", (uint32_t)mCurrentFrameNumber,diff/1000000.0f);
+
+    printf_stderr("[Silk] vsync diff is too small (diff: %f ms)", diff/1000000.0f);
+  }
+  last = aTimestampNanosecond;
+
+
+
   MOZ_ASSERT(mInited);
 
   // We propose a monotonic increased frame number here.

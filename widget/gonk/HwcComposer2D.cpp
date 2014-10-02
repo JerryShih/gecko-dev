@@ -267,6 +267,18 @@ HwcComposer2D::RunVsyncEventControl(bool aEnable)
 void
 HwcComposer2D::Vsync(int aDisplay, int64_t aTimestamp)
 {
+    static int64_t last = aTimestamp; // initialization only once
+
+    int64_t diff = aTimestamp - last;
+    if (diff > 17000000) {
+      printf_stderr("[Silk] hwc vsync diff is too large (diff: %f ms)", diff/1000000.0f);
+    } else if (diff < 16000000) {
+      printf_stderr("[Silk] hwc vsync diff is too small (diff: %f ms)", diff/1000000.0f);
+    }
+    last = aTimestamp;
+
+
+
     MOZ_ASSERT(mHasHWVsync);
 
     if (mVsyncObserver) {
