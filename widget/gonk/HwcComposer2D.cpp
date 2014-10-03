@@ -34,6 +34,11 @@
 #include "jsapi.h"
 #include "PlatformVsyncTimer.h"
 
+#ifdef MOZ_ENABLE_PROFILER_SPS
+#include "GeckoProfiler.h"
+#include "ProfilerMarkers.h"
+#endif
+
 #if ANDROID_VERSION >= 17
 #include "libdisplay/FramebufferSurface.h"
 #include "gfxPrefs.h"
@@ -125,6 +130,8 @@ HwcComposer2D::~HwcComposer2D() {
     free(mList);
 }
 
+nsecs_t sAndroidInitTime = 0;
+mozilla::TimeStamp sMozInitTime;
 int
 HwcComposer2D::Init(hwc_display_t dpy, hwc_surface_t sur, gl::GLContext* aGLContext)
 {
@@ -236,6 +243,8 @@ HwcComposer2D::InitHwcEventCallback()
     // Disable Vsync first, and then register callback functions.
     device->eventControl(device, HWC_DISPLAY_PRIMARY, HWC_EVENT_VSYNC, false);
     device->registerProcs(device, &sHWCProcs);
+    sAndroidInitTime = systemTime(SYSTEM_TIME_MONOTONIC);
+    sMozInitTime = TimeStamp::Now();
 
     mHasHWVsync = true;
 
@@ -267,19 +276,16 @@ HwcComposer2D::RunVsyncEventControl(bool aEnable)
 void
 HwcComposer2D::Vsync(int aDisplay, int64_t aTimestamp)
 {
-    static int64_t last = aTimestamp; // initialization only once
 
-    int64_t diff = aTimestamp - last;
-    if (diff > 17000000) {
-      printf_stderr("[Silk] hwc vsync diff is too large (diff: %f ms)", diff/1000000.0f);
-    } else if (diff < 16000000) {
-      printf_stderr("[Silk] hwc vsync diff is too small (diff: %f ms)", diff/1000000.0f);
+#ifdef MOZ_ENABLE_PROFILER_SPS
+    if (profiler_is_active()) {
+      nsecs_t timeSinceInit = aVsyncTimestamp - sAndroidInitTime;
+      TimeStamp vsyncTime = sMozInitTime + TimeDuration::FromMicroseconds(timeSinceInit / 1000);
+      CompositorParent::PostInsertVsyncProfilerMarker(vsyncTime);
     }
-    last = aTimestamp;
+#endif
 
-
-
-    MOZ_ASSERT(mHasHWVsync);
+   MOZ_ASSERT(mHasHWVsync);
 
     if (mVsyncObserver) {
         // We can't get the same timer as the hwc does in gecko, so we get the
