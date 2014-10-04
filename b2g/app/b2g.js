@@ -935,8 +935,8 @@ pref("devtools.debugger.unix-domain-socket", "/data/local/debugger-socket");
 pref("gfx.frameuniformity.enabled", true);
 pref("gfx.frameuniformity.hw-vsync.enabled", true);
 pref("gfx.frameuniformity.compositor-vsync.enabled", true);
-pref("gfx.frameuniformity.refreshdriver-vsync.enabled", true);
-pref("gfx.touch.resample", true);
+pref("gfx.frameuniformity.refreshdriver-vsync.enabled", false);
+pref("gfx.touch.resample", false);
 #endif
 
 // enable Skia/GL (OpenGL-accelerated 2D drawing) for large enough 2d canvases,

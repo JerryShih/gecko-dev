@@ -370,6 +370,7 @@ CompositorRegistryHost::Dispatch(int64_t aTimestampNanosecond,
   MOZ_ASSERT(IsInVsyncDispatcherThread());
 
   for (ObserverList::size_type i = 0; i < mObserverListList.Length(); ++i) {
+  /*
     char propValue[PROPERTY_VALUE_MAX];
     char propValue2[PROPERTY_VALUE_MAX];
     property_get("silk.c.lat", propValue, "0");
@@ -378,10 +379,11 @@ CompositorRegistryHost::Dispatch(int64_t aTimestampNanosecond,
       // Begin Latency
       VSYNC_ASYNC_SYSTRACE_LABEL_BEGIN_PRINTF((int32_t)aFrameNumber, "Compositor_Latency (%u)", (uint32_t)aFrameNumber);
     }
+    */
     mObserverListList[i]->TickVsync(aTimestampNanosecond, aTimestamp, aTimestampJS, aFrameNumber);
   }
 
-  mObserverListList.Clear();
+  //mObserverListList.Clear();
 }
 
 /*static*/ VsyncDispatcherHostImpl*
@@ -555,25 +557,27 @@ VsyncDispatcherHostImpl::UnregisterVsyncEventParent(VsyncEventParent* aVsyncEven
 }
 
 void
+VsyncDispatcherHostImpl::CheckDispatchTime(nsecs_t aVsyncTime, TimeStamp aVsyncTimestamp, int64_t aVsyncTimeJS)
+{
+  static int64_t last = aVsyncTime; // initialization only once
+  int64_t diff = aVsyncTime - last;
+  if (diff > 17000000) {
+    VSYNC_SCOPED_SYSTRACE_LABEL_PRINTF("VsyncLarge (%u), %f", (uint32_t)mCurrentFrameNumber,diff/1000000.0f);
+    printf_stderr("[Silk] vsync diff is too large (diff: %f ms)", diff/1000000.0f);
+  } else if (diff < 16000000) {
+    VSYNC_SCOPED_SYSTRACE_LABEL_PRINTF("VsyncSmall (%u), %f", (uint32_t)mCurrentFrameNumber,diff/1000000.0f);
+    printf_stderr("[Silk] vsync diff is too small (diff: %f ms)", diff/1000000.0f);
+  }
+
+  last = aVsyncTime;
+}
+
+void
 VsyncDispatcherHostImpl::NotifyVsync(int64_t aTimestampNanosecond,
                                      TimeStamp aTimestamp,
                                      int64_t aTimestampJS)
 {
-  static int64_t last = aTimestampNanosecond; // initialization only once
-
-  int64_t diff = aTimestampNanosecond - last;
-  if (diff > 17000000) {
-    VSYNC_SCOPED_SYSTRACE_LABEL_PRINTF("VsyncLarge (%u), %f", (uint32_t)mCurrentFrameNumber,diff/1000000.0f);
-
-    printf_stderr("[Silk] vsync diff is too large (diff: %f ms)", diff/1000000.0f);
-  } else if (diff < 16000000) {
-    VSYNC_SCOPED_SYSTRACE_LABEL_PRINTF("VsyncSmall (%u), %f", (uint32_t)mCurrentFrameNumber,diff/1000000.0f);
-
-    printf_stderr("[Silk] vsync diff is too small (diff: %f ms)", diff/1000000.0f);
-  }
-  last = aTimestampNanosecond;
-
-
+  CheckDispatchTime(aTimestampNanosecond, aTimestamp, aTimestampJS);
 
   MOZ_ASSERT(mInited);
 
@@ -581,6 +585,19 @@ VsyncDispatcherHostImpl::NotifyVsync(int64_t aTimestampNanosecond,
   // It helps us to identify the frame count for each vsync update.
   ++mVsyncFrameNumber;
 
+
+  MOZ_ASSERT(aTimestampNanosecond > mCurrentTimestampNanosecond);
+  MOZ_ASSERT(aTimestamp > mCurrentTimestamp);
+  MOZ_ASSERT(aTimestampJS > mCurrentTimestampJS);
+  mCurrentTimestampNanosecond = aTimestampNanosecond;
+  mCurrentTimestamp = aTimestamp;
+  mCurrentTimestampJS = aTimestampJS;
+  mCurrentFrameNumber = mVsyncFrameNumber;
+
+  DispatchCompose();
+
+
+/*
   char propValue[PROPERTY_VALUE_MAX];
   property_get("silk.vsync", propValue, "0");
   if (atoi(propValue) != 0) {
@@ -628,6 +645,7 @@ VsyncDispatcherHostImpl::NotifyVsync(int64_t aTimestampNanosecond,
                              aTimestamp,
                              aTimestampJS,
                              mVsyncFrameNumber));
+                             */
 }
 
 void

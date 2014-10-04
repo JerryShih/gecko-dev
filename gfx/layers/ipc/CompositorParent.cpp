@@ -239,6 +239,9 @@ CompositorParent::CompositorParent(nsIWidget* aWidget,
   , mForceCompositionTask(nullptr)
   , mCompositorThreadHolder(sCompositorThreadHolder)
   , mVsyncComposeNeeded(false)
+  , mVsyncRegistered(false)
+  , mInCompose(false)
+  , mInComposeLock("mInComposeLock")
 {
   MOZ_ASSERT(NS_IsMainThread());
   MOZ_ASSERT(CompositorThread(),
@@ -267,8 +270,11 @@ CompositorParent::TickVsync(int64_t aTimestampNanosecond,
                             int64_t aTimestampJS,
                             uint64_t aFrameNumber)
 {
-  // Post Tick task to comositor thread
-  CompositorLoop()->PostTask(FROM_HERE,
+  {
+    MutexAutoLock lock(mInComposeLock);
+    if (!mInCompose) {
+      // Post Tick task to comositor thread
+      CompositorLoop()->PostTask(FROM_HERE,
                              NewRunnableMethod(this,
                              &CompositorParent::TickVsyncInternal,
                              aTimestampNanosecond,
@@ -276,9 +282,13 @@ CompositorParent::TickVsync(int64_t aTimestampNanosecond,
                              aTimestampJS,
                              aFrameNumber));
 
+    }
+  }
+
   return true;
 }
 
+// Actually does the composition
 void
 CompositorParent::TickVsyncInternal(int64_t aTimestampNanosecond,
                                    TimeStamp aTimestamp,
@@ -286,7 +296,6 @@ CompositorParent::TickVsyncInternal(int64_t aTimestampNanosecond,
                                    uint64_t aFrameNumber)
 {
   MOZ_ASSERT(IsInCompositorThread());
-
   mTimestamp = aTimestamp;
 
   char propValue[PROPERTY_VALUE_MAX];
@@ -712,8 +721,10 @@ CompositorParent::ScheduleComposition()
       mVsyncComposeNeeded = true;
 
       // Register compositer to vsync dispatcher
-      VsyncDispatcher::GetInstance()->GetCompositorRegistry()->Register(this);
-
+      if (!mVsyncRegistered) {
+        VsyncDispatcher::GetInstance()->GetCompositorRegistry()->Register(this);
+        mVsyncRegistered = true;
+      }
       return;
     }
   }
@@ -777,6 +788,11 @@ CompositorParent::CompositeToTarget(DrawTarget* aTarget, const nsIntRect* aRect)
   }
 #endif
 
+  {
+    MutexAutoLock lock(mInComposeLock);
+    mInCompose = true;
+  }
+
   // In CompositeToTarget(), we have already composed the current frame.
   // We don't need to compose the current frame even though we receive another
   // TickVsync().
@@ -806,6 +822,10 @@ CompositorParent::CompositeToTarget(DrawTarget* aTarget, const nsIntRect* aRect)
       mForceCompositionTask->Cancel();
       mForceCompositionTask = nullptr;
     } else {
+      {
+        MutexAutoLock lock(mInComposeLock);
+        mInCompose = false;
+      }
       return;
     }
   }
@@ -856,6 +876,11 @@ CompositorParent::CompositeToTarget(DrawTarget* aTarget, const nsIntRect* aRect)
     || mLayerManager->GetCompositor()->GetDiagnosticTypes() & DiagnosticTypes::FLASH_BORDERS) {
     // Special full-tilt composite mode for performance testing
     ScheduleComposition();
+  }
+
+  {
+    MutexAutoLock lock(mInComposeLock);
+    mInCompose = false;
   }
 
   profiler_tracing("Paint", "Composite", TRACING_INTERVAL_END);

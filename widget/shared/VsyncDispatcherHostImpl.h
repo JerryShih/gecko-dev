@@ -6,6 +6,7 @@
 #ifndef mozilla_widget_shared_VsyncDispatcherHostImpl_h
 #define mozilla_widget_shared_VsyncDispatcherHostImpl_h
 
+#include <utils/Timers.h>
 #include "mozilla/TimeStamp.h"
 #include "mozilla/StaticPtr.h"
 #include "nsTArray.h"
@@ -63,6 +64,10 @@ private:
   virtual void NotifyVsync(int64_t aTimestampNanosecond,
                            TimeStamp aTimestamp,
                            int64_t aTimeStampJS) MOZ_OVERRIDE;
+
+  void CheckDispatchTime(nsecs_t aVsyncTime,
+                         TimeStamp aVsyncTimestamp,
+                         int64_t aVsyncTimeJS);
 
   // Set IPC parent. It should be called at vsync dispatcher thread.
   virtual void RegisterVsyncEventParent(layers::VsyncEventParent* aVsyncEventParent) MOZ_OVERRIDE;

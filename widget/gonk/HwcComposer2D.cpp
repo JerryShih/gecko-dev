@@ -274,14 +274,14 @@ HwcComposer2D::RunVsyncEventControl(bool aEnable)
 }
 
 void
-HwcComposer2D::Vsync(int aDisplay, int64_t aTimestamp)
+HwcComposer2D::Vsync(int aDisplay, int64_t aVsyncTimestamp)
 {
+    nsecs_t timeSinceInit = aVsyncTimestamp - sAndroidInitTime;
+    TimeStamp vsyncTime = sMozInitTime + TimeDuration::FromMicroseconds(timeSinceInit / 1000);
 
 #ifdef MOZ_ENABLE_PROFILER_SPS
     if (profiler_is_active()) {
-      nsecs_t timeSinceInit = aVsyncTimestamp - sAndroidInitTime;
-      TimeStamp vsyncTime = sMozInitTime + TimeDuration::FromMicroseconds(timeSinceInit / 1000);
-      CompositorParent::PostInsertVsyncProfilerMarker(vsyncTime);
+        CompositorParent::PostInsertVsyncProfilerMarker(vsyncTime);
     }
 #endif
 
@@ -290,7 +290,7 @@ HwcComposer2D::Vsync(int aDisplay, int64_t aTimestamp)
     if (mVsyncObserver) {
         // We can't get the same timer as the hwc does in gecko, so we get the
         // timestamp again here.
-        mVsyncObserver->NotifyVsync(aTimestamp, TimeStamp::Now(), JS_Now());
+        mVsyncObserver->NotifyVsync(aVsyncTimestamp, vsyncTime, JS_Now());
     }
 }
 

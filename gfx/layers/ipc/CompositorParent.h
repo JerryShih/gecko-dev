@@ -36,6 +36,7 @@
 #include "nsISupportsImpl.h"
 #include "nsSize.h"                     // for nsIntSize
 #include "ThreadSafeRefcountingWithMainThreadDestruction.h"
+#include "mozilla/Mutex.h"
 
 class CancelableTask;
 class MessageLoop;
@@ -103,7 +104,7 @@ public:
                          TimeStamp aTimestamp,
                          int64_t aTimestampJS,
                          uint64_t aFrameNumber) MOZ_OVERRIDE;
-
+  
   // IToplevelProtocol::CloneToplevel()
   virtual IToplevelProtocol*
   CloneToplevel(const InfallibleTArray<mozilla::ipc::ProtocolFdMapping>& aFds,
@@ -365,6 +366,9 @@ protected:
   TimeStamp mTimestamp;
 
   bool mVsyncComposeNeeded;
+  bool mVsyncRegistered;
+  Mutex mInComposeLock;
+  bool mInCompose;
 
   DISALLOW_EVIL_CONSTRUCTORS(CompositorParent);
 };
