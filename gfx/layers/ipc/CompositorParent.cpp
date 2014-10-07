@@ -228,7 +228,7 @@ CompositorParent::CompositorParent(nsIWidget* aWidget,
   , mIsTesting(false)
   , mVsyncComposite(false)
   , mIsObservingVsync(false)
-  , mComposedForCurrentVsync(false)
+  , mSkippedVsyncComposite(false)
   , mPendingTransaction(0)
   , mPaused(false)
   , mUseExternalSurfaceSize(aUseExternalSurfaceSize)
@@ -422,7 +422,7 @@ CompositorParent::ActorDestroy(ActorDestroyReason why)
 {
   mIsObservingVsync = false;
   mVsyncComposite = false;
-  mComposedForCurrentVsync = false;
+  mSkippedVsyncComposite = false;
   VsyncDispatcher::GetInstance()->RemoveCompositorVsyncObserver(this);
 
   CancelCurrentCompositeTask();
@@ -621,7 +621,6 @@ CompositorParent::NotifyVsync(TimeStamp aVsyncTimestamp)
   // Should be the anroid hardware vsync thread
   MOZ_ASSERT(!IsInCompositorThread());
   // Probably have to lock these
-  mComposedForCurrentVsync = false;
   mLastVsyncTimestamp = aVsyncTimestamp;
 
   CompositorLoop()->PostTask(FROM_HERE,
@@ -642,7 +641,7 @@ CompositorParent::ScheduleComposition()
      * and hope we finish before the next vsync
      */
      // Lock here
-    if (!mComposedForCurrentVsync) {
+    if (mSkippedVsyncComposite) {
       TimeDuration duration = TimeStamp::Now() - mLastVsyncTimestamp;
       if (duration.ToMilliseconds() < 3.0) {
         mCurrentCompositeTask = NewRunnableMethod(this, &CompositorParent::CompositeCallback);
@@ -692,7 +691,8 @@ CompositorParent::ScheduleComposition()
 void
 CompositorParent::CompositeCallback()
 {
-  if (gfxPrefs::VsyncAlignedCompositor && !mVsyncComposite) {
+  mSkippedVsyncComposite = gfxPrefs::VsyncAlignedCompositor && !mVsyncComposite;
+  if (mSkippedVsyncComposite) {
     return;
   }
 
@@ -720,7 +720,6 @@ CompositorParent::CompositeToTarget(DrawTarget* aTarget, const nsIntRect* aRect)
 #endif
 
   // Need to lock here
-  mComposedForCurrentVsync = true;
   mVsyncComposite = false;
   mLastCompose = TimeStamp::Now();
 

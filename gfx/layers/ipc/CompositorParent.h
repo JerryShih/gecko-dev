@@ -331,7 +331,7 @@ protected:
   bool mIsTesting;
   bool mVsyncComposite;
   bool mIsObservingVsync;
-  bool mComposedForCurrentVsync;
+  bool mSkippedVsyncComposite;
 #ifdef COMPOSITOR_PERFORMANCE_WARNING
   TimeStamp mExpectedComposeStartTime;
 #endif
