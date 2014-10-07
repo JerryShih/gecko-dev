@@ -7,11 +7,24 @@
 if CONFIG['MOZ_X11']:
     DIRS += ['x11']
 
+EXPORTS.mozilla += [
+    'VsyncDispatcher.h',
+]
+
 UNIFIED_SOURCES += [
     'nsShmImage.cpp',
     'SharedWidgetUtils.cpp',
+    'VsyncDispatcher.cpp',
+    'VsyncDispatcherTrace.cpp',
     'WidgetEventImpl.cpp',
 ]
+
+# Include platform dependent vsync timer header
+if CONFIG['MOZ_WIDGET_TOOLKIT'] == 'gonk':
+  LOCAL_INCLUDES += [
+      '/widget/gonk',
+  ]
+
 
 include('/ipc/chromium/chromium-config.mozbuild')
 
