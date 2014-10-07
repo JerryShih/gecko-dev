@@ -35,6 +35,7 @@
 #include "nsISupportsImpl.h"
 #include "nsSize.h"                     // for nsIntSize
 #include "ThreadSafeRefcountingWithMainThreadDestruction.h"
+#include "mozilla/VsyncDispatcher.h"
 
 class CancelableTask;
 class MessageLoop;
@@ -88,7 +89,8 @@ private:
 };
 
 class CompositorParent MOZ_FINAL : public PCompositorParent,
-                                   public ShadowLayersManager
+                                   public ShadowLayersManager,
+                                   public VsyncObserver
 {
   NS_INLINE_DECL_THREADSAFE_REFCOUNTING_WITH_MAIN_THREAD_DESTRUCTION(CompositorParent)
 
@@ -137,6 +139,8 @@ public:
   virtual void GetAPZTestData(const LayerTransactionParent* aLayerTree,
                               APZTestData* aOutData) MOZ_OVERRIDE;
   virtual AsyncCompositionManager* GetCompositionManager(LayerTransactionParent* aLayerTree) MOZ_OVERRIDE { return mCompositionManager; }
+
+  virtual bool NotifyVsync(TimeStamp aVsyncTimestamp) MOZ_OVERRIDE;
 
   /**
    * This forces the is-first-paint flag to true. This is intended to
@@ -323,7 +327,11 @@ protected:
   CancelableTask *mCurrentCompositeTask;
   TimeStamp mLastCompose;
   TimeStamp mTestTime;
+  TimeStamp mLastVsyncTimestamp;
   bool mIsTesting;
+  bool mVsyncComposite;
+  bool mIsObservingVsync;
+  bool mComposedForCurrentVsync;
 #ifdef COMPOSITOR_PERFORMANCE_WARNING
   TimeStamp mExpectedComposeStartTime;
 #endif
