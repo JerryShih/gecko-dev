@@ -25,25 +25,6 @@ protected:
   virtual ~VsyncObserver() { }
 };
 
-// This class provide the registering interface for vsync observer.
-class VsyncEventRegistry
-{
-public:
-  virtual uint32_t GetObserverNum() const = 0;
-
-  // Register/Unregister vsync observer.
-  // The Register() call is one-shot registry. We only call TickVsync()
-  // once per Register(). If observer need another tick, it should call
-  // Register() again.
-  // All vsync observers should call sync unregister call before they
-  // call destructor, so we will not tick the observer after destroyed.
-  virtual void Register(VsyncObserver* aVsyncObserver) = 0;
-  virtual void Unregister(VsyncObserver* aVsyncObserver, bool aSync = false) = 0;
-
-protected:
-  virtual ~VsyncEventRegistry() {}
-};
-
 // VsyncDispatcher is used to dispatch vsync events to the registered observers.
 class VsyncDispatcher
 {
