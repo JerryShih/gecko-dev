@@ -42,7 +42,7 @@ public:
 private:
   void NotifyVsync(TimeStamp aVsyncTimestamp, nsTArray<VsyncObserver*>& aObservers);
   VsyncDispatcher();
-  virtual ~VsyncDispatcher(); 
+  virtual ~VsyncDispatcher();
 
   // Can have multiple compositors. On desktop, this is 1 compositor per window
   Mutex mCompositorObserverLock;

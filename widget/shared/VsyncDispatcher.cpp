@@ -6,7 +6,7 @@
 #include "VsyncDispatcher.h"
 #include "nsXULAppAPI.h"
 #include "base/thread.h"
-#include "nsThreadUtils.h" 
+#include "nsThreadUtils.h"
 #include "gfxPrefs.h"
 #include "mozilla/ClearOnShutdown.h"
 #include "GeckoTouchDispatcher.h"
