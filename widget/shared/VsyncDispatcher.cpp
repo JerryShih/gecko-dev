@@ -28,9 +28,14 @@ VsyncDispatcher::GetInstance()
 
 VsyncDispatcher::VsyncDispatcher()
   : mCompositorObserverLock("CompositorObserverLock")
-  , mCompositorParent(nullptr)
 {
 
+}
+
+VsyncDispatcher::~VsyncDispatcher()
+{
+  MutexAutoLock lock(mCompositorObserverLock);
+  mCompositorObservers.Clear();
 }
 
 uint32_t
@@ -46,9 +51,21 @@ VsyncDispatcher::NotifyVsync(TimeStamp aVsyncTimestamp, nsecs_t aAndroidVsyncTim
   if (gfxPrefs::TouchResampling()) {
     GeckoTouchDispatcher::NotifyVsync(aAndroidVsyncTime);
   }
-  if (gfxPrefs::VsyncAlignedCompositor() && mCompositorParent) {
+
+  if (gfxPrefs::VsyncAlignedCompositor()) {
     MutexAutoLock lock(mCompositorObserverLock);
-    mCompositorParent->NotifyVsync(aVsyncTimestamp);
+    NotifyVsync(aVsyncTimestamp, mCompositorObservers);
+  }
+
+  // TODO: notify nsRefreshDriver
+}
+
+void
+VsyncDispatcher::NotifyVsync(TimeStamp aVsyncTimestamp, nsTArray<VsyncObserver*>& aObservers)
+{
+  // Callers should lock the respective lock for the aObservers before calling this function
+  for (size_t i = 0; i < aObservers.Length(); i++) {
+    aObservers[i]->NotifyVsync(aVsyncTimestamp);
   }
 }
 
@@ -56,14 +73,28 @@ void
 VsyncDispatcher::AddCompositorVsyncObserver(VsyncObserver* aVsyncObserver)
 {
   MutexAutoLock lock(mCompositorObserverLock);
-  mCompositorParent = aVsyncObserver;  
+  mCompositorObservers.AppendElement(aVsyncObserver);
 }
 
 void
 VsyncDispatcher::RemoveCompositorVsyncObserver(VsyncObserver* aVsyncObserver)
 {
   MutexAutoLock lock(mCompositorObserverLock);
-  mCompositorParent = nullptr;
+  if (mCompositorObservers.Contains(aVsyncObserver)) {
+    mCompositorObservers.RemoveElement(aVsyncObserver);
+  }
+  //mCompositorObservers.RemoveElement(aVsyncObserver);
+  /*
+  for (size_t i = 0; i < mCompositorObservers.Length(); i++) {
+    VsyncObserver* observer = mCompositorObservers[i];
+    if (observer == aVsyncObserver) {
+      mCompositorObservers.RemoveElement();
+      return;
+    }
+  }
+  */
+
+  NS_WARNING("Could not delete compositor observer\n");
 }
 
 } // namespace mozilla

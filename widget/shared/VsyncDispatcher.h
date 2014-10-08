@@ -11,6 +11,7 @@
 #include "nsArray.h"
 #include <utils/Timers.h>
 #include "mozilla/Mutex.h"
+#include <vector>
 
 class MessageLoop;
 
@@ -18,8 +19,7 @@ namespace mozilla {
 class TimeStamp;
 
 // Every vsync event observer should inherit this base class.
-// TickVsync() will be called by VsyncEventRegistry when a vsync event comes.
-// We should implement this function for our vsync-aligned task.
+// NotifyVsync() will be called once per hardware vsync
 class VsyncObserver
 {
 public:
@@ -31,7 +31,6 @@ protected:
 };
 
 // This class provide the registering interface for vsync observer.
-// It will also call observer's TickVsync() when a vsync event comes.
 class VsyncEventRegistry
 {
 public:
@@ -65,13 +64,15 @@ public:
   void RemoveCompositorVsyncObserver(VsyncObserver* aVsyncObserver);
 
 protected:
-  virtual ~VsyncDispatcher() { }
+  virtual ~VsyncDispatcher();
 
 private:
   VsyncDispatcher();
+  void NotifyVsync(TimeStamp aVsyncTimestamp, nsTArray<VsyncObserver*>& aObservers);
 
+  // Can have multiple compositors. On desktop, this is 1 compositor per window
   Mutex mCompositorObserverLock;
-  VsyncObserver* mCompositorParent;
+  nsTArray<VsyncObserver*> mCompositorObservers;
   static StaticRefPtr<VsyncDispatcher> sVsyncDispatcher;
 };
 

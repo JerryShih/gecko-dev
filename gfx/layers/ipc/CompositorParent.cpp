@@ -226,13 +226,16 @@ CompositorParent::CompositorParent(nsIWidget* aWidget,
   : mWidget(aWidget)
   , mCurrentCompositeTask(nullptr)
   , mIsTesting(false)
-  , mVsyncComposite(false)
+  , mScheduledVsyncComposite(false)
   , mIsObservingVsync(false)
   , mSkippedVsyncComposite(false)
+  , mSkippedVsyncCount(0)
+  , mVsyncEvents(0)
   , mPendingTransaction(0)
   , mPaused(false)
   , mUseExternalSurfaceSize(aUseExternalSurfaceSize)
   , mEGLSurfaceSize(aSurfaceWidth, aSurfaceHeight)
+  , mVsyncEventsMonitor("VsyncEventsMonitor")
   , mPauseCompositionMonitor("PauseCompositionMonitor")
   , mResumeCompositionMonitor("ResumeCompositionMonitor")
   , mOverrideComposeReadiness(false)
@@ -380,7 +383,7 @@ CompositorParent::RecvFlushRendering()
 {
   // If we're waiting to do a composite, then cancel it
   // and do it immediately instead.
-  if (mCurrentCompositeTask || mVsyncComposite) {
+  if (mCurrentCompositeTask || mScheduledVsyncComposite) {
     CancelCurrentCompositeTask();
     ForceComposeToTarget(nullptr);
   }
@@ -421,7 +424,7 @@ void
 CompositorParent::ActorDestroy(ActorDestroyReason why)
 {
   mIsObservingVsync = false;
-  mVsyncComposite = false;
+  mScheduledVsyncComposite = false;
   mSkippedVsyncComposite = false;
   VsyncDispatcher::GetInstance()->RemoveCompositorVsyncObserver(this);
 
@@ -506,8 +509,8 @@ CompositorParent::ForceComposition()
 void
 CompositorParent::CancelCurrentCompositeTask()
 {
-  if (mVsyncComposite) {
-    mVsyncComposite = false;
+  if (mScheduledVsyncComposite) {
+    mScheduledVsyncComposite = false;
   }
   if (mCurrentCompositeTask) {
     mCurrentCompositeTask->Cancel();
@@ -618,45 +621,61 @@ CalculateCompositionFrameRate()
 bool
 CompositorParent::NotifyVsync(TimeStamp aVsyncTimestamp)
 {
-  // Should be the anroid hardware vsync thread
+  // Should be the android hardware vsync thread
   MOZ_ASSERT(!IsInCompositorThread());
-  // Probably have to lock these
-  mLastVsyncTimestamp = aVsyncTimestamp;
+
+  {
+    MonitorAutoLock lock(mVsyncEventsMonitor);
+    mLastVsyncTimestamp = aVsyncTimestamp;
+    mVsyncEvents++;
+  }
 
   CompositorLoop()->PostTask(FROM_HERE,
                              NewRunnableMethod(this,
-                             &CompositorParent::CompositeCallback));
+                             &CompositorParent::CompositeCallback,
+                             aVsyncTimestamp));
   return true;
 }
 
 void
-CompositorParent::ScheduleComposition()
+CompositorParent::ScheduleVsyncAlignedComposition()
 {
-  if (gfxPrefs::VsyncAlignedCompositor() && !mVsyncComposite) {
-    mVsyncComposite = true;
-
-    /**
-     * We can get situations where a layer transaction occurs right after a
-     * vsync and right after we didn't composite anything. Force a composite
-     * and hope we finish before the next vsync
-     */
-     // Lock here
-    if (mSkippedVsyncComposite) {
-      TimeDuration duration = TimeStamp::Now() - mLastVsyncTimestamp;
-      if (duration.ToMilliseconds() < 3.0) {
-        mCurrentCompositeTask = NewRunnableMethod(this, &CompositorParent::CompositeCallback);
-        ScheduleTask(mCurrentCompositeTask, 0);
-      }
-    }
-
-    if (!mIsObservingVsync) {
-      VsyncDispatcher::GetInstance()->AddCompositorVsyncObserver(this);
-      mIsObservingVsync = true;
-    }
+  if (mScheduledVsyncComposite) {
     return;
   }
 
-  if (mVsyncComposite || mCurrentCompositeTask || mPaused) {
+  mScheduledVsyncComposite = true;
+
+  MonitorAutoLock lock(mVsyncEventsMonitor);
+
+  /**
+   * We can get situations where a layer transaction occurs right after a
+   * vsync and right after we didn't composite anything. Force a composite
+   * and hope we finish before the next vsync
+   */
+  if (mSkippedVsyncComposite) {
+    TimeDuration duration = TimeStamp::Now() - mLastVsyncTimestamp;
+    if (duration.ToMilliseconds() < 3.0 && mVsyncEvents == 0) {
+      mVsyncEvents++;
+      mCurrentCompositeTask = NewRunnableMethod(this,
+                                  &CompositorParent::CompositeCallback,
+                                  TimeStamp::Now());
+      ScheduleTask(mCurrentCompositeTask, 0);
+    }
+  }
+
+  if (!mIsObservingVsync && mVsyncEvents <= 1) {
+    VsyncDispatcher::GetInstance()->AddCompositorVsyncObserver(this);
+    mIsObservingVsync = true;
+    mVsyncEvents = 0;
+    mSkippedVsyncCount = 0;
+  }
+}
+
+void
+CompositorParent::ScheduleSoftwareTimerComposition()
+{
+  if (mCurrentCompositeTask || mPaused) {
     return;
   }
 
@@ -671,8 +690,9 @@ CompositorParent::ScheduleComposition()
   TimeDuration minFrameDelta = TimeDuration::FromMilliseconds(
     rate == 0 ? 0.0 : std::max(0.0, 1000.0 / rate));
 
-
-  mCurrentCompositeTask = NewRunnableMethod(this, &CompositorParent::CompositeCallback);
+  mCurrentCompositeTask = NewRunnableMethod(this,
+                                            &CompositorParent::CompositeCallback,
+                                            TimeStamp::Now());
 
   if (!initialComposition && delta < minFrameDelta) {
     TimeDuration delay = minFrameDelta - delta;
@@ -689,13 +709,39 @@ CompositorParent::ScheduleComposition()
 }
 
 void
-CompositorParent::CompositeCallback()
+CompositorParent::ScheduleComposition()
 {
-  mSkippedVsyncComposite = gfxPrefs::VsyncAlignedCompositor && !mVsyncComposite;
-  if (mSkippedVsyncComposite) {
-    return;
+  if (gfxPrefs::VsyncAlignedCompositor()) {
+    ScheduleVsyncAlignedComposition();
+  } else {
+    ScheduleSoftwareTimerComposition();
+  }
+}
+
+void
+CompositorParent::CompositeCallback(TimeStamp aScheduleTime)
+{
+  if (gfxPrefs::VsyncAlignedCompositor()) {
+    MonitorAutoLock lock(mVsyncEventsMonitor);
+    mVsyncEvents--;
+    mSkippedVsyncComposite = !mScheduledVsyncComposite;
+
+    if (mSkippedVsyncCount >= 5 || mVsyncEvents > 5) {
+      // If we skip frames because there is nothing to composite
+      // or we have too many vsync posted tasks, stop listening to vsync
+      VsyncDispatcher::GetInstance()->RemoveCompositorVsyncObserver(this);
+      mIsObservingVsync = false;
+      mVsyncEvents = 0;
+      mSkippedVsyncCount = 0;
+    }
+
+    if (mSkippedVsyncComposite) {
+      mSkippedVsyncCount++;
+      return;
+    }
   }
 
+  mSkippedVsyncCount = 0;
   mCurrentCompositeTask = nullptr;
   CompositeToTarget(nullptr);
 }
@@ -719,8 +765,6 @@ CompositorParent::CompositeToTarget(DrawTarget* aTarget, const nsIntRect* aRect)
   }
 #endif
 
-  // Need to lock here
-  mVsyncComposite = false;
   mLastCompose = TimeStamp::Now();
 
   if (!CanComposite()) {
@@ -728,6 +772,7 @@ CompositorParent::CompositeToTarget(DrawTarget* aTarget, const nsIntRect* aRect)
     return;
   }
 
+  mScheduledVsyncComposite = false;
   AutoResolveRefLayers resolve(mCompositionManager);
 
   if (aTarget) {
@@ -897,7 +942,7 @@ CompositorParent::ShadowLayersUpdated(LayerTransactionParent* aLayerTree,
     // However, we only do this update when a composite operation is already
     // scheduled in order to better match the behavior under regular sampling
     // conditions.
-    if (mIsTesting && root && (mCurrentCompositeTask || mVsyncComposite)) {
+    if (mIsTesting && root && (mCurrentCompositeTask || mScheduledVsyncComposite)) {
       AutoResolveRefLayers resolve(mCompositionManager);
       bool requestNextFrame =
         mCompositionManager->TransformShadowTree(mTestTime);
@@ -929,7 +974,7 @@ CompositorParent::SetTestSampleTime(LayerTransactionParent* aLayerTree,
   mTestTime = aTime;
 
   // Update but only if we were already scheduled to animate
-  if (mCompositionManager && (mCurrentCompositeTask || mVsyncComposite)) {
+  if (mCompositionManager && (mCurrentCompositeTask || mScheduledVsyncComposite)) {
     AutoResolveRefLayers resolve(mCompositionManager);
     bool requestNextFrame = mCompositionManager->TransformShadowTree(aTime);
     if (!requestNextFrame) {

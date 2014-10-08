@@ -166,6 +166,8 @@ public:
   bool ScheduleResumeOnCompositorThread(int width, int height);
 
   virtual void ScheduleComposition();
+  void ScheduleVsyncAlignedComposition();
+  void ScheduleSoftwareTimerComposition();
   void NotifyShadowTreeTransaction(uint64_t aId, bool aIsFirstPaint,
       bool aScheduleComposite, uint32_t aPaintSequenceNumber,
       bool aIsRepeatTransaction);
@@ -290,7 +292,7 @@ protected:
                                  bool* aSuccess) MOZ_OVERRIDE;
   virtual bool DeallocPLayerTransactionParent(PLayerTransactionParent* aLayers) MOZ_OVERRIDE;
   virtual void ScheduleTask(CancelableTask*, int);
-  void CompositeCallback();
+  void CompositeCallback(TimeStamp aScheduleTime);
   void CompositeToTarget(gfx::DrawTarget* aTarget, const nsIntRect* aRect = nullptr);
   void ForceComposeToTarget(gfx::DrawTarget* aTarget, const nsIntRect* aRect = nullptr);
 
@@ -329,9 +331,22 @@ protected:
   TimeStamp mTestTime;
   TimeStamp mLastVsyncTimestamp;
   bool mIsTesting;
-  bool mVsyncComposite;
+
+  // True if we've scheduled a composite aligned with vsync
+  bool mScheduledVsyncComposite;
+
+  // True if this is observing vsyncs
   bool mIsObservingVsync;
+
+  // True if we got a vsync event but didn't composite
   bool mSkippedVsyncComposite;
+
+  // Counter to check how many times we got a vsync event but didn't composite
+  int32_t mSkippedVsyncCount;
+
+  // Counter for how many vsync composite events are on the message loop
+  int32_t mVsyncEvents;
+
 #ifdef COMPOSITOR_PERFORMANCE_WARNING
   TimeStamp mExpectedComposeStartTime;
 #endif
@@ -343,6 +358,7 @@ protected:
   bool mUseExternalSurfaceSize;
   nsIntSize mEGLSurfaceSize;
 
+  mozilla::Monitor mVsyncEventsMonitor;
   mozilla::Monitor mPauseCompositionMonitor;
   mozilla::Monitor mResumeCompositionMonitor;
 
