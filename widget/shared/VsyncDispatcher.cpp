@@ -83,16 +83,6 @@ VsyncDispatcher::RemoveCompositorVsyncObserver(VsyncObserver* aVsyncObserver)
   if (mCompositorObservers.Contains(aVsyncObserver)) {
     mCompositorObservers.RemoveElement(aVsyncObserver);
   }
-  //mCompositorObservers.RemoveElement(aVsyncObserver);
-  /*
-  for (size_t i = 0; i < mCompositorObservers.Length(); i++) {
-    VsyncObserver* observer = mCompositorObservers[i];
-    if (observer == aVsyncObserver) {
-      mCompositorObservers.RemoveElement();
-      return;
-    }
-  }
-  */
 
   NS_WARNING("Could not delete compositor observer\n");
 }

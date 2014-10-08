@@ -346,7 +346,6 @@ protected:
 
   // Counter for how many vsync composite events are on the message loop
   int32_t mVsyncEvents;
-
 #ifdef COMPOSITOR_PERFORMANCE_WARNING
   TimeStamp mExpectedComposeStartTime;
 #endif

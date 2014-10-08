@@ -6,20 +6,15 @@
 #ifndef mozilla_widget_shared_VsyncDispatcher_h
 #define mozilla_widget_shared_VsyncDispatcher_h
 
-//#include "ThreadSafeRefcountingWithMainThreadDestruction.h"
 #include "mozilla/StaticPtr.h"
 #include "nsArray.h"
 #include <utils/Timers.h>
 #include "mozilla/Mutex.h"
-#include <vector>
-
 class MessageLoop;
 
 namespace mozilla {
 class TimeStamp;
 
-// Every vsync event observer should inherit this base class.
-// NotifyVsync() will be called once per hardware vsync
 class VsyncObserver
 {
 public:
@@ -63,12 +58,10 @@ public:
   void AddCompositorVsyncObserver(VsyncObserver* aVsyncObserver);
   void RemoveCompositorVsyncObserver(VsyncObserver* aVsyncObserver);
 
-protected:
-  virtual ~VsyncDispatcher();
-
 private:
-  VsyncDispatcher();
   void NotifyVsync(TimeStamp aVsyncTimestamp, nsTArray<VsyncObserver*>& aObservers);
+  VsyncDispatcher();
+  virtual ~VsyncDispatcher(); 
 
   // Can have multiple compositors. On desktop, this is 1 compositor per window
   Mutex mCompositorObserverLock;

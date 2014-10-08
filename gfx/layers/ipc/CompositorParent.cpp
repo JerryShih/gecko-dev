@@ -426,6 +426,7 @@ CompositorParent::ActorDestroy(ActorDestroyReason why)
   mIsObservingVsync = false;
   mScheduledVsyncComposite = false;
   mSkippedVsyncComposite = false;
+
   VsyncDispatcher::GetInstance()->RemoveCompositorVsyncObserver(this);
 
   CancelCurrentCompositeTask();
@@ -765,6 +766,7 @@ CompositorParent::CompositeToTarget(DrawTarget* aTarget, const nsIntRect* aRect)
   }
 #endif
 
+  mScheduledVsyncComposite = false;
   mLastCompose = TimeStamp::Now();
 
   if (!CanComposite()) {
@@ -772,7 +774,6 @@ CompositorParent::CompositeToTarget(DrawTarget* aTarget, const nsIntRect* aRect)
     return;
   }
 
-  mScheduledVsyncComposite = false;
   AutoResolveRefLayers resolve(mCompositionManager);
 
   if (aTarget) {
