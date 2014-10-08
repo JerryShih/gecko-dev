@@ -161,7 +161,7 @@ HwcComposer2D::Init(hwc_display_t dpy, hwc_surface_t sur, gl::GLContext* aGLCont
         mRBSwapSupport = false;
     }
 
-    if (RegisterHwcEventCallback()) {
+    if (InitHwcEventCallback()) {
         sAndroidInitTime = systemTime(SYSTEM_TIME_MONOTONIC);
         sMozInitTime = TimeStamp::Now();
         EnableVsync(true);
@@ -194,6 +194,12 @@ void
 HwcComposer2D::EnableVsync(bool aEnable)
 {
 #if ANDROID_VERSION >= 17
+    if (!gfxPrefs::FrameUniformityHWVsyncEnabled()) {
+        return;
+    }
+
+    MOZ_ASSERT(mHasHWVsync);
+
     if (NS_IsMainThread()) {
         RunVsyncEventControl(aEnable);
     } else {
@@ -206,24 +212,40 @@ HwcComposer2D::EnableVsync(bool aEnable)
 
 #if ANDROID_VERSION >= 17
 bool
-HwcComposer2D::RegisterHwcEventCallback()
+HwcComposer2D::InitHwcEventCallback()
 {
     HwcDevice* device = (HwcDevice*)GetGonkDisplay()->GetHWCDevice();
-    if (!device || !device->registerProcs) {
-        LOGE("Failed to get hwc");
+    if (!device || !device->registerProcs || !device->getDisplayAttributes) {
+        LOGE("Failed to get hwc.");
         return false;
     }
 
     // Disable Vsync first, and then register callback functions.
     device->eventControl(device, HWC_DISPLAY_PRIMARY, HWC_EVENT_VSYNC, false);
     device->registerProcs(device, &sHWCProcs);
-    mHasHWVsync = true;
+
+    // Get the vsync rate
+    const int QUERY_ATTRIBUTE_NUM = 1;
+    const uint32_t HWC_ATTRIBUTES[QUERY_ATTRIBUTE_NUM+1] = {
+        HWC_DISPLAY_VSYNC_PERIOD,
+        HWC_DISPLAY_NO_ATTRIBUTE
+    };
+    int32_t hwcAttributeValues[QUERY_ATTRIBUTE_NUM];
+
+    device->getDisplayAttributes(device, 0, 0, HWC_ATTRIBUTES, hwcAttributeValues);
+    if (hwcAttributeValues[0] > 0) {
+      mVsyncRate = 1.0e9 / hwcAttributeValues[0] + 0.5;
+    } else {
+      LOGE("Failed to get hwc vsync attribute.");
+      return false;
+    }
 
     if (!gfxPrefs::FrameUniformityHWVsyncEnabled()) {
         device->eventControl(device, HWC_DISPLAY_PRIMARY, HWC_EVENT_VSYNC, false);
         mHasHWVsync = false;
     }
 
+    mHasHWVsync = true;
     return mHasHWVsync;
 }
 
@@ -266,6 +288,11 @@ HwcComposer2D::Invalidate()
     if (mCompositorParent) {
         mCompositorParent->ScheduleRenderOnCompositorThread();
     }
+}
+
+uint32_t HwcComposer2D::GetHWVsyncRate() const
+{
+    return mVsyncRate;
 }
 #endif
 
