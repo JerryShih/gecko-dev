@@ -23,8 +23,6 @@ class VsyncEventParent MOZ_FINAL : public PVsyncEventParent
 public:
   static PVsyncEventParent* Create(Transport* aTransport, ProcessId aOtherProcess);
 
-  virtual ~VsyncEventParent();
-
   virtual bool RecvRegisterVsyncEvent() MOZ_OVERRIDE;
   virtual bool RecvUnregisterVsyncEvent() MOZ_OVERRIDE;
 
@@ -38,6 +36,7 @@ public:
 
 private:
   VsyncEventParent(Transport* aTransport);
+  virtual ~VsyncEventParent();
 
   void DestroyTask();
   void MainThreadDestroyTask();

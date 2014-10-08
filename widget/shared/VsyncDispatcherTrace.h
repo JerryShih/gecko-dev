@@ -11,6 +11,7 @@
 #include <map>
 #include <string>
 #include <memory>
+#include <cmath>
 #include "nsDebug.h"
 
 #ifdef MOZ_WIDGET_GONK
@@ -126,7 +127,10 @@ public:
 #  undef REMOVE_HAVE_ANDROID_OS
 # endif
 
+#endif //SYSTRACE_LABEL
+
 #else
+
 # define VSYNC_SCOPED_SYSTRACE_LABEL(name)
 # define VSYNC_SCOPED_SYSTRACE_LABEL_PRINTF(name, ...)
 # define VSYNC_SYSTRACE_LABEL_BEGIN(name)
@@ -137,10 +141,15 @@ public:
 # define VSYNC_ASYNC_SYSTRACE_LABEL_END(id, name)
 # define VSYNC_ASYNC_SYSTRACE_LABEL_BEGIN_PRINTF(id, name, ...)
 # define VSYNC_ASYNC_SYSTRACE_LABEL_END_PRINTF(id, name, ...)
-#endif
-#endif
+
+#endif  //MOZ_WIDGET_GONK
 
 namespace mozilla {
+
+// Get the setting value of the vsync dispatcher specific prop name.
+// Return aDefaultValue if the prop name is unset.
+int
+GetVsyncDispatcherPropValue(const char *aPropName, int aDefaultValue = 0);
 
 template<typename DataType, uint32_t DataNum, bool aCircularRecording = true>
 class DataStatistician

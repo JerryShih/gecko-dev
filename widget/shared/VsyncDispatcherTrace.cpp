@@ -9,11 +9,33 @@
 #include "nsDebug.h"
 
 // Debug
+#ifdef MOZ_WIDGET_GONK
 #include "cutils/properties.h"
+#endif
 
 namespace mozilla {
 
 VsyncLatencyLogger::LoggerMap VsyncLatencyLogger::mLoggerMap;
+
+int
+GetVsyncDispatcherPropValue(const char *aPropName, int aDefaultValue)
+{
+  if (!aPropName) {
+    return aDefaultValue;
+  }
+
+  int intValue = aDefaultValue;
+
+#ifdef MOZ_WIDGET_GONK
+  char propValueString[PROPERTY_VALUE_MAX];
+
+  if (property_get(aPropName, propValueString, "") > 0) {
+    intValue = atoi(propValueString);
+  }
+#endif
+
+  return intValue;
+}
 
 /*static*/ VsyncLatencyLogger*
 VsyncLatencyLogger::CreateLogger(const char* aName)
@@ -90,9 +112,7 @@ VsyncLatencyLogger::Flush(uint32_t aFrameNum)
   bool ret = false;
   const int n = 256; // magic number /o/
   if(!(aFrameNum % n)){
-    char propValue[PROPERTY_VALUE_MAX];
-    property_get("silk.timer.log.raw", propValue, "0");
-    if (atoi(propValue) == 0) {
+    if (GetVsyncDispatcherPropValue("silk.timer.log.raw", 0) == 0) {
       PrintStatistic();
     } else {
       PrintRaw();

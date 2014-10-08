@@ -62,7 +62,6 @@
 #include "mozilla/StaticPtr.h"
 
 // Debug
-#include "cutils/properties.h"
 #include "mozilla/VsyncDispatcherTrace.h"
 
 namespace mozilla {
@@ -286,11 +285,8 @@ CompositorParent::TickVsyncInternal(int64_t aTimestampNanosecond,
 
   mTimestamp = aTimestamp;
 
-  char propValue[PROPERTY_VALUE_MAX];
-  property_get("silk.c.lat", propValue, "0");
-  if (atoi(propValue) != 0) {
-    property_get("silk.timer.log", propValue, "0");
-    if (atoi(propValue) == 0) {
+  if (GetVsyncDispatcherPropValue("silk.c.lat", 0) != 0) {
+    if (GetVsyncDispatcherPropValue("silk.timer.log", 0) == 0) {
       // End Latency
       VSYNC_ASYNC_SYSTRACE_LABEL_END_PRINTF((int32_t)aFrameNumber,
                                             "Compositor_Latency (%u)",
@@ -303,13 +299,11 @@ CompositorParent::TickVsyncInternal(int64_t aTimestampNanosecond,
     }
   }
 
-  property_get("silk.c.scope", propValue, "0");
-  if (atoi(propValue) != 0) {
+  if (GetVsyncDispatcherPropValue("silk.c.scope", 0) != 0) {
     if (mVsyncComposeNeeded) {
       // Scope
-      property_get("silk.timer.log", propValue, "0");
       static VsyncLatencyLogger* logger = nullptr;
-      if (atoi(propValue) != 0) {
+      if (GetVsyncDispatcherPropValue("silk.timer.log", 0) != 0) {
         logger = VsyncLatencyLogger::CreateLogger("Silk Compose::TickTask Runtime");
         logger->Start(aFrameNumber);
         CompositeCallback();

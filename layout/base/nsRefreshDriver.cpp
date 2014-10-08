@@ -55,7 +55,6 @@
 #include "nsISimpleEnumerator.h"
 
 // Debug
-#include "cutils/properties.h"
 #include "mozilla/VsyncDispatcherTrace.h"
 
 using namespace mozilla;
@@ -234,8 +233,6 @@ private:
       MOZ_ASSERT(mTimer);
     }
 
-    ~VsyncObserverImpl() { }
-
     virtual bool TickVsync(int64_t aTimestampNanosecond,
                            TimeStamp aTimestamp,
                            int64_t aTimestampJS,
@@ -258,16 +255,15 @@ private:
     }
 
   private:
+    ~VsyncObserverImpl() { }
+
     void TickInternal(int64_t aTimestampNanosecond,
                       TimeStamp aTimestamp,
                       int64_t aTimestampJS,
                       uint64_t aFrameNumber)
     {
-      char propValue[PROPERTY_VALUE_MAX];
-      property_get("silk.r.lat", propValue, "0");
-      if (atoi(propValue) != 0) {
-        property_get("silk.timer.log", propValue, "0");
-        if (atoi(propValue) == 0) {
+      if (GetVsyncDispatcherPropValue("silk.r.lat", 0) != 0) {
+        if (GetVsyncDispatcherPropValue("silk.timer.log", 0) == 0) {
           // Latency End
           VSYNC_ASYNC_SYSTRACE_LABEL_END_PRINTF((int32_t)aFrameNumber,
                                                 "RefreshDriver_Latency (%u)"
@@ -280,12 +276,10 @@ private:
         }
       }
 
-      property_get("silk.r.scope", propValue, "0");
-      if (atoi(propValue) != 0) {
+      if (GetVsyncDispatcherPropValue("silk.r.scope", 0) != 0) {
         // Scope
-        property_get("silk.timer.log", propValue, "0");
         static VsyncLatencyLogger* logger = nullptr;
-        if (atoi(propValue) != 0) {
+        if (GetVsyncDispatcherPropValue("silk.timer.log", 0) != 0) {
           logger = VsyncLatencyLogger::CreateLogger("Silk Host RD::TickTask Runtime");
           logger->Start(aFrameNumber);
           mTimer->VsyncTick(aTimestampNanosecond, aTimestamp, aTimestampJS, aFrameNumber);

@@ -12,7 +12,6 @@
 #include "VsyncDispatcherTrace.h"
 
 // Debug
-#include "cutils/properties.h"
 #include "mozilla/VsyncDispatcherTrace.h"
 #include "gfxPrefs.h"
 
@@ -221,11 +220,8 @@ VsyncDispatcherClientImpl::DispatchVsyncEvent(int64_t aTimestampNanosecond,
     MOZ_ASSERT(aFrameNumber > mCurrentFrameNumber);
 
     // End
-    char propValue[PROPERTY_VALUE_MAX];
-    property_get("silk.ipc", propValue, "0");
-    if (atoi(propValue) != 0) {
-      property_get("silk.timer.log", propValue, "0");
-      if (atoi(propValue) == 0) {
+    if (GetVsyncDispatcherPropValue("silk.ipc", 0) != 0) {
+      if (GetVsyncDispatcherPropValue("silk.timer.log", 0) == 0) {
         VSYNC_ASYNC_SYSTRACE_LABEL_END_PRINTF((int32_t)aFrameNumber,
                                               "VsyncToRefreshDriver_IPC (%u)",
                                               (uint32_t)aFrameNumber);
@@ -243,11 +239,10 @@ VsyncDispatcherClientImpl::DispatchVsyncEvent(int64_t aTimestampNanosecond,
     mCurrentFrameNumber = aFrameNumber;
 
     // Scope
-    property_get("silk.r.scope.client", propValue, "0");
-    if (atoi(propValue) != 0) {
-      property_get("silk.timer.log", propValue, "0");
+    if (GetVsyncDispatcherPropValue("silk.r.scope.client", 0) != 0) {
       static VsyncLatencyLogger* logger = nullptr;
-      if (atoi(propValue) != 0) {
+
+      if (GetVsyncDispatcherPropValue("silk.timer.log", 0) != 0) {
         logger = VsyncLatencyLogger::CreateLogger("Silk Client RD::TickTask Runtime");
         logger->Start(aFrameNumber);
         if (!mVsyncEventNeeded) {

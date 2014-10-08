@@ -39,7 +39,6 @@
 #include <utils/Timers.h>
 
 // Debug
-#include "cutils/properties.h"
 #include "mozilla/VsyncDispatcherTrace.h"
 #include "cmath"
 
@@ -99,12 +98,9 @@ public:
 
   NS_IMETHOD Run()
   {
-    char propValue[PROPERTY_VALUE_MAX];
-    property_get("silk.i.lat", propValue, "0");
-    if (atoi(propValue) != 0) {
+    if (GetVsyncDispatcherPropValue("silk.i.lat", 0) != 0) {
       // End Latency
-      property_get("silk.timer.log", propValue, "0");
-      if (atoi(propValue) != 0) {
+      if (GetVsyncDispatcherPropValue("silk.timer.log", 0) != 0) {
         static VsyncLatencyLogger* logger = VsyncLatencyLogger::CreateLogger("Silk Input::TickTask");
         logger->Update(mFrameNumber, base::TimeTicks::HighResNow().ToInternalValue() - mVsyncTime/1000);
         logger->Flush(mFrameNumber);
@@ -113,12 +109,10 @@ public:
       }
     }
 
-    property_get("silk.i.scope", propValue, "0");
-    if (atoi(propValue) != 0) {
+    if (GetVsyncDispatcherPropValue("silk.i.scope", 0) != 0) {
       // Scope
-      property_get("silk.timer.log", propValue, "0");
       static VsyncLatencyLogger* logger = nullptr;
-      if (atoi(propValue) != 0) {
+      if (GetVsyncDispatcherPropValue("silk.timer.log", 0) != 0) {
         logger = VsyncLatencyLogger::CreateLogger("Silk Input::TickTask Runtime");
         logger->Start(mFrameNumber);
         mTouchDispatcher->DispatchTouchMoveEvents(mVsyncTime);
@@ -181,11 +175,7 @@ GeckoTouchDispatcher::TickVsync(int64_t aTimestampNanosecond,
                                                               aTimestampNanosecond,
                                                               aFrameNumber));
   } else {
-    char propValue[PROPERTY_VALUE_MAX];
-    char propValue2[PROPERTY_VALUE_MAX];
-    property_get("silk.i.lat", propValue, "0");
-    property_get("silk.timer.log", propValue2, "0");
-    if (atoi(propValue) != 0 && atoi(propValue2) == 0) {
+    if (GetVsyncDispatcherPropValue("silk.i.lat", 0) != 0 && GetVsyncDispatcherPropValue("silk.timer.log", 0) == 0) {
       // End Latency
       VSYNC_ASYNC_SYSTRACE_LABEL_END_PRINTF((int32_t)aFrameNumber, "Input_Latency (%u)", (uint32_t)aFrameNumber);
     }
@@ -254,9 +244,7 @@ GeckoTouchDispatcher::DispatchTouchMoveEvents(uint64_t aVsyncTime)
   int diffY = currentTouchPos.y - previousTouchPos.y;
   previousTouchPos = currentTouchPos;
 
-  char propValue[PROPERTY_VALUE_MAX];
-  property_get("silk.input.pos", propValue, "0");
-  if (atoi(propValue) != 0) {
+  if (GetVsyncDispatcherPropValue("silk.input.pos", 0) != 0) {
     float distance = std::sqrt((float)(diffX*diffX+diffY*diffY));
     static DataStatistician<float, 256, false> aDataStatistician("Silk input resample", nullptr, nullptr);
     aDataStatistician.Update(mFrameNumber,distance);

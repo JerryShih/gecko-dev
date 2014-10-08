@@ -24,14 +24,13 @@ public:
   static PVsyncEventChild* Create(Transport* aTransport,
                                   ProcessId aOtherProcess);
 
-  virtual ~VsyncEventChild();
-
   virtual bool RecvNotifyVsyncEvent(const VsyncData& aVsyncData) MOZ_OVERRIDE;
 
   virtual void ActorDestroy(ActorDestroyReason aActorDestroyReason) MOZ_OVERRIDE;
 
 private:
   VsyncEventChild(Transport* aTransport);
+  virtual ~VsyncEventChild();
 
   void DestroyTask();
 

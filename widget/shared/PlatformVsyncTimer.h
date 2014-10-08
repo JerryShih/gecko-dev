@@ -6,6 +6,8 @@
 #ifndef mozilla_widget_shared_PlatformVsyncTimer_h
 #define mozilla_widget_shared_PlatformVsyncTimer_h
 
+#include <stdint.h>
+
 namespace mozilla {
 
 class PlatformVsyncTimer;

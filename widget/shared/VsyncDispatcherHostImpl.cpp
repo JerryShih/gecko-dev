@@ -14,7 +14,6 @@
 
 // Debug
 #include "VsyncDispatcherTrace.h"
-#include "cutils/properties.h"
 #include "gfxPrefs.h"
 
 namespace mozilla {
@@ -200,11 +199,7 @@ InputDispatcherRegistryHost::Dispatch(int64_t aTimestampNanosecond,
 
   bool isTicked = false;
   if (mObserver) {
-    char propValue[PROPERTY_VALUE_MAX];
-    char propValue2[PROPERTY_VALUE_MAX];
-    property_get("silk.i.lat", propValue, "0");
-    property_get("silk.timer.log", propValue2, "0");
-    if (atoi(propValue) != 0 && atoi(propValue2) == 0) {
+    if (GetVsyncDispatcherPropValue("silk.i.lat", 0) != 0 && GetVsyncDispatcherPropValue("silk.timer.log", 0) == 0) {
       // Begin Latency
       VSYNC_ASYNC_SYSTRACE_LABEL_BEGIN_PRINTF((int32_t)aFrameNumber, "Input_Latency (%u)", (uint32_t)aFrameNumber);
     }
@@ -336,11 +331,7 @@ RefreshDriverRegistryHost::Dispatch(int64_t aTimestampNanosecond,
   // doesn't run at VsyncDispatcherThread. We always post a task to add/remove
   // the the observer list, so we don't need a list copy here.
   for (ObserverList::size_type i = 0; i < mObserverListList.Length(); i++) {
-    char propValue[PROPERTY_VALUE_MAX];
-    char propValue2[PROPERTY_VALUE_MAX];
-    property_get("silk.r.lat", propValue, "0");
-    property_get("silk.timer.log", propValue2, "0");
-    if (atoi(propValue) != 0 && atoi(propValue2) == 0) {
+    if (GetVsyncDispatcherPropValue("silk.r.lat", 0) != 0 && GetVsyncDispatcherPropValue("silk.timer.log", 0) == 0) {
       // Begin Latency
       VSYNC_ASYNC_SYSTRACE_LABEL_BEGIN_PRINTF((int32_t)aFrameNumber, "RefreshDriver_Latency (%u)", (uint32_t)aFrameNumber);
     }
@@ -370,11 +361,7 @@ CompositorRegistryHost::Dispatch(int64_t aTimestampNanosecond,
   MOZ_ASSERT(IsInVsyncDispatcherThread());
 
   for (ObserverList::size_type i = 0; i < mObserverListList.Length(); ++i) {
-    char propValue[PROPERTY_VALUE_MAX];
-    char propValue2[PROPERTY_VALUE_MAX];
-    property_get("silk.c.lat", propValue, "0");
-    property_get("silk.timer.log", propValue2, "0");
-    if (atoi(propValue) != 0 && atoi(propValue2) == 0) {
+    if (GetVsyncDispatcherPropValue("silk.c.lat", 0) != 0 && GetVsyncDispatcherPropValue("silk.timer.log", 0) == 0) {
       // Begin Latency
       VSYNC_ASYNC_SYSTRACE_LABEL_BEGIN_PRINTF((int32_t)aFrameNumber, "Compositor_Latency (%u)", (uint32_t)aFrameNumber);
     }
@@ -581,15 +568,12 @@ VsyncDispatcherHostImpl::NotifyVsync(int64_t aTimestampNanosecond,
   // It helps us to identify the frame count for each vsync update.
   ++mVsyncFrameNumber;
 
-  char propValue[PROPERTY_VALUE_MAX];
-  property_get("silk.vsync", propValue, "0");
-  if (atoi(propValue) != 0) {
-    property_get("silk.timer.log", propValue, "0");
+  if (GetVsyncDispatcherPropValue("silk.vsync", 0) != 0) {
     static bool start = false;
     static VsyncLatencyLogger* logger = nullptr;
 
     if (start) {
-      if (atoi(propValue) != 0 && logger) {
+      if (GetVsyncDispatcherPropValue("silk.timer.log", 0) != 0 && logger) {
         logger->End(mVsyncFrameNumber-1);
         logger->Flush(mVsyncFrameNumber-1);
         logger = nullptr;
@@ -600,7 +584,7 @@ VsyncDispatcherHostImpl::NotifyVsync(int64_t aTimestampNanosecond,
       }
     }
 
-    if (atoi(propValue) != 0) {
+    if (GetVsyncDispatcherPropValue("silk.vsync", 0) != 0) {
       logger = VsyncLatencyLogger::CreateLogger("Silk Vsync Duration");
       logger->Start(mVsyncFrameNumber);
     } else {
@@ -612,10 +596,7 @@ VsyncDispatcherHostImpl::NotifyVsync(int64_t aTimestampNanosecond,
   }
 
   // Begin
-  char propValue2[PROPERTY_VALUE_MAX];
-  property_get("silk.hw2vsync", propValue, "0");
-  property_get("silk.timer.log", propValue2, "0");
-  if (atoi(propValue) != 0 && atoi(propValue2) == 0) {
+  if (GetVsyncDispatcherPropValue("silk.hw2vsync", 0) != 0 && GetVsyncDispatcherPropValue("silk.timer.log", 0) == 0) {
     VSYNC_ASYNC_SYSTRACE_LABEL_BEGIN_PRINTF((int32_t)mVsyncFrameNumber,
                                             "HwToVsync_Latency (%u)",
                                             (uint32_t)mVsyncFrameNumber);
@@ -648,11 +629,8 @@ VsyncDispatcherHostImpl::NotifyVsyncTask(int64_t aTimestampNanosecond,
   mCurrentFrameNumber = aFrameNumber;
 
   // End
-  char propValue[PROPERTY_VALUE_MAX];
-  property_get("silk.hw2vsync", propValue, "0");
-  if (atoi(propValue) != 0) {
-    property_get("silk.timer.log", propValue, "0");
-    if (atoi(propValue) == 0) {
+  if (GetVsyncDispatcherPropValue("silk.hw2vsync", 0) != 0) {
+    if (GetVsyncDispatcherPropValue("silk.timer.log", 0) == 0) {
       VSYNC_ASYNC_SYSTRACE_LABEL_END_PRINTF((int32_t)mCurrentFrameNumber,
                                             "HwToVsync_Latency (%u)",
                                             (uint32_t)mCurrentFrameNumber);
@@ -664,11 +642,9 @@ VsyncDispatcherHostImpl::NotifyVsyncTask(int64_t aTimestampNanosecond,
     }
   }
 
-  property_get("silk.vd", propValue, "0");
-  if (atoi(propValue) != 0) {
+  if (GetVsyncDispatcherPropValue("silk.vd", 0) != 0) {
     static VsyncLatencyLogger* logger = nullptr;
-    property_get("silk.timer.log", propValue, "0");
-    if (atoi(propValue) != 0) {
+    if (GetVsyncDispatcherPropValue("silk.timer.log", 0) != 0) {
       logger = VsyncLatencyLogger::CreateLogger("Silk VsyncDispatcher Runtime");
       logger->Start(aFrameNumber);
       DispatchVsyncEvent();
@@ -688,8 +664,6 @@ VsyncDispatcherHostImpl::DispatchVsyncEvent()
 {
   MOZ_ASSERT(mInited);
   MOZ_ASSERT(IsInVsyncDispatcherThread());
-
-  char propValue[PROPERTY_VALUE_MAX];
 
   if (!mVsyncEventNeeded) {
     return;
@@ -782,11 +756,7 @@ VsyncDispatcherHostImpl::NotifyContentProcess()
   for (VsyncEventParentList::size_type i = 0; i < mVsyncEventParentList.Length(); ++i) {
     VsyncEventParent* parent = mVsyncEventParentList[i];
 
-    char propValue[PROPERTY_VALUE_MAX];
-    char propValue2[PROPERTY_VALUE_MAX];
-    property_get("silk.ipc", propValue, "0");
-    property_get("silk.timer.log", propValue2, "0");
-    if (atoi(propValue) != 0 && atoi(propValue2) == 0) {
+    if (GetVsyncDispatcherPropValue("silk.ipc", 0) != 0 && GetVsyncDispatcherPropValue("silk.timer.log", 0) == 0) {
       VSYNC_ASYNC_SYSTRACE_LABEL_BEGIN_PRINTF((int32_t)mCurrentFrameNumber,
                                               "VsyncToRefreshDriver_IPC (%u)",
                                               (uint32_t)mCurrentFrameNumber);

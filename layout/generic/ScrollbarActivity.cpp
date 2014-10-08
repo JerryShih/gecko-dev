@@ -17,8 +17,7 @@
 #include "mozilla/LookAndFeel.h"
 #include "mozilla/Preferences.h"
 
-// Debug
-#include "cutils/properties.h"
+#include "mozilla/VsyncDispatcherTrace.h"
 
 namespace mozilla {
 namespace layout {
@@ -305,9 +304,7 @@ ScrollbarActivity::RegisterWithRefreshDriver()
 {
   nsRefreshDriver* refreshDriver = GetRefreshDriver();
   if (refreshDriver) {
-    char propValue[PROPERTY_VALUE_MAX];
-    property_get("silk.scrollbar.hide", propValue, "0");
-    if (atoi(propValue) == 0) {
+    if (GetVsyncDispatcherPropValue("silk.scrollbar.hide", 0) == 0) {
       refreshDriver->AddRefreshObserver(this, Flush_Style);
     }
   }
@@ -341,9 +338,7 @@ ScrollbarActivity::SetIsActive(bool aNewActive)
   if (mIsActive == aNewActive)
     return;
 
-  char propValue[PROPERTY_VALUE_MAX];
-  property_get("silk.scrollbar.hide", propValue, "0");
-  if (atoi(propValue) != 0) {
+  if (GetVsyncDispatcherPropValue("silk.scrollbar.hide", 0) != 0) {
     aNewActive = false;
   }
   mIsActive = aNewActive;
