@@ -209,6 +209,9 @@ private:
   DECL_GFX_PREF(Once, "gfx.touch.resample.max-predict",        TouchResampleMaxPredict, int32_t, 8000000);
   DECL_GFX_PREF(Once, "gfx.touch.resample.vsync-adjust",       TouchVsyncSampleAdjust, int32_t, 5000000);
   DECL_GFX_PREF(Once, "gfx.touch.resample.min-resample",       TouchResampleMinTime, int32_t, 2000000);
+  // Debug
+  DECL_GFX_PREF(Once, "gfx.frameuniformity.debug",             FrameUniformityDebug, bool, true);
+
 
   DECL_GFX_PREF(Live, "gl.msaa-level",                         MSAALevel, uint32_t, 2);
 
