@@ -46,15 +46,22 @@ VsyncDispatcher::GetVsyncRate()
 }
 
 void
-VsyncDispatcher::NotifyVsync(TimeStamp aVsyncTimestamp, nsecs_t aAndroidVsyncTime)
+VsyncDispatcher::NotifyVsync(TimeStamp aVsyncTimestamp)
 {
-  if (gfxPrefs::TouchResampling()) {
-    GeckoTouchDispatcher::NotifyVsync(aAndroidVsyncTime);
-  }
-
   if (gfxPrefs::VsyncAlignedCompositor()) {
     MutexAutoLock lock(mCompositorObserverLock);
     NotifyVsync(aVsyncTimestamp, mCompositorObservers);
+
+    // We can have situations where the compositor isn't scheduled yet but we have
+    // a touch event. The lockscreen is one example. In these cases, dispatch
+    // a touch event as that will schedule the next composite
+    if (mCompositorObservers.IsEmpty() && gfxPrefs::TouchResampling()) {
+      GeckoTouchDispatcher::NotifyVsync(aVsyncTimestamp);
+    }
+  }
+
+  if (!gfxPrefs::VsyncAlignedCompositor() && gfxPrefs::TouchResampling()) {
+    GeckoTouchDispatcher::NotifyVsync(aVsyncTimestamp);
   }
 
   // TODO: notify nsRefreshDriver

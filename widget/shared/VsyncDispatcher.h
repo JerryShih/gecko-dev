@@ -35,7 +35,7 @@ public:
 
   // Vsync event rate per second.
   uint32_t GetVsyncRate();
-  void NotifyVsync(TimeStamp aVsyncTimestamp, nsecs_t aAndroidVsyncTime);
+  void NotifyVsync(TimeStamp aVsyncTimestamp);
   void AddCompositorVsyncObserver(VsyncObserver* aVsyncObserver);
   void RemoveCompositorVsyncObserver(VsyncObserver* aVsyncObserver);
 

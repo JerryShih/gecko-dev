@@ -497,6 +497,8 @@ public:
         , mKeyEventsFiltered(false)
     {
         mTouchDispatcher = new GeckoTouchDispatcher();
+        mInitAndroidTime = systemTime(SYSTEM_TIME_MONOTONIC);
+        mInitMozTime = TimeStamp::Now();
     }
 
     virtual void dump(String8& dump);
@@ -535,6 +537,7 @@ protected:
     virtual ~GeckoInputDispatcher() { }
 
 private:
+    TimeStamp getMozTimestamp(nsecs_t aAndroidTime);
     // mQueueLock should generally be locked while using mEventQueue.
     // UserInputData is pushed on on the InputReaderThread and
     // popped and dispatched on the main thread.
@@ -545,6 +548,9 @@ private:
 
     int mKeyDownCount;
     bool mKeyEventsFiltered;
+
+    nsecs_t mInitAndroidTime;
+    TimeStamp mInitMozTime;
 };
 
 // GeckoInputReaderPolicy
@@ -695,6 +701,13 @@ addMultiTouch(MultiTouchInput& aMultiTouch,
     aMultiTouch.mTouches.AppendElement(touchData);
 }
 
+TimeStamp
+GeckoInputDispatcher::getMozTimestamp(nsecs_t aAndroidTime)
+{
+    nsecs_t timeDiff = aAndroidTime - mInitAndroidTime;
+    return mInitMozTime + TimeDuration::FromMicroseconds(timeDiff / 1000);
+}
+
 void
 GeckoInputDispatcher::notifyMotion(const NotifyMotionArgs* args)
 {
@@ -702,7 +715,7 @@ GeckoInputDispatcher::notifyMotion(const NotifyMotionArgs* args)
     int32_t action = args->action & AMOTION_EVENT_ACTION_MASK;
     int touchCount = args->pointerCount;
     MOZ_ASSERT(touchCount <= MAX_POINTERS);
-    TimeStamp timestamp = TimeStamp::Now();
+    TimeStamp timestamp = getMozTimestamp(args->eventTime);
     Modifiers modifiers = getDOMModifiers(args->metaState);
 
     MultiTouchInput::MultiTouchType touchType = MultiTouchInput::MULTITOUCH_CANCEL;
@@ -747,7 +760,7 @@ GeckoInputDispatcher::notifyMotion(const NotifyMotionArgs* args)
         }
     }
 
-    mTouchDispatcher->NotifyTouch(touchData, args->eventTime);
+    mTouchDispatcher->NotifyTouch(touchData);
 }
 
 void GeckoInputDispatcher::notifySwitch(const NotifySwitchArgs* args)

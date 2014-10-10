@@ -279,7 +279,7 @@ HwcComposer2D::Vsync(int aDisplay, nsecs_t aVsyncTimestamp)
     }
 #endif
 
-    VsyncDispatcher::GetInstance()->NotifyVsync(vsyncTime, aVsyncTimestamp);
+    VsyncDispatcher::GetInstance()->NotifyVsync(vsyncTime);
 }
 
 // Called on the "invalidator" thread (run from HAL).

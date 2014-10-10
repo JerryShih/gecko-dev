@@ -756,6 +756,13 @@ pref("hal.processPriorityManager.gonk.LowCPUNice", 18);
 pref("hal.gonk.COMPOSITOR.rt_priority", 0);
 pref("hal.gonk.COMPOSITOR.nice", -4);
 
+/*
+pref("gfx.vsync.compositor", true);
+pref("gfx.touch.resample", true);
+pref("layers.uniformity-info", true);
+pref("gfx.frameuniformity.hw-vsync", true);
+*/
+
 // Fire a memory pressure event when the system has less than Xmb of memory
 // remaining.  You should probably set this just above Y.KillUnderKB for
 // the highest priority class Y that you want to make an effort to keep alive.

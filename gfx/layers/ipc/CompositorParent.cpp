@@ -64,6 +64,7 @@
 #include "ProfilerMarkers.h"
 #endif
 #include "mozilla/VsyncDispatcher.h"
+#include "GeckoTouchDispatcher.h"
 
 namespace mozilla {
 namespace layers {
@@ -727,6 +728,15 @@ CompositorParent::ScheduleComposition()
 }
 
 void
+CompositorParent::DispatchTouchEvents(TimeStamp aVsyncTime)
+{
+  if (gfxPrefs::VsyncAlignedCompositor() && gfxPrefs::TouchResampling()) {
+    GeckoTouchDispatcher::NotifyVsync(aVsyncTime);
+  }
+}
+
+
+void
 CompositorParent::CompositeCallback(TimeStamp aScheduleTime)
 {
   if (gfxPrefs::VsyncAlignedCompositor()) {
@@ -745,6 +755,7 @@ CompositorParent::CompositeCallback(TimeStamp aScheduleTime)
 
     if (mSkippedVsyncComposite) {
       mSkippedVsyncCount++;
+      DispatchTouchEvents(aScheduleTime);
       return;
     }
 
@@ -758,6 +769,7 @@ CompositorParent::CompositeCallback(TimeStamp aScheduleTime)
 
   mCurrentCompositeTask = nullptr;
   CompositeToTarget(nullptr);
+  DispatchTouchEvents(aScheduleTime);
 }
 
 void

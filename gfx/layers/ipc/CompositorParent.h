@@ -295,6 +295,7 @@ protected:
   void CompositeCallback(TimeStamp aScheduleTime);
   void CompositeToTarget(gfx::DrawTarget* aTarget, const nsIntRect* aRect = nullptr);
   void ForceComposeToTarget(gfx::DrawTarget* aTarget, const nsIntRect* aRect = nullptr);
+  void DispatchTouchEvents(TimeStamp aVsyncTime);
 
   void SetEGLSurfaceSize(int width, int height);
 

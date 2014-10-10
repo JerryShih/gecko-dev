@@ -6,12 +6,12 @@
 #ifndef InputData_h__
 #define InputData_h__
 
-#include "nsDebug.h"
-#include "nsPoint.h"
-#include "nsTArray.h"
 #include "Units.h"
 #include "mozilla/EventForwards.h"
 #include "mozilla/TimeStamp.h"
+#include "nsDebug.h"
+#include "nsPoint.h"
+#include "nsTArray.h"
 
 template<class E> struct already_AddRefed;
 class nsIWidget;
