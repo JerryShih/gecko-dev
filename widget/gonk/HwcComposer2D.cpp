@@ -230,7 +230,7 @@ HwcComposer2D::InitHwcEventCallback()
         HWC_DISPLAY_VSYNC_PERIOD,
         HWC_DISPLAY_NO_ATTRIBUTE
     };
-    int32_t hwcAttributeValues[QUERY_ATTRIBUTE_NUM];
+    int32_t hwcAttributeValues[sizeof(HWC_ATTRIBUTES) / sizeof(HWC_ATTRIBUTES)[0]];
 
     device->getDisplayAttributes(device, 0, 0, HWC_ATTRIBUTES, hwcAttributeValues);
     if (hwcAttributeValues[0] > 0) {
@@ -260,11 +260,18 @@ HwcComposer2D::RunVsyncEventControl(bool aEnable)
     }
 }
 
+static nsecs_t sLastVsync = 0;
 void
 HwcComposer2D::Vsync(int aDisplay, nsecs_t aVsyncTimestamp)
 {
     nsecs_t timeSinceInit = aVsyncTimestamp - sAndroidInitTime;
     TimeStamp vsyncTime = sMozInitTime + TimeDuration::FromMicroseconds(timeSinceInit / 1000);
+
+    nsecs_t vsyncInterval = aVsyncTimestamp - sLastVsync;
+    sLastVsync = aVsyncTimestamp;
+    if (vsyncInterval < 16000000 || vsyncInterval > 17000000) {
+      LOGE("Vsync Interval is non-uniform% lld\n", vsyncInterval);
+    }
 
 #ifdef MOZ_ENABLE_PROFILER_SPS
     if (profiler_is_active()) {
