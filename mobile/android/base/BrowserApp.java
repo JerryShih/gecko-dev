@@ -229,6 +229,8 @@ public class BrowserApp extends GeckoApp
 
     private BrowserHealthReporter mBrowserHealthReporter;
 
+    private SystemBarTintManager mTintManager;
+
     // The tab to be selected on editing mode exit.
     private Integer mTargetTabForEditingMode;
 
@@ -238,7 +240,7 @@ public class BrowserApp extends GeckoApp
     // race by determining if the web content should be hidden at the animation's end.
     private boolean mHideWebContentOnAnimationEnd;
 
-    private DynamicToolbar mDynamicToolbar = new DynamicToolbar();
+    private final DynamicToolbar mDynamicToolbar = new DynamicToolbar();
 
     @Override
     public View onCreateView(final String name, final Context context, final AttributeSet attrs) {
@@ -681,9 +683,22 @@ public class BrowserApp extends GeckoApp
 
         getWindow().addFlags(WindowManager.LayoutParams.FLAG_TRANSLUCENT_STATUS);
 
-        SystemBarTintManager tintManager = new SystemBarTintManager(this);
-        tintManager.setTintColor(getResources().getColor(R.color.background_tabs));
-        tintManager.setStatusBarTintEnabled(true);
+        mTintManager = new SystemBarTintManager(this);
+        mTintManager.setTintColor(getResources().getColor(R.color.background_tabs));
+        updateSystemUITinting(mRootLayout.getSystemUiVisibility());
+
+        mRootLayout.setOnSystemUiVisibilityChangeListener(new View.OnSystemUiVisibilityChangeListener() {
+            @Override
+            public void onSystemUiVisibilityChange(int visibility) {
+                updateSystemUITinting(visibility);
+            }
+        });
+    }
+
+    private void updateSystemUITinting(int visibility) {
+        final boolean shouldTint = (visibility & View.SYSTEM_UI_FLAG_HIDE_NAVIGATION) == 0 &&
+                                   (visibility & View.SYSTEM_UI_FLAG_FULLSCREEN) == 0;
+        mTintManager.setStatusBarTintEnabled(shouldTint);
     }
 
     /**
@@ -845,24 +860,28 @@ public class BrowserApp extends GeckoApp
 
     private void setBrowserToolbarListeners() {
         mBrowserToolbar.setOnActivateListener(new BrowserToolbar.OnActivateListener() {
+            @Override
             public void onActivate() {
                 enterEditingMode();
             }
         });
 
         mBrowserToolbar.setOnCommitListener(new BrowserToolbar.OnCommitListener() {
+            @Override
             public void onCommit() {
                 commitEditingMode();
             }
         });
 
         mBrowserToolbar.setOnDismissListener(new BrowserToolbar.OnDismissListener() {
+            @Override
             public void onDismiss() {
                 mBrowserToolbar.cancelEdit();
             }
         });
 
         mBrowserToolbar.setOnFilterListener(new BrowserToolbar.OnFilterListener() {
+            @Override
             public void onFilter(String searchText, AutocompleteHandler handler) {
                 filterEditingMode(searchText, handler);
             }
@@ -878,6 +897,7 @@ public class BrowserApp extends GeckoApp
         });
 
         mBrowserToolbar.setOnStartEditingListener(new BrowserToolbar.OnStartEditingListener() {
+            @Override
             public void onStartEditing() {
                 // Temporarily disable doorhanger notifications.
                 mDoorHangerPopup.disable();
@@ -885,6 +905,7 @@ public class BrowserApp extends GeckoApp
         });
 
         mBrowserToolbar.setOnStopEditingListener(new BrowserToolbar.OnStopEditingListener() {
+            @Override
             public void onStopEditing() {
                 selectTargetTabForEditingMode();
 
@@ -1238,6 +1259,7 @@ public class BrowserApp extends GeckoApp
                 mDynamicToolbarCanScroll = false;
                 if (mBrowserChrome.getVisibility() != View.VISIBLE) {
                     ThreadUtils.postToUiThread(new Runnable() {
+                        @Override
                         public void run() {
                             mDynamicToolbar.setVisible(true, VisibilityTransition.ANIMATE);
                         }
@@ -1252,6 +1274,7 @@ public class BrowserApp extends GeckoApp
         final ToolbarProgressView progressView = mProgressView;
         final int marginTop = Math.round(aMetrics.marginTop);
         ThreadUtils.postToUiThread(new Runnable() {
+            @Override
             public void run() {
                 final float translationY = marginTop - browserChrome.getHeight();
                 ViewHelper.setTranslationY(browserChrome, translationY);
@@ -2373,6 +2396,11 @@ public class BrowserApp extends GeckoApp
             if (view.getScrollX() != 0 || view.getScrollY() != 0) {
                 view.getHitRect(mTempRect);
                 mTempRect.offset(-view.getScrollX(), -view.getScrollY());
+
+                if (mTintManager != null) {
+                    SystemBarTintManager.SystemBarConfig config = mTintManager.getConfig();
+                    mTempRect.offset(0, -config.getPixelInsetTop(false));
+                }
 
                 int[] viewCoords = new int[2];
                 view.getLocationOnScreen(viewCoords);
