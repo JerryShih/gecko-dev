@@ -52,6 +52,7 @@ namespace layers {
 class APZCTreeManager;
 class AsyncCompositionManager;
 class Compositor;
+class CompositorParent;
 class LayerManagerComposite;
 class LayerTransactionParent;
 
@@ -88,11 +89,33 @@ private:
   friend class CompositorParent;
 };
 
+class CompositorVsyncObserver MOZ_FINAL : public VsyncObserver
+{
+  NS_INLINE_DECL_THREADSAFE_REFCOUNTING_WITH_MAIN_THREAD_DESTRUCTION(CompositorVsyncObserver)
+
+public:
+  virtual bool NotifyVsync(TimeStamp aVsyncTimestamp) MOZ_OVERRIDE;
+  CompositorVsyncObserver(CompositorParent* aCompositorParent);
+  void ScheduleComposite(bool aSchedule);
+  bool DidScheduleComposite();
+
+private:
+  virtual ~CompositorVsyncObserver();
+
+  void ObserveVsync();
+  void UnobserveVsync(bool isDestructing); // I wish unobserve was a real word!
+
+  mozilla::Monitor mScheduledCompositeMonitor;
+  bool mScheduledComposite;
+  bool mIsObservingVsync;
+  nsRefPtr<CompositorParent> mCompositorParent;
+};
+
 class CompositorParent MOZ_FINAL : public PCompositorParent,
-                                   public ShadowLayersManager,
-                                   public VsyncObserver
+                                   public ShadowLayersManager
 {
   NS_INLINE_DECL_THREADSAFE_REFCOUNTING_WITH_MAIN_THREAD_DESTRUCTION(CompositorParent)
+  friend class CompositorVsyncObserver;
 
 public:
   explicit CompositorParent(nsIWidget* aWidget,
@@ -140,8 +163,6 @@ public:
                               APZTestData* aOutData) MOZ_OVERRIDE;
   virtual AsyncCompositionManager* GetCompositionManager(LayerTransactionParent* aLayerTree) MOZ_OVERRIDE { return mCompositionManager; }
 
-  virtual bool NotifyVsync(TimeStamp aVsyncTimestamp) MOZ_OVERRIDE;
-
   /**
    * This forces the is-first-paint flag to true. This is intended to
    * be called by the widget code when it loses its viewport information
@@ -166,8 +187,6 @@ public:
   bool ScheduleResumeOnCompositorThread(int width, int height);
 
   virtual void ScheduleComposition();
-  void ScheduleVsyncAlignedComposition();
-  void ScheduleSoftwareTimerComposition();
   void NotifyShadowTreeTransaction(uint64_t aId, bool aIsFirstPaint,
       bool aScheduleComposite, uint32_t aPaintSequenceNumber,
       bool aIsRepeatTransaction);
@@ -304,6 +323,7 @@ protected:
   void ResumeCompositionAndResize(int width, int height);
   void ForceComposition();
   void CancelCurrentCompositeTask();
+  void ScheduleSoftwareTimerComposition();
 
   /**
    * Add a compositor to the global compositor map.
@@ -332,20 +352,6 @@ protected:
   TimeStamp mLastVsyncTimestamp;
   bool mIsTesting;
 
-  // True if we've scheduled a composite aligned with vsync
-  bool mScheduledVsyncComposite;
-
-  // True if this is observing vsyncs
-  bool mIsObservingVsync;
-
-  // True if we got a vsync event but didn't composite
-  bool mSkippedVsyncComposite;
-
-  // Counter to check how many times we got a vsync event but didn't composite
-  int32_t mSkippedVsyncCount;
-
-  // Counter for how many vsync composite events are on the message loop
-  int32_t mVsyncEvents;
 #ifdef COMPOSITOR_PERFORMANCE_WARNING
   TimeStamp mExpectedComposeStartTime;
 #endif
@@ -357,7 +363,6 @@ protected:
   bool mUseExternalSurfaceSize;
   nsIntSize mEGLSurfaceSize;
 
-  mozilla::Monitor mVsyncEventsMonitor;
   mozilla::Monitor mPauseCompositionMonitor;
   mozilla::Monitor mResumeCompositionMonitor;
 
@@ -370,6 +375,7 @@ protected:
   nsRefPtr<APZCTreeManager> mApzcTreeManager;
 
   nsRefPtr<CompositorThreadHolder> mCompositorThreadHolder;
+  nsRefPtr<CompositorVsyncObserver> mCompositorVsyncObserver;
 
   DISALLOW_EVIL_CONSTRUCTORS(CompositorParent);
 };
