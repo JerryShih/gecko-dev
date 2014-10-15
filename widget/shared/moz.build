@@ -37,4 +37,7 @@ FAIL_ON_WARNINGS = True
 
 FINAL_LIBRARY = 'xul'
 
+if CONFIG['ENABLE_TESTS']:
+    DIRS += ['tests/gtest']
+
 CXXFLAGS += CONFIG['TK_CFLAGS']
