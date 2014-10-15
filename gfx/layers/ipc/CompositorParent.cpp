@@ -202,6 +202,7 @@ CompositorVsyncObserver::CompositorVsyncObserver(CompositorParent* aCompositorPa
 
 CompositorVsyncObserver::~CompositorVsyncObserver()
 {
+  MOZ_ASSERT(NS_IsMainThread());
   UnobserveVsync(true);
   mCompositorParent = nullptr;
 }
