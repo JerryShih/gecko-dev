@@ -349,7 +349,6 @@ protected:
   CancelableTask *mCurrentCompositeTask;
   TimeStamp mLastCompose;
   TimeStamp mTestTime;
-  TimeStamp mLastVsyncTimestamp;
   bool mIsTesting;
 
 #ifdef COMPOSITOR_PERFORMANCE_WARNING

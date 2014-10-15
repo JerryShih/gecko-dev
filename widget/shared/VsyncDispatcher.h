@@ -32,9 +32,6 @@ class VsyncDispatcher
 
 public:
   static VsyncDispatcher* GetInstance();
-
-  // Vsync event rate per second.
-  uint32_t GetVsyncRate();
   void NotifyVsync(TimeStamp aVsyncTimestamp, nsecs_t aAndroidVsyncTime);
   void AddCompositorVsyncObserver(VsyncObserver* aVsyncObserver);
   void RemoveCompositorVsyncObserver(VsyncObserver* aVsyncObserver);

@@ -95,7 +95,6 @@ public:
     bool InitHwcEventCallback();
     void Vsync(int aDisplay, int64_t aTimestamp);
     void Invalidate();
-    uint32_t GetHWVsyncRate() const;
 #endif
     void SetCompositorParent(layers::CompositorParent* aCompositorParent);
 
@@ -130,7 +129,6 @@ private:
 #if ANDROID_VERSION >= 17
     android::sp<android::Fence> mPrevRetireFence;
     android::sp<android::Fence> mPrevDisplayFence;
-    uint32_t mVsyncRate;
 #endif
     nsTArray<layers::LayerComposite*> mHwcLayerMap;
     bool                    mPrepared;

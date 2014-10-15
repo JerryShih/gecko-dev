@@ -224,22 +224,6 @@ HwcComposer2D::InitHwcEventCallback()
     device->eventControl(device, HWC_DISPLAY_PRIMARY, HWC_EVENT_VSYNC, false);
     device->registerProcs(device, &sHWCProcs);
 
-    // Get the vsync rate
-    const int QUERY_ATTRIBUTE_NUM = 1;
-    const uint32_t HWC_ATTRIBUTES[QUERY_ATTRIBUTE_NUM+1] = {
-        HWC_DISPLAY_VSYNC_PERIOD,
-        HWC_DISPLAY_NO_ATTRIBUTE
-    };
-    int32_t hwcAttributeValues[sizeof(HWC_ATTRIBUTES) / sizeof(HWC_ATTRIBUTES)[0]];
-
-    device->getDisplayAttributes(device, 0, 0, HWC_ATTRIBUTES, hwcAttributeValues);
-    if (hwcAttributeValues[0] > 0) {
-      mVsyncRate = 1.0e9 / hwcAttributeValues[0] + 0.5;
-    } else {
-      LOGE("Failed to get hwc vsync attribute.");
-      return false;
-    }
-
     if (!gfxPrefs::FrameUniformityHWVsyncEnabled()) {
         device->eventControl(device, HWC_DISPLAY_PRIMARY, HWC_EVENT_VSYNC, false);
         mHasHWVsync = false;
@@ -266,9 +250,9 @@ HwcComposer2D::Vsync(int aDisplay, nsecs_t aVsyncTimestamp)
 {
     nsecs_t timeSinceInit = aVsyncTimestamp - sAndroidInitTime;
     TimeStamp vsyncTime = sMozInitTime + TimeDuration::FromMicroseconds(timeSinceInit / 1000);
-
     nsecs_t vsyncInterval = aVsyncTimestamp - sLastVsync;
     sLastVsync = aVsyncTimestamp;
+
     if (vsyncInterval < 16000000 || vsyncInterval > 17000000) {
       LOGE("Vsync Interval is non-uniform% lld\n", vsyncInterval);
     }
@@ -295,11 +279,6 @@ HwcComposer2D::Invalidate()
     if (mCompositorParent) {
         mCompositorParent->ScheduleRenderOnCompositorThread();
     }
-}
-
-uint32_t HwcComposer2D::GetHWVsyncRate() const
-{
-    return mVsyncRate;
 }
 #endif
 

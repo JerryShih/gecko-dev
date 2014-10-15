@@ -15,7 +15,6 @@ UNIFIED_SOURCES += [
     'nsShmImage.cpp',
     'SharedWidgetUtils.cpp',
     'VsyncDispatcher.cpp',
-    'VsyncDispatcherTrace.cpp',
     'WidgetEventImpl.cpp',
 ]
 

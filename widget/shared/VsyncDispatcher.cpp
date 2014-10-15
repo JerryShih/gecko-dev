@@ -38,13 +38,6 @@ VsyncDispatcher::~VsyncDispatcher()
   mCompositorObservers.Clear();
 }
 
-uint32_t
-VsyncDispatcher::GetVsyncRate()
-{
-  // TODO hook into hwc
-  return 60;
-}
-
 void
 VsyncDispatcher::NotifyVsync(TimeStamp aVsyncTimestamp, nsecs_t aAndroidVsyncTime)
 {
@@ -73,7 +66,9 @@ void
 VsyncDispatcher::AddCompositorVsyncObserver(VsyncObserver* aVsyncObserver)
 {
   MutexAutoLock lock(mCompositorObserverLock);
-  mCompositorObservers.AppendElement(aVsyncObserver);
+  if (!mCompositorObservers.Contains(aVsyncObserver)) {
+    mCompositorObservers.AppendElement(aVsyncObserver);
+  }
 }
 
 void
