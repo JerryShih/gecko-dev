@@ -39,6 +39,12 @@ CreateSWTimer(VsyncTimerObserver* aObserver)
   return timer;
 }
 
+/*static*/ void
+PlatformVsyncTimerFactory::SetCustomCreator(VsyncTimerCreator aCreator)
+{
+  mCustomCreator = aCreator;
+}
+
 /*static*/ PlatformVsyncTimer*
 PlatformVsyncTimerFactory::Create(VsyncTimerObserver* aObserver)
 {
