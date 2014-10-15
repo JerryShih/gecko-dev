@@ -93,7 +93,7 @@ public:
 };
 
 // Test fixture.
-class SilkHostBasicTest : public ::testing::Test
+class SilkHostTest : public ::testing::Test
 {
 public:
   static PlatformVsyncTimer *Create(VsyncTimerObserver *aObserver)
@@ -109,7 +109,7 @@ public:
     mTimer.Init();
     // Request: new PlatfomrVsyncTimerFactory API
     // We need to have a way to replace PlatformVsyncTimer by MockTimer.
-    PlatformVsyncTimerFactory::SetCustomCreator(&SilkHostBasicTest ::Create);
+    PlatformVsyncTimerFactory::SetCustomCreator(&SilkHostTest ::Create);
 
     mDispatcher = VsyncDispatcher::GetInstance();
     mHostImp = static_cast<VsyncDispatcherHostImpl *>(mDispatcher);
@@ -128,17 +128,17 @@ protected:
   VsyncDispatcherHostImpl   *mHostImp;
   VsyncDispatcher           *mDispatcher;
   NiceMock<MockTimer>       mTimer;
-  static SilkHostBasicTest  *gThis;
+  static SilkHostTest  *gThis;
 };
 
-/*static*/ SilkHostBasicTest  *SilkHostBasicTest::gThis;
+/*static*/ SilkHostTest  *SilkHostTest::gThis;
 
 // Principle to check:
 //   A user can get DispathcerHost interface from VsyncDispatcher in
 //   chrome process.
 //   A user can get DispatcherClient interface from VsyncDispatcher in
 //   content process.
-TEST_F(SilkHostBasicTest, QueryInterface)
+TEST_F(SilkHostTest, QueryInterface)
 {
   // Interface qurey test.
   VsyncDispatcherClient* client = mDispatcher->AsVsyncDispatcherClient();
@@ -151,7 +151,7 @@ TEST_F(SilkHostBasicTest, QueryInterface)
 // Principle to check:
 //   A observer registers to via VsyncEventRegistry::AddObserver(_, true) should
 //   keep receive vsync tick before unregistry.
-TEST_F(SilkHostBasicTest, AlwasyTriggerRegistry)
+TEST_F(SilkHostTest, AlwasyTriggerRegistry)
 {
   NiceMock<MockObserver> observer;
 
@@ -177,7 +177,7 @@ TEST_F(SilkHostBasicTest, AlwasyTriggerRegistry)
 // Principle to check:
 //   A observer registers to via VsyncEventRegistry::AddObserver(_, false) should
 //   receive one and only one vsync tick.
-TEST_F(SilkHostBasicTest, NotAlwasyTriggerRegistry)
+TEST_F(SilkHostTest, NotAlwasyTriggerRegistry)
 {
   NiceMock<MockObserver> observer;
 
@@ -199,7 +199,7 @@ TEST_F(SilkHostBasicTest, NotAlwasyTriggerRegistry)
 // Priciple to check:
 //   VsyncObserver should keepp the order of timestamp which comes from
 //   PlatformTimer.
-TEST_F(SilkHostBasicTest, NotificationSequence)
+TEST_F(SilkHostTest, NotificationSequence)
 {
   const int times = 10;
 
@@ -233,7 +233,7 @@ TEST_F(SilkHostBasicTest, NotificationSequence)
 // Principle to check:
 //   VsyncDispatcher should enable vsync timer after the first observer been added
 //   VsyncDispatcher should disable vsync timer after the lastest observer been removed
-TEST_F(SilkHostBasicTest, TimerEnabling)
+TEST_F(SilkHostTest, TimerEnabling)
 {
   NiceMock<MockObserver> observer;
   {
@@ -255,7 +255,7 @@ TEST_F(SilkHostBasicTest, TimerEnabling)
 
 // Principle to check:
 //   VsyncDispatcher should not alter time stamps passed from PlatfomrVsyncTimer
-TEST_F(SilkHostBasicTest, TimeStampPersistence)
+TEST_F(SilkHostTest, TimeStampPersistence)
 {
   NiceMock<MockObserver> observer;
 
@@ -277,7 +277,7 @@ TEST_F(SilkHostBasicTest, TimeStampPersistence)
 //   1. InputDispatcher observers
 //   2. Compositor observers
 //   3. RefreshDriver observers.
-TEST_F(SilkHostBasicTest, ObserverPriority)
+TEST_F(SilkHostTest, ObserverPriority)
 {
   VsyncEventRegistry* refreshDriverRegistry = mDispatcher->GetRefreshDriverRegistry();
   VsyncEventRegistry* compositorRegistry = mDispatcher->GetCompositorRegistry();
@@ -317,7 +317,7 @@ TEST_F(SilkHostBasicTest, ObserverPriority)
 // What if a VyncTimerObserver take more then 16 ms in NotifyVsync callback?
 // What's the behavior we expect in VsyncDispatcher?
 // Write a perf log?
-TEST_F(SilkHostBasicTest, NotificationTimeout)
+TEST_F(SilkHostTest, NotificationTimeout)
 {
 
 }
