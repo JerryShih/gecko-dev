@@ -89,24 +89,30 @@ private:
   friend class CompositorParent;
 };
 
+/**
+ * Manages the vsync (de)registration and tracking on behalf of the
+ * compositor when it need to paint.
+ * Turns vsync notifications into scheduled composites.
+ **/
+
 class CompositorVsyncObserver MOZ_FINAL : public VsyncObserver
 {
   NS_INLINE_DECL_THREADSAFE_REFCOUNTING_WITH_MAIN_THREAD_DESTRUCTION(CompositorVsyncObserver)
 
 public:
-  virtual bool NotifyVsync(TimeStamp aVsyncTimestamp) MOZ_OVERRIDE;
   CompositorVsyncObserver(CompositorParent* aCompositorParent);
-  void ScheduleComposite(bool aSchedule);
-  bool DidScheduleComposite();
+  virtual bool NotifyVsync(TimeStamp aVsyncTimestamp) MOZ_OVERRIDE;
+  void SetNeedsComposite(bool aSchedule);
+  bool NeedsComposite();
 
 private:
   virtual ~CompositorVsyncObserver();
 
   void ObserveVsync();
-  void UnobserveVsync(bool isDestructing); // I wish unobserve was a real word!
+  void UnobserveVsync(bool isDestructing);
 
-  mozilla::Monitor mScheduledCompositeMonitor;
-  bool mScheduledComposite;
+  mozilla::Monitor mNeedsCompositeMonitor;
+  bool mNeedsComposite;
   bool mIsObservingVsync;
   nsRefPtr<CompositorParent> mCompositorParent;
 };
@@ -350,7 +356,6 @@ protected:
   TimeStamp mLastCompose;
   TimeStamp mTestTime;
   bool mIsTesting;
-
 #ifdef COMPOSITOR_PERFORMANCE_WARNING
   TimeStamp mExpectedComposeStartTime;
 #endif

@@ -194,7 +194,7 @@ void
 HwcComposer2D::EnableVsync(bool aEnable)
 {
 #if ANDROID_VERSION >= 17
-    if (!gfxPrefs::FrameUniformityHWVsyncEnabled()) {
+    if (!gfxPrefs::HardwareVsyncEnabled()) {
         return;
     }
 
@@ -224,7 +224,7 @@ HwcComposer2D::InitHwcEventCallback()
     device->eventControl(device, HWC_DISPLAY_PRIMARY, HWC_EVENT_VSYNC, false);
     device->registerProcs(device, &sHWCProcs);
 
-    if (!gfxPrefs::FrameUniformityHWVsyncEnabled()) {
+    if (!gfxPrefs::HardwareVsyncEnabled()) {
         device->eventControl(device, HWC_DISPLAY_PRIMARY, HWC_EVENT_VSYNC, false);
         mHasHWVsync = false;
     }
