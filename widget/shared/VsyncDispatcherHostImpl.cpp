@@ -146,7 +146,6 @@ void
 VsyncDispatcherHostImpl::NotifyVsync(TimeStamp aTimestamp)
 {
   MOZ_ASSERT(mInited);
-  MOZ_ASSERT(IsInVsyncDispatcherThread());
   MOZ_ASSERT(aTimestamp > mCurrentTimestamp);
 
   mCurrentTimestamp = aTimestamp;
@@ -173,7 +172,6 @@ void
 VsyncDispatcherHostImpl::VsyncTickNeeded()
 {
 //  MOZ_ASSERT(mTimer);
-//  MOZ_ASSERT(IsInVsyncDispatcherThread());
 //
 //  // We check the observer number here to enable/disable vsync event
 //  if (!!GetVsyncObserverCount() !=  mVsyncEventNeeded) {
@@ -184,14 +182,6 @@ VsyncDispatcherHostImpl::VsyncTickNeeded()
 
   mVsyncEventNeeded = true;
   mTimer->Enable(mVsyncEventNeeded);
-}
-
-bool
-VsyncDispatcherHostImpl::IsInVsyncDispatcherThread() const
-{
-  //return (mVsyncDispatchHostThread->thread_id() == PlatformThread::CurrentId());
-
-  return true;
 }
 
 uint32_t

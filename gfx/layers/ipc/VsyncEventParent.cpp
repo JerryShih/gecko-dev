@@ -120,7 +120,7 @@ VsyncEventParent::VsyncEventParent(Transport* aTransport)
   MOZ_ASSERT(NS_IsMainThread());
 
   // Create the ipc worker thread.
-  if (!sVsyncEventParentWorkerThreadHolder.get()) {
+  if (!sVsyncEventParentWorkerThreadHolder) {
     sVsyncEventParentWorkerThreadHolder = new VsyncEventParentWorkerThreadHolder;
 
     // The reference count for VsyncEventParentWorkerThreadHolder is 1 now.
@@ -130,6 +130,9 @@ VsyncEventParent::VsyncEventParent(Transport* aTransport)
     ClearOnShutdown(&sVsyncEventParentWorkerThreadHolder);
   }
 
+  // Each content process will have a pair of VsyncEventParent and
+  // VsyncEventChild.
+  // All VsyncEventParent share the same sVsyncEventParentWorkerThreadHolder.
   mThreadHolder = sVsyncEventParentWorkerThreadHolder;
 }
 

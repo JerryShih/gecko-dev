@@ -80,8 +80,6 @@ public:
   // tick for next frame.
   virtual void VsyncTickNeeded() = 0;
 
-  virtual bool IsInVsyncDispatcherThread() const = 0;
-
   // Get the VDClient or VDHost.
   // We should only use VDHost at Chrome process and use VDClient at content.
   virtual VsyncDispatcherClient* AsVsyncDispatcherClient();

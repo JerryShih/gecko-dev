@@ -37,8 +37,6 @@ public:
   // This function will be called when the registry need vsync tick.
   virtual void VsyncTickNeeded() MOZ_OVERRIDE;
 
-  virtual bool IsInVsyncDispatcherThread() const MOZ_OVERRIDE;
-
   virtual VsyncDispatcherHost* AsVsyncDispatcherHost() MOZ_OVERRIDE;
 
   virtual VsyncEventRegistry* GetInputDispatcherRegistry() MOZ_OVERRIDE;
@@ -54,9 +52,6 @@ public:
 private:
   virtual ~VsyncDispatcherHostImpl();
 
-  void CreateVsyncDispatchThread();
-
-private:
   static StaticRefPtr<VsyncDispatcherHostImpl> sVsyncDispatcherHost;
 
   uint32_t mVsyncRate;

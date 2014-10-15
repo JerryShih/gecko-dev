@@ -45,7 +45,7 @@ PlatformVsyncTimerFactory::Create(VsyncTimerObserver* aObserver)
   // We will use the following sequence to create the timer.
   // 1. customized timer
   // 2. platform HW timer
-  // 3. platform SW timer.
+  // 3. platform SW timer
   PlatformVsyncTimer* timer = nullptr;
   nsTArray<VsyncTimerCreator> creator;
 
@@ -55,7 +55,7 @@ PlatformVsyncTimerFactory::Create(VsyncTimerObserver* aObserver)
   creator.AppendElement(CreateHWTimer);
   creator.AppendElement(CreateSWTimer);
 
-  // Iterate creater chain
+  // Iterate creator chain.
   for (int i = 0; i < creator.Length(); ++i) {
     timer = creator[i](aObserver);
     if (timer && timer->Startup()) {

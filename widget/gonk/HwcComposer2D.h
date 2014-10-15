@@ -96,7 +96,7 @@ public:
     void EnableVsync(bool aEnable);
 
 #if ANDROID_VERSION >= 17
-    // Init vsync, hotplug ... etc. callback.
+    // Init vsync, hotplug ... etc. callback. Return true if we have hw vsync.
     bool InitHwcEventCallback();
 
     // Register a vsync observer.
@@ -151,6 +151,8 @@ private:
 
     VsyncTimerObserver*     mVsyncObserver;
     uint32_t                mVsyncRate;
+    bool                    mHwcEventCallbackInited;
+    Mutex                   mHwcEventCallbackLock;
 #endif
     nsTArray<layers::LayerComposite*> mHwcLayerMap;
     bool                    mPrepared;

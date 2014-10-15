@@ -16,7 +16,9 @@ using namespace layers;
 
 StaticRefPtr<VsyncDispatcherClientImpl> VsyncDispatcherClientImpl::sVsyncDispatcherClient;
 
-// The vsync event registry for content RefreshDriver
+// The vsync event registry for content RefreshDriver.
+// RefreshDriverRegistry and VsyncDispatcherClientImpl all run at content
+// main thread, so we use VsyncRegistryNonThreadSafePolicy policy.
 class RefreshDriverRegistry MOZ_FINAL : public VsyncEventRegistryImpl<VsyncRegistryNonThreadSafePolicy>
 {
 public:
@@ -32,9 +34,10 @@ public:
   {
     MOZ_ASSERT(mVsyncDispatcher->IsInVsyncDispatcherThread());
 
-    // In content process, we want to reduce the context switch, so we tick
-    // refresh driver directly. We might change the mObserverList or
-    // mTemporaryObserverList in VsyncTick(), so we make a copy here.
+    // In content process, we want to reduce the context switch, so we tick the
+    // refresh driver in dispatcher thread directly. We might change the
+    // mObserverList or mTemporaryObserverList in VsyncTick(), so we make a
+    // copy here.
     ObserverList observerListCopy(mObserverList);
     ObserverList temporaryObserverListCopy(mTemporaryObserverList);
 
@@ -67,8 +70,8 @@ VsyncDispatcherClientImpl::GetInstance()
 void
 VsyncDispatcherClientImpl::Startup()
 {
-  MOZ_ASSERT(NS_IsMainThread(), "Call VDClient Startup() at wrong thread.");
-  MOZ_ASSERT(!mInited, "VDClient is already initialized.");
+  MOZ_ASSERT(!mInited);
+  MOZ_ASSERT(NS_IsMainThread());
 
   mInited = true;
 
@@ -78,8 +81,8 @@ VsyncDispatcherClientImpl::Startup()
 void
 VsyncDispatcherClientImpl::Shutdown()
 {
-  MOZ_ASSERT(NS_IsMainThread(), "Call VDClient Shutdown() at wrong thread.");
-  MOZ_ASSERT(mInited, "VDClient is not initialized.");
+  MOZ_ASSERT(mInited);
+  MOZ_ASSERT(NS_IsMainThread());
 
   mInited = false;
 
@@ -129,7 +132,7 @@ VsyncDispatcherClientImpl::NotifyVsync(TimeStamp aTimestamp,
                                        uint64_t aFrameNumber)
 {
   MOZ_ASSERT(mInited);
-  MOZ_ASSERT(IsInVsyncDispatcherThread(), "Call VDClient::DispatchVsyncEvent at wrong thread.");
+  MOZ_ASSERT(IsInVsyncDispatcherThread());
 
   MOZ_ASSERT(aTimestamp > mCurrentTimestamp);
   MOZ_ASSERT(aFrameNumber > mCurrentFrameNumber);
@@ -137,30 +140,43 @@ VsyncDispatcherClientImpl::NotifyVsync(TimeStamp aTimestamp,
   mCurrentTimestamp = aTimestamp;
   mCurrentFrameNumber = aFrameNumber;
 
-  if (!mVsyncEventNeeded) {
-    // If we received vsync event but there is no observer here, we disable
-    // the vsync event again.
-    EnableVsyncEvent(false);
-    return;
-  }
+  bool needVsync = false;
 
   // Dispach vsync event to content refresh driver
-  mRefreshDriver->Dispatch(mCurrentTimestamp, mCurrentFrameNumber);
+  needVsync = needVsync || mRefreshDriver->Dispatch(mCurrentTimestamp,
+                                                    mCurrentFrameNumber);
+
+  if (!needVsync) {
+    ++mUnusedTickCount;
+
+    if (mUnusedTickCount > MAX_UNUSED_VSYNC_TICK) {
+      mUnusedTickCount = 0;
+      mVsyncEventNeeded = false;
+      EnableVsyncEvent(false);
+    }
+  } else {
+    mUnusedTickCount = 0;
+  }
 }
 
 void
 VsyncDispatcherClientImpl::VsyncTickNeeded()
 {
-  mVsyncEventNeeded = true;
+  MOZ_ASSERT(mInited);
+  MOZ_ASSERT(IsInVsyncDispatcherThread());
 
-  EnableVsyncEvent(true);
+  if (!mVsyncEventNeeded) {
+    mVsyncEventNeeded = true;
+
+    EnableVsyncEvent(true);
+  }
 }
 
 void
 VsyncDispatcherClientImpl::SetVsyncEventChild(VsyncEventChild* aVsyncEventChild)
 {
-  MOZ_ASSERT(mInited, "VDClient is not initialized.");
-  MOZ_ASSERT(IsInVsyncDispatcherThread(), "Call SetVsyncEventChild at wrong thread.");
+  MOZ_ASSERT(mInited);
+  MOZ_ASSERT(IsInVsyncDispatcherThread());
 
   mVsyncEventChild = aVsyncEventChild;
 }

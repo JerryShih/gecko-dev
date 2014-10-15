@@ -37,8 +37,6 @@ public:
   // This function will be called when the registry need vsync tick.
   virtual void VsyncTickNeeded() MOZ_OVERRIDE;
 
-  virtual bool IsInVsyncDispatcherThread() const MOZ_OVERRIDE;
-
   virtual VsyncDispatcherClient* AsVsyncDispatcherClient() MOZ_OVERRIDE;
 
   virtual VsyncEventRegistry* GetRefreshDriverRegistry() MOZ_OVERRIDE;
@@ -55,9 +53,10 @@ public:
 private:
   virtual ~VsyncDispatcherClientImpl();
 
+  bool IsInVsyncDispatcherThread() const;
+
   void EnableVsyncEvent(bool aEnable);
 
-private:
   static StaticRefPtr<VsyncDispatcherClientImpl> sVsyncDispatcherClient;
 
   uint32_t mVsyncRate;
@@ -75,6 +74,11 @@ private:
   TimeStamp mCurrentTimestamp;
   // Monotonic increased frame number.
   uint64_t mCurrentFrameNumber;
+
+  // If we receive more than the number of MAX_UNUSED_VSYNC_TICK tick but have
+  // no observer, disable the vsync event.
+  const uint32_t MAX_UNUSED_VSYNC_TICK = 5;
+  uint32_t mUnusedTickCount = 0;
 };
 
 } // namespace mozilla

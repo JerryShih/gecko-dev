@@ -120,6 +120,8 @@ HwcComposer2D::HwcComposer2D()
     , mPrevDisplayFence(Fence::NO_FENCE)
     , mVsyncObserver(nullptr)
     , mVsyncRate(0)
+    , mHwcEventCallbackInited(false)
+    , mHwcEventCallbackLock("HwcEventCallback lock")
 #endif
     , mPrepared(false)
     , mHasHWVsync(false)
@@ -163,6 +165,8 @@ HwcComposer2D::Init(hwc_display_t dpy, hwc_surface_t sur, gl::GLContext* aGLCont
         mColorFill = false;
         mRBSwapSupport = false;
     }
+
+    InitHwcEventCallback();
 #else
     char propValue[PROPERTY_VALUE_MAX];
     property_get("ro.display.colorfill", propValue, "0");
@@ -211,32 +215,22 @@ HwcComposer2D::EnableVsync(bool aEnable)
 bool
 HwcComposer2D::InitHwcEventCallback()
 {
-    MOZ_ASSERT(!mHasHWVsync);
+    // Since we have the Invalidate callback, we still need to call
+    // registerProcs for non-vsync case. Thus, InitHwcEventCallback will be call
+    // in both HwcComposer2D::Init() and GonkVsyncTimer in different thread.
+    // Why we can just init in HwcComposer2D::Init()? Because We need vsync
+    // event before the the LayerTransaction protocol
+    // creation(it will call the HwcComposer2D::Init()).
+    MutexAutoLock lock(mHwcEventCallbackLock);
 
-    HwcDevice* device = (HwcDevice*)GetGonkDisplay()->GetHWCDevice();
-    if (!device || !device->registerProcs || !device->getDisplayAttributes) {
-        LOGE("Failed to get hwc.");
-        return false;
+    if (mHwcEventCallbackInited) {
+        return mHasHWVsync;
     }
+    mHwcEventCallbackInited = true;
 
-    // Get the vsync period
-    const int QUERY_ATTRIBUTE_NUM = 1;
-    const uint32_t HWC_ATTRIBUTES[QUERY_ATTRIBUTE_NUM+1] = {
-        HWC_DISPLAY_VSYNC_PERIOD,
-        HWC_DISPLAY_NO_ATTRIBUTE
-    };
-    int32_t hwcAttributeValues[QUERY_ATTRIBUTE_NUM];
-
-    device->getDisplayAttributes(device, 0, 0, HWC_ATTRIBUTES, hwcAttributeValues);
-    if (hwcAttributeValues[0] > 0) {
-      mVsyncRate = 1.0e9 / hwcAttributeValues[0] + 0.5;
-    } else {
-      LOGE("Failed to get hwc vsync attribute.");
-      return false;
-    }
-
-    mHasHWVsync = true;
-
+    // Init the hw event callback.
+    // Since we have the Invalidate callback, for non-vsync case, we still need
+    // to call registerProcs.
     device->registerProcs(device, &sHWCProcs);
     device->eventControl(device, HWC_DISPLAY_PRIMARY, HWC_EVENT_VSYNC, false);
 
@@ -245,8 +239,29 @@ HwcComposer2D::InitHwcEventCallback()
     sAndroidInitTime = systemTime(SYSTEM_TIME_MONOTONIC);
     sMozInitTime = TimeStamp::Now();
 
-    if (!gfxPrefs::FrameUniformityHWVsyncEnabled()) {
-        mHasHWVsync = false;
+    if (gfxPrefs::FrameUniformityHWVsyncEnabled()) {
+        // Query the hw vsync period
+        HwcDevice* device = (HwcDevice*)GetGonkDisplay()->GetHWCDevice();
+        if (!device || !device->registerProcs || !device->getDisplayAttributes) {
+            LOGE("Failed to get hwc.");
+            return false;
+        }
+
+        const uint32_t HWC_ATTRIBUTES[] = {
+            HWC_DISPLAY_VSYNC_PERIOD,
+            HWC_DISPLAY_NO_ATTRIBUTE
+        };
+        int32_t hwcAttributeValues[sizeof(HWC_ATTRIBUTES) / sizeof(HWC_ATTRIBUTES[0])];
+
+        device->getDisplayAttributes(device, 0, 0, HWC_ATTRIBUTES, hwcAttributeValues);
+        if (hwcAttributeValues[0] > 0) {
+            mVsyncRate = 1.0e9 / hwcAttributeValues[0] + 0.5;
+        } else {
+            LOGE("Failed to get hwc vsync attribute.");
+            return false;
+        }
+
+        mHasHWVsync = true;
     }
 
     return mHasHWVsync;
@@ -279,12 +294,19 @@ HwcComposer2D::Vsync(int aDisplay, nsecs_t aVsyncTimestamp)
 {
     MOZ_ASSERT(mHasHWVsync);
 
+    static nsecs_t lastVsync = 0;
+    nsecs_t vsyncInterval = aVsyncTimestamp - lastVsync;
+    lastVsync = aVsyncTimestamp;
+    if (vsyncInterval < 16000000 || vsyncInterval > 17000000) {
+        LOGE("Vsync Interval is non-uniform, interval=%lld", vsyncInterval);
+    }
+
     nsecs_t timeSinceInit = aVsyncTimestamp - sAndroidInitTime;
     TimeStamp vsyncTime = sMozInitTime + TimeDuration::FromMicroseconds(timeSinceInit / 1000);
 
 #ifdef MOZ_ENABLE_PROFILER_SPS
     if (profiler_is_active()) {
-      CompositorParent::PostInsertVsyncProfilerMarker(vsyncTime);
+        CompositorParent::PostInsertVsyncProfilerMarker(vsyncTime);
     }
 #endif
     
