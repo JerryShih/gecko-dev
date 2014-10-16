@@ -53,6 +53,7 @@ class APZCTreeManager;
 class AsyncCompositionManager;
 class Compositor;
 class CompositorParent;
+class DispatchComposite;
 class LayerManagerComposite;
 class LayerTransactionParent;
 
@@ -98,12 +99,14 @@ private:
 class CompositorVsyncObserver MOZ_FINAL : public VsyncObserver
 {
   NS_INLINE_DECL_THREADSAFE_REFCOUNTING_WITH_MAIN_THREAD_DESTRUCTION(CompositorVsyncObserver)
+  friend class CompositorParent;
 
 public:
   CompositorVsyncObserver(CompositorParent* aCompositorParent);
   virtual bool NotifyVsync(TimeStamp aVsyncTimestamp) MOZ_OVERRIDE;
   void SetNeedsComposite(bool aSchedule);
   bool NeedsComposite();
+  void CancelCurrentComposite();
 
 private:
   virtual ~CompositorVsyncObserver();
@@ -115,6 +118,7 @@ private:
   bool mNeedsComposite;
   bool mIsObservingVsync;
   nsRefPtr<CompositorParent> mCompositorParent;
+  CancelableTask* mCurrentCompositeTask;
 };
 
 class CompositorParent MOZ_FINAL : public PCompositorParent,
@@ -122,6 +126,7 @@ class CompositorParent MOZ_FINAL : public PCompositorParent,
 {
   NS_INLINE_DECL_THREADSAFE_REFCOUNTING_WITH_MAIN_THREAD_DESTRUCTION(CompositorParent)
   friend class CompositorVsyncObserver;
+  friend class DispatchComposite;
 
 public:
   explicit CompositorParent(nsIWidget* aWidget,

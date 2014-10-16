@@ -235,10 +235,10 @@ CompositorVsyncObserver::NotifyVsync(TimeStamp aVsyncTimestamp)
 
   MonitorAutoLock lock(mNeedsCompositeMonitor);
   if (mNeedsComposite && mCompositorParent) {
-    CompositorParent::CompositorLoop()->PostTask(FROM_HERE,
-                                        NewRunnableMethod(mCompositorParent.get(),
-                                            &CompositorParent::CompositeCallback,
-                                            aVsyncTimestamp));
+    mCurrentCompositeTask = NewRunnableMethod(mCompositorParent.get(),
+                                              &CompositorParent::CompositeCallback,
+                                              TimeStamp::Now());
+    CompositorParent::CompositorLoop()->PostTask(FROM_HERE, mCurrentCompositeTask);
     mNeedsComposite = false;
     return true;
   } else {
@@ -246,6 +246,14 @@ CompositorVsyncObserver::NotifyVsync(TimeStamp aVsyncTimestamp)
     // unregister the vsync.
     UnobserveVsync(false);
     return false;
+  }
+}
+
+void
+CompositorVsyncObserver::CancelCurrentComposite()
+{
+  if (mCurrentCompositeTask) {
+    mCurrentCompositeTask->Cancel();
   }
 }
 
@@ -284,6 +292,10 @@ CompositorVsyncObserver::UnobserveVsync(bool isDestructing)
       NewRunnableMethod(this, &CompositorVsyncObserver::UnobserveVsync,
                         isDestructing));
     return;
+  }
+
+  if (mCurrentCompositeTask) {
+    mCurrentCompositeTask->Cancel();
   }
 
   VsyncDispatcher::GetInstance()->RemoveCompositorVsyncObserver(this);
@@ -481,6 +493,9 @@ CompositorParent::RecvFlushRendering()
 {
   // If we're waiting to do a composite, then cancel it
   // and do it immediately instead.
+  if (gfxPrefs::VsyncAlignedCompositor()) {
+    mCompositorVsyncObserver->CancelCurrentComposite();  
+  }
   if (mCurrentCompositeTask) {
     CancelCurrentCompositeTask();
     ForceComposeToTarget(nullptr);
@@ -602,6 +617,9 @@ CompositorParent::ForceComposition()
 void
 CompositorParent::CancelCurrentCompositeTask()
 {
+  if (gfxPrefs::VsyncAlignedCompositor()) {
+    mCompositorVsyncObserver->CancelCurrentComposite();  
+  }
   if (mCurrentCompositeTask) {
     mCurrentCompositeTask->Cancel();
     mCurrentCompositeTask = nullptr;
@@ -764,6 +782,7 @@ CompositorParent::CompositeCallback(TimeStamp aScheduleTime)
     // TODO: ensure it aligns with the refresh / start time of
     // animations
     mLastCompose = aScheduleTime;
+    mCompositorVsyncObserver->CancelCurrentComposite();
   } else {
     mLastCompose = TimeStamp::Now();
   }
