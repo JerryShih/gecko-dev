@@ -493,10 +493,13 @@ CompositorParent::RecvFlushRendering()
 {
   // If we're waiting to do a composite, then cancel it
   // and do it immediately instead.
-  if (mCurrentCompositeTask) {
+  if (gfxPrefs::VsyncAlignedCompositor()) {
+    mCompositorVsyncObserver->SetNeedsComposite(false);
+  } else if (mCurrentCompositeTask) {
     CancelCurrentCompositeTask();
-    ForceComposeToTarget(nullptr);
   }
+
+  ForceComposeToTarget(nullptr);
   return true;
 }
 
@@ -614,7 +617,12 @@ CompositorParent::ForceComposition()
 void
 CompositorParent::CancelCurrentCompositeTask()
 {
-  if (mCurrentCompositeTask) {
+  if (gfxPrefs::VsyncAlignedCompositor()) {
+    // Since vsync notifications can come in anytime, and we can have multiple
+    // posted task, we can't cancel just one task. Just stop posting tasks
+    // instead.
+    mCompositorVsyncObserver->SetNeedsComposite(false);
+  } else if (mCurrentCompositeTask) {
     mCurrentCompositeTask->Cancel();
     mCurrentCompositeTask = nullptr;
   }
@@ -776,6 +784,7 @@ CompositorParent::CompositeCallback(TimeStamp aScheduleTime)
     // TODO: ensure it aligns with the refresh / start time of
     // animations
     mLastCompose = aScheduleTime;
+    mCompositorVsyncObserver->SetNeedsComposite(false);
     // WARNING WARNING WARNING WARNING
     // READ THE COMMENT IN CompositorVsyncObserver::NotifyVsync
     this->Release();
