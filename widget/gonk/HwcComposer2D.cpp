@@ -31,7 +31,7 @@
 #include "cutils/properties.h"
 #include "gfx2DGlue.h"
 #include "GeckoTouchDispatcher.h"
-#include "PlatformVsyncTimer.h"
+#include "GonkVsyncTimer.h"
 
 #ifdef MOZ_ENABLE_PROFILER_SPS
 #include "GeckoProfiler.h"
@@ -118,7 +118,7 @@ HwcComposer2D::HwcComposer2D()
 #if ANDROID_VERSION >= 17
     , mPrevRetireFence(Fence::NO_FENCE)
     , mPrevDisplayFence(Fence::NO_FENCE)
-    , mVsyncObserver(nullptr)
+    , mVsyncTimer(nullptr)
     , mVsyncRate(0)
     , mHwcEventCallbackInited(false)
     , mHwcEventCallbackLock("HwcEventCallback lock")
@@ -231,6 +231,11 @@ HwcComposer2D::InitHwcEventCallback()
     // Init the hw event callback.
     // Since we have the Invalidate callback, for non-vsync case, we still need
     // to call registerProcs.
+    HwcDevice* device = (HwcDevice*)GetGonkDisplay()->GetHWCDevice();
+    if (!device || !device->registerProcs) {
+        LOGE("Failed to get hwc.");
+        return false;
+    }
     device->registerProcs(device, &sHWCProcs);
     device->eventControl(device, HWC_DISPLAY_PRIMARY, HWC_EVENT_VSYNC, false);
 
@@ -241,9 +246,8 @@ HwcComposer2D::InitHwcEventCallback()
 
     if (gfxPrefs::FrameUniformityHWVsyncEnabled()) {
         // Query the hw vsync period
-        HwcDevice* device = (HwcDevice*)GetGonkDisplay()->GetHWCDevice();
-        if (!device || !device->registerProcs || !device->getDisplayAttributes) {
-            LOGE("Failed to get hwc.");
+        if (!device->getDisplayAttributes) {
+            LOGE("Failed to query hwc vsync attribute.");
             return false;
         }
 
@@ -309,28 +313,28 @@ HwcComposer2D::Vsync(int aDisplay, nsecs_t aVsyncTimestamp)
         CompositorParent::PostInsertVsyncProfilerMarker(vsyncTime);
     }
 #endif
-    
-    if (mVsyncObserver) {
-        mVsyncObserver->NotifyVsync(vsyncTime);
+
+    if (mVsyncTimer) {
+        mVsyncTimer->NotifyVsync(vsyncTime);
     }
 }
 
 void
-HwcComposer2D::RegisterVsyncObserver(VsyncTimerObserver* aVsyncObserver)
+HwcComposer2D::RegisterVsyncTimer(GonkVsyncTimer* aGonkVsyncTimer)
 {
     MOZ_ASSERT(NS_IsMainThread());
     MOZ_ASSERT(!mVsyncObserver);
 
-    mVsyncObserver = aVsyncObserver;
+    mVsyncTimer = aGonkVsyncTimer;
 }
 
 void
-HwcComposer2D::UnregisterVsyncObserver()
+HwcComposer2D::UnregisterVsyncTimer()
 {
     MOZ_ASSERT(NS_IsMainThread());
 
     EnableVsync(false);
-    mVsyncObserver = nullptr;
+    mVsyncTimer = nullptr;
 }
 
 // Called on the "invalidator" thread (run from HAL).

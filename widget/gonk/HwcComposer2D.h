@@ -32,7 +32,7 @@
 
 namespace mozilla {
 
-class VsyncTimerObserver;
+class GonkVsyncTimer;
 
 namespace gl {
     class GLContext;
@@ -99,12 +99,12 @@ public:
     // Init vsync, hotplug ... etc. callback. Return true if we have hw vsync.
     bool InitHwcEventCallback();
 
-    // Register a vsync observer.
-    // We should register observer before we first call EnableVsync(true).
-    void RegisterVsyncObserver(VsyncTimerObserver* aVsyncObserver);
-    // Unregister the registered observer.
-    // We use this functoin for shutdown case.
-    void UnregisterVsyncObserver();
+    // Register a vsync timer.
+    // We should register timer before we first call EnableVsync(true).
+    void RegisterVsyncTimer(GonkVsyncTimer* aGonkVsyncTimer);
+    // Unregister the registered timer.
+    // We use this function for shutdown case.
+    void UnregisterVsyncTimer();
 
     // Hwc vsync event handle function
     void Vsync(int aDisplay, int64_t aTimestamp);
@@ -149,7 +149,7 @@ private:
     android::sp<android::Fence> mPrevRetireFence;
     android::sp<android::Fence> mPrevDisplayFence;
 
-    VsyncTimerObserver*     mVsyncObserver;
+    GonkVsyncTimer*         mVsyncTimer;
     uint32_t                mVsyncRate;
     bool                    mHwcEventCallbackInited;
     Mutex                   mHwcEventCallbackLock;

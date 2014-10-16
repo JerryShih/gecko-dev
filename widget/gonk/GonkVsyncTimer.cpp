@@ -28,6 +28,16 @@ GonkVsyncTimer::~GonkVsyncTimer()
 
 }
 
+void
+GonkVsyncTimer::NotifyVsync(TimeStamp aTimestamp)
+{
+  MOZ_ASSERT(mInited);
+  MOZ_ASSERT(XRE_GetProcessType() == GeckoProcessType_Default);
+  MOZ_ASSERT(mObserver);
+
+  mObserver->NotifyVsync(aTimestamp);
+}
+
 bool
 GonkVsyncTimer::Startup()
 {
@@ -43,7 +53,7 @@ GonkVsyncTimer::Startup()
   if (gfxPrefs::FrameUniformityHWVsyncEnabled()) {
     if (HwcComposer2D::GetInstance()->InitHwcEventCallback()) {
       mVsyncRate = HwcComposer2D::GetInstance()->GetHWVsyncRate();
-      HwcComposer2D::GetInstance()->RegisterVsyncObserver(mObserver);
+      HwcComposer2D::GetInstance()->RegisterVsyncTimer(this);
       result = true;
 
       LOGI("GonkVsyncTimer: use hwc vsync");
@@ -60,7 +70,7 @@ GonkVsyncTimer::Shutdown()
   MOZ_ASSERT(XRE_GetProcessType() == GeckoProcessType_Default);
   MOZ_ASSERT(mInited);
 
-  HwcComposer2D::GetInstance()->UnregisterVsyncObserver();
+  HwcComposer2D::GetInstance()->UnregisterVsyncTimer();
 }
 
 void

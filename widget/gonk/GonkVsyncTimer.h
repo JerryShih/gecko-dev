@@ -12,8 +12,11 @@
 
 namespace mozilla {
 
+class HwcComposer2D;
+
 class GonkVsyncTimer MOZ_FINAL : public PlatformVsyncTimer
 {
+  friend class HwcComposer2D;
 public:
   GonkVsyncTimer(VsyncTimerObserver* aObserver);
   ~GonkVsyncTimer();
@@ -25,6 +28,9 @@ public:
   virtual uint32_t GetVsyncRate() MOZ_OVERRIDE;
 
 private:
+  // Called by HwcComposer2D if a vsync event comes.
+  void NotifyVsync(TimeStamp aTimestamp);
+
   bool mInited;
 };
 
