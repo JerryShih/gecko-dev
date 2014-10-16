@@ -196,6 +196,7 @@ CompositorVsyncObserver::CompositorVsyncObserver(CompositorParent* aCompositorPa
   , mNeedsComposite(false)
   , mIsObservingVsync(false)
   , mCompositorParent(aCompositorParent)
+  , mCurrentCompositeTask(nullptr)
 {
 
 }
@@ -204,6 +205,9 @@ CompositorVsyncObserver::~CompositorVsyncObserver()
 {
   MOZ_ASSERT(NS_IsMainThread());
   UnobserveVsync(true);
+  if (mCurrentCompositeTask) {
+    mCurrentCompositeTask->Cancel();
+  }
   mCompositorParent = nullptr;
 }
 
@@ -292,10 +296,6 @@ CompositorVsyncObserver::UnobserveVsync(bool isDestructing)
       NewRunnableMethod(this, &CompositorVsyncObserver::UnobserveVsync,
                         isDestructing));
     return;
-  }
-
-  if (mCurrentCompositeTask) {
-    mCurrentCompositeTask->Cancel();
   }
 
   VsyncDispatcher::GetInstance()->RemoveCompositorVsyncObserver(this);
