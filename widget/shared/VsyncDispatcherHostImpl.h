@@ -17,7 +17,6 @@ namespace mozilla {
 
 // The host side vsync dispatcher implementation.
 class VsyncDispatcherHostImpl MOZ_FINAL : public VsyncDispatcher
-                                        , public VsyncDispatcherHost
                                         , public VsyncTimerObserver
 {
   // We would like to create and delete the VsyncDispatcherHostImpl at main thread.
@@ -31,19 +30,11 @@ public:
   virtual void Startup() MOZ_OVERRIDE;
   virtual void Shutdown() MOZ_OVERRIDE;
 
-  // Return the vsync event fps.
-  virtual uint32_t GetVsyncRate() const MOZ_OVERRIDE;
-
   // This function will be called when the registry need vsync tick.
   virtual void VsyncTickNeeded() MOZ_OVERRIDE;
 
-  virtual VsyncDispatcherHost* AsVsyncDispatcherHost() MOZ_OVERRIDE;
-
   virtual VsyncEventRegistry* GetInputDispatcherRegistry() MOZ_OVERRIDE;
-  virtual VsyncEventRegistry* GetRefreshDriverRegistry() MOZ_OVERRIDE;
   virtual VsyncEventRegistry* GetCompositorRegistry() MOZ_OVERRIDE;
-
-  virtual VsyncEventRegistry* GetVsyncEventParentRegistry() MOZ_OVERRIDE;
 
   // This function is called by vsync event generator.
   // It will post a notify task to vsync dispatcher thread.
@@ -54,15 +45,11 @@ private:
 
   static StaticRefPtr<VsyncDispatcherHostImpl> sVsyncDispatcherHost;
 
-  uint32_t mVsyncRate;
-
   bool mInited;
   bool mVsyncEventNeeded;
 
   // Registries
-  VsyncEventRegistryImpl<VsyncRegistryThreadSafePolicy>* mVsyncEventParent;
   VsyncEventRegistryImpl<VsyncRegistryThreadSafePolicy>* mInputDispatcher;
-  VsyncEventRegistryImpl<VsyncRegistryThreadSafePolicy>* mRefreshDriver;
   VsyncEventRegistryImpl<VsyncRegistryThreadSafePolicy>* mCompositor;
 
   PlatformVsyncTimer* mTimer;

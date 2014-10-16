@@ -25,8 +25,6 @@ public:
   virtual void Shutdown() MOZ_OVERRIDE;
   virtual void Enable(bool aEnable) MOZ_OVERRIDE;
 
-  virtual uint32_t GetVsyncRate() MOZ_OVERRIDE;
-
 private:
   // Called by HwcComposer2D if a vsync event comes.
   void NotifyVsync(TimeStamp aTimestamp);

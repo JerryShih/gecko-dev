@@ -64,7 +64,6 @@
 #include "mozilla/layers/CompositorParent.h"
 #include "mozilla/layers/ImageBridgeParent.h"
 #include "mozilla/layers/SharedBufferManagerParent.h"
-#include "mozilla/layers/VsyncEventParent.h"
 #include "mozilla/net/NeckoParent.h"
 #include "mozilla/Preferences.h"
 #include "mozilla/Services.h"
@@ -2038,10 +2037,6 @@ ContentParent::InitInternal(ProcessPriority aInitialPriority,
 #else
             opened = PImageBridge::Open(this);
             MOZ_ASSERT(opened);
-
-            if (gfxPrefs::FrameUniformityEnabled()) {
-                MOZ_ALWAYS_TRUE(PVsyncEvent::Open(this));
-            }
 #endif
         }
 #ifdef MOZ_WIDGET_GONK
@@ -2737,13 +2732,6 @@ ContentParent::AllocPSharedBufferManagerParent(mozilla::ipc::Transport* aTranspo
                                                base::ProcessId aOtherProcess)
 {
     return SharedBufferManagerParent::Create(aTransport, aOtherProcess);
-}
-
-PVsyncEventParent*
-ContentParent::AllocPVsyncEventParent(mozilla::ipc::Transport* aTransport,
-                                      base::ProcessId aOtherProcess)
-{
-    return VsyncEventParent::Create(aTransport, aOtherProcess);
 }
 
 bool

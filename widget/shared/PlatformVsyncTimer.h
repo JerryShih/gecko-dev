@@ -58,7 +58,6 @@ class PlatformVsyncTimer
 public:
   PlatformVsyncTimer(VsyncTimerObserver* aObserver)
     : mObserver(aObserver)
-    , mVsyncRate(0)
   {
   }
 
@@ -71,10 +70,6 @@ public:
   // It will become no functionality after shutdown.
   virtual void Enable(bool aEnable) = 0;
 
-  // Query the vsync timer rate per second.
-  // Return 0 if failed.
-  virtual uint32_t GetVsyncRate() = 0;
-
 private:
   // Startup the timer.
   // Return true if the timer initials successfully.
@@ -82,7 +77,6 @@ private:
 
 protected:
   VsyncTimerObserver* mObserver;
-  uint32_t mVsyncRate;
 };
 
 } // namespace mozilla

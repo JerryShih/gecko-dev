@@ -4,7 +4,6 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
 #include "VsyncDispatcherHostImpl.h"
-#include "mozilla/layers/VsyncEventParent.h"
 #include "nsThreadUtils.h"
 #include "nsXULAppAPI.h"
 #include "VsyncDispatcherHelper.h"
@@ -27,15 +26,6 @@ VsyncDispatcherHostImpl::GetInstance()
   return sVsyncDispatcherHost;
 }
 
-VsyncDispatcherHost*
-VsyncDispatcherHostImpl::AsVsyncDispatcherHost()
-{
-  MOZ_ASSERT(XRE_GetProcessType() == GeckoProcessType_Default);
-  MOZ_ASSERT(mInited);
-
-  return this;
-}
-
 void
 VsyncDispatcherHostImpl::Startup()
 {
@@ -45,9 +35,7 @@ VsyncDispatcherHostImpl::Startup()
   mInited = true;
 
   // Init all vsync event registry;
-  mVsyncEventParent = new VsyncEventRegistryImpl<VsyncRegistryThreadSafePolicy>(this);
   mInputDispatcher = new VsyncEventRegistryImpl<VsyncRegistryThreadSafePolicy>(this);
-  mRefreshDriver = new VsyncEventRegistryImpl<VsyncRegistryThreadSafePolicy>(this);
   mCompositor = new VsyncEventRegistryImpl<VsyncRegistryThreadSafePolicy>(this);
 
   // Get platform dependent vsync timer.
@@ -56,8 +44,6 @@ VsyncDispatcherHostImpl::Startup()
   // to content via PVsyncEvent ipc protocol.
   mTimer = PlatformVsyncTimerFactory::Create(this);
   MOZ_ASSERT(mTimer);
-  mVsyncRate = mTimer->GetVsyncRate();
-  MOZ_ASSERT(mVsyncRate);
   // Start the timer.
   mTimer->Enable(true);
 }
@@ -74,12 +60,8 @@ VsyncDispatcherHostImpl::Shutdown()
 
   delete mCompositor;
   mCompositor = nullptr;
-  delete mRefreshDriver;
-  mRefreshDriver = nullptr;
   delete mInputDispatcher;
   mInputDispatcher = nullptr;
-  delete mVsyncEventParent;
-  mVsyncEventParent = nullptr;
 
   mInited = false;
 
@@ -88,12 +70,9 @@ VsyncDispatcherHostImpl::Shutdown()
 }
 
 VsyncDispatcherHostImpl::VsyncDispatcherHostImpl()
-  : mVsyncRate(0)
-  , mInited(false)
+  : mInited(false)
   , mVsyncEventNeeded(false)
-  , mVsyncEventParent(nullptr)
   , mInputDispatcher(nullptr)
-  , mRefreshDriver(nullptr)
   , mCompositor(nullptr)
   , mTimer(nullptr)
   , mCurrentFrameNumber(0)
@@ -107,30 +86,12 @@ VsyncDispatcherHostImpl::~VsyncDispatcherHostImpl()
 }
 
 VsyncEventRegistry*
-VsyncDispatcherHostImpl::GetVsyncEventParentRegistry()
-{
-  MOZ_ASSERT(mInited);
-  MOZ_ASSERT(mInputDispatcher);
-
-  return mInputDispatcher;
-}
-
-VsyncEventRegistry*
 VsyncDispatcherHostImpl::GetInputDispatcherRegistry()
 {
   MOZ_ASSERT(mInited);
   MOZ_ASSERT(mInputDispatcher);
 
   return mInputDispatcher;
-}
-
-VsyncEventRegistry*
-VsyncDispatcherHostImpl::GetRefreshDriverRegistry()
-{
-  MOZ_ASSERT(mInited);
-  MOZ_ASSERT(mRefreshDriver);
-
-  return mRefreshDriver;
 }
 
 VsyncEventRegistry*
@@ -160,12 +121,6 @@ VsyncDispatcherHostImpl::NotifyVsync(TimeStamp aTimestamp)
 
   // Dispatch vsync event to compositor.
   mCompositor->Dispatch(mCurrentTimestamp, mCurrentFrameNumber);
-
-  // Send vsync event to content process
-  mVsyncEventParent->Dispatch(mCurrentTimestamp, mCurrentFrameNumber);
-
-  // Dispatch vsync event to chrome refresh driver.
-  mRefreshDriver->Dispatch(mCurrentTimestamp, mCurrentFrameNumber);
 }
 
 void
@@ -182,14 +137,6 @@ VsyncDispatcherHostImpl::VsyncTickNeeded()
 
   mVsyncEventNeeded = true;
   mTimer->Enable(mVsyncEventNeeded);
-}
-
-uint32_t
-VsyncDispatcherHostImpl::GetVsyncRate() const
-{
-  MOZ_ASSERT(mVsyncRate);
-
-  return mVsyncRate;
 }
 
 } // namespace mozilla

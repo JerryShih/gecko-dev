@@ -14,14 +14,8 @@ namespace mozilla {
 
 class TimeStamp;
 
-namespace layers {
-class VsyncEventChild;
-class VsyncEventParent;
-};
-
 class VsyncEventRegistry;
 class VsyncDispatcher;
-class VsyncDispatcherClient;
 class VsyncDispatcherHost;
 
 // Every vsync event observer should inherit this base class.
@@ -73,56 +67,16 @@ public:
   virtual void Startup() = 0;
   virtual void Shutdown() = 0;
 
-  // Vsync event rate per second.
-  virtual uint32_t GetVsyncRate() const = 0;
-
   // Notify VsyncDispatcher that we have observer in registry and need the vsync
   // tick for next frame.
   virtual void VsyncTickNeeded() = 0;
 
-  // Get the VDClient or VDHost.
-  // We should only use VDHost at Chrome process and use VDClient at content.
-  virtual VsyncDispatcherClient* AsVsyncDispatcherClient();
-  virtual VsyncDispatcherHost* AsVsyncDispatcherHost();
-
   // Get the registry interface.
   virtual VsyncEventRegistry* GetInputDispatcherRegistry();
-  virtual VsyncEventRegistry* GetRefreshDriverRegistry();
   virtual VsyncEventRegistry* GetCompositorRegistry();
 
 protected:
   virtual ~VsyncDispatcher() { }
-};
-
-// The VDClient for content process.
-class VsyncDispatcherClient
-{
-public:
-  // Dispatch vsync to all observer in content process.
-  virtual void NotifyVsync(TimeStamp aTimestamp,
-                           uint64_t aFrameNumber) = 0;
-
-  // Set vsync event IPC child.
-  virtual void SetVsyncEventChild(layers::VsyncEventChild* aVsyncEventChild) = 0;
-
-  // Set the vsync rate getting from VDHost. It will be used by IPC child at
-  // initial phase.
-  // VDClient will cache this value for Content process query.
-  virtual void SetVsyncRate(uint32_t aVsyncRate) = 0;
-
-protected:
-  virtual ~VsyncDispatcherClient() { }
-};
-
-// The VDHost for Chrome process.
-class VsyncDispatcherHost
-{
-public:
-  // Get registry for vsync event IPC parent.
-  virtual VsyncEventRegistry* GetVsyncEventParentRegistry() = 0;
-
-protected:
-  virtual ~VsyncDispatcherHost() { }
 };
 
 } // namespace mozilla

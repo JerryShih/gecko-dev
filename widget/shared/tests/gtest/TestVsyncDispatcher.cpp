@@ -28,18 +28,18 @@ class FakeTimer: public PlatformVsyncTimer
 {
 public:
   FakeTimer(VsyncTimerObserver* aObserver)
-    : PlatformVsyncTimer(aObserver),
-      mRate(60)
+    : PlatformVsyncTimer(aObserver)
+//    , mRate(60)
   {
     /* Pass */
   }
 
-  virtual uint32_t GetVsyncRate()
-  {
-    // Return 0 as a test?
-    // Discuss with jerry regarding to expected behavior
-    return mVsyncRate;
-  }
+//  virtual uint32_t GetVsyncRate()
+//  {
+//    // Return 0 as a test?
+//    // Discuss with jerry regarding to expected behavior
+//    return mVsyncRate;
+//  }
 
   // Send out a vsync notification manually.
   void SendVsync(double aMicroseconds)
@@ -48,12 +48,12 @@ public:
     mObserver->NotifyVsync(ts);
   }
 
-  void SetVsyncRate(uint32_t aRate)
-  {
-    // Retrun an unreasonable value and define how VsyncTimerObserver
-    // handle this codition.
-    mRate = aRate;
-  }
+//  void SetVsyncRate(uint32_t aRate)
+//  {
+//    // Retrun an unreasonable value and define how VsyncTimerObserver
+//    // handle this codition.
+//    mRate = aRate;
+//  }
 
   void AssignObserver(VsyncTimerObserver *aObserver)
   {
@@ -61,7 +61,7 @@ public:
   }
 
 protected:
-  uint32_t mRate;
+//  uint32_t mRate;
 };
 
 class MockTimer: public FakeTimer
@@ -133,20 +133,20 @@ protected:
 
 /*static*/ SilkHostTest  *SilkHostTest::gThis;
 
-// Principle to check:
-//   A user can get DispathcerHost interface from VsyncDispatcher in
-//   chrome process.
-//   A user can get DispatcherClient interface from VsyncDispatcher in
-//   content process.
-TEST_F(SilkHostTest, QueryInterface)
-{
-  // Interface qurey test.
-  VsyncDispatcherClient* client = mDispatcher->AsVsyncDispatcherClient();
-  EXPECT_TRUE(client == nullptr);
-
-  VsyncDispatcherHost* host = mDispatcher->AsVsyncDispatcherHost();
-  EXPECT_TRUE(host != nullptr);
-}
+//// Principle to check:
+////   A user can get DispathcerHost interface from VsyncDispatcher in
+////   chrome process.
+////   A user can get DispatcherClient interface from VsyncDispatcher in
+////   content process.
+//TEST_F(SilkHostTest, QueryInterface)
+//{
+//  // Interface qurey test.
+//  VsyncDispatcherClient* client = mDispatcher->AsVsyncDispatcherClient();
+//  EXPECT_TRUE(client == nullptr);
+//
+//  VsyncDispatcherHost* host = mDispatcher->AsVsyncDispatcherHost();
+//  EXPECT_TRUE(host != nullptr);
+//}
 
 // Principle to check:
 //   A observer registers to via VsyncEventRegistry::AddObserver(_, true) should
@@ -279,16 +279,16 @@ TEST_F(SilkHostTest, TimeStampPersistence)
 //   3. RefreshDriver observers.
 TEST_F(SilkHostTest, ObserverPriority)
 {
-  VsyncEventRegistry* refreshDriverRegistry = mDispatcher->GetRefreshDriverRegistry();
+//  VsyncEventRegistry* refreshDriverRegistry = mDispatcher->GetRefreshDriverRegistry();
   VsyncEventRegistry* compositorRegistry = mDispatcher->GetCompositorRegistry();
   VsyncEventRegistry* inputDispatcherRegistry = mDispatcher->GetInputDispatcherRegistry();
 
   NiceMock<MockObserver> inputDispatcherObserver;
   NiceMock<MockObserver> compositorObserver;
-  NiceMock<MockObserver> refreshDriverobserver;
+//  NiceMock<MockObserver> refreshDriverobserver;
 
   // AddObserver in reverse order.
-  refreshDriverRegistry->AddObserver(&refreshDriverobserver, false);
+//  refreshDriverRegistry->AddObserver(&refreshDriverobserver, false);
   compositorRegistry ->AddObserver(&compositorObserver, false);
   inputDispatcherRegistry->AddObserver(&inputDispatcherObserver, false);
 
@@ -303,9 +303,9 @@ TEST_F(SilkHostTest, ObserverPriority)
       .Times(1)
       .WillOnce(Return(false));
 
-    EXPECT_CALL(refreshDriverobserver, VsyncTick(_,_))
-      .Times(1)
-      .WillOnce(Return(false));
+//    EXPECT_CALL(refreshDriverobserver, VsyncTick(_,_))
+//      .Times(1)
+//      .WillOnce(Return(false));
   }
 
   mTimer.SendVsync(1000);

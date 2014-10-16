@@ -52,7 +52,6 @@ GonkVsyncTimer::Startup()
 
   if (gfxPrefs::FrameUniformityHWVsyncEnabled()) {
     if (HwcComposer2D::GetInstance()->InitHwcEventCallback()) {
-      mVsyncRate = HwcComposer2D::GetInstance()->GetHWVsyncRate();
       HwcComposer2D::GetInstance()->RegisterVsyncTimer(this);
       result = true;
 
@@ -80,15 +79,6 @@ GonkVsyncTimer::Enable(bool aEnable)
   MOZ_ASSERT(mInited);
 
   HwcComposer2D::GetInstance()->EnableVsync(aEnable);
-}
-
-uint32_t
-GonkVsyncTimer::GetVsyncRate()
-{
-  MOZ_ASSERT(mInited);
-  MOZ_ASSERT(mVsyncRate);
-
-  return mVsyncRate;
 }
 
 } // namespace mozilla

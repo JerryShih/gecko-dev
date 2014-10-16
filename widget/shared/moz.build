@@ -21,7 +21,6 @@ UNIFIED_SOURCES += [
 SOURCES += [
     'PlatformVsyncTimer.cpp',
     'VsyncDispatcher.cpp',
-    'VsyncDispatcherClientImpl.cpp',
     'VsyncDispatcherHostImpl.cpp',
 ]
 

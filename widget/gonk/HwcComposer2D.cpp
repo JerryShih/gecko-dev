@@ -119,7 +119,6 @@ HwcComposer2D::HwcComposer2D()
     , mPrevRetireFence(Fence::NO_FENCE)
     , mPrevDisplayFence(Fence::NO_FENCE)
     , mVsyncTimer(nullptr)
-    , mVsyncRate(0)
     , mHwcEventCallbackInited(false)
     , mHwcEventCallbackLock("HwcEventCallback lock")
 #endif
@@ -245,39 +244,10 @@ HwcComposer2D::InitHwcEventCallback()
     sMozInitTime = TimeStamp::Now();
 
     if (gfxPrefs::FrameUniformityHWVsyncEnabled()) {
-        // Query the hw vsync period
-        if (!device->getDisplayAttributes) {
-            LOGE("Failed to query hwc vsync attribute.");
-            return false;
-        }
-
-        const uint32_t HWC_ATTRIBUTES[] = {
-            HWC_DISPLAY_VSYNC_PERIOD,
-            HWC_DISPLAY_NO_ATTRIBUTE
-        };
-        int32_t hwcAttributeValues[sizeof(HWC_ATTRIBUTES) / sizeof(HWC_ATTRIBUTES[0])];
-
-        device->getDisplayAttributes(device, 0, 0, HWC_ATTRIBUTES, hwcAttributeValues);
-        if (hwcAttributeValues[0] > 0) {
-            mVsyncRate = 1.0e9 / hwcAttributeValues[0] + 0.5;
-        } else {
-            LOGE("Failed to get hwc vsync attribute.");
-            return false;
-        }
-
         mHasHWVsync = true;
     }
 
     return mHasHWVsync;
-}
-
-uint32_t
-HwcComposer2D::GetHWVsyncRate() const
-{
-    MOZ_ASSERT(mHasHWVsync);
-    MOZ_ASSERT(mVsyncRate);
-
-    return mVsyncRate;
 }
 
 void

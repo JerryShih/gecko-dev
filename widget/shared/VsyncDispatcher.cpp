@@ -5,7 +5,6 @@
 
 #include "VsyncDispatcher.h"
 #include "nsXULAppAPI.h"
-#include "VsyncDispatcherClientImpl.h"
 #include "VsyncDispatcherHostImpl.h"
 
 namespace mozilla {
@@ -15,9 +14,11 @@ VsyncDispatcher::GetInstance()
 {
   if (XRE_GetProcessType() == GeckoProcessType_Default) {
     return VsyncDispatcherHostImpl::GetInstance();
-  } else {
-    return VsyncDispatcherClientImpl::GetInstance();
   }
+
+  MOZ_RELEASE_ASSERT(true, "Content side should not get VsyncDispatcher");
+
+  return nullptr;
 }
 
 VsyncEventRegistry*
@@ -29,35 +30,9 @@ VsyncDispatcher::GetInputDispatcherRegistry()
 }
 
 VsyncEventRegistry*
-VsyncDispatcher::GetRefreshDriverRegistry()
-{
-  MOZ_ASSERT(false, "GetRefreshDriverRegistry should be implemented");
-
-  return nullptr;
-}
-
-VsyncEventRegistry*
 VsyncDispatcher::GetCompositorRegistry()
 {
   MOZ_ASSERT(false, "GetCompositorRegistry should be implemented");
-
-  return nullptr;
-}
-
-VsyncDispatcherClient*
-VsyncDispatcher::AsVsyncDispatcherClient()
-{
-  MOZ_ASSERT(XRE_GetProcessType() != GeckoProcessType_Default);
-  MOZ_ASSERT(false, "Function should be implemented");
-
-  return nullptr;
-}
-
-VsyncDispatcherHost*
-VsyncDispatcher::AsVsyncDispatcherHost()
-{
-  MOZ_ASSERT(XRE_GetProcessType() == GeckoProcessType_Default);
-  MOZ_ASSERT(false, "Function should be implemented");
 
   return nullptr;
 }

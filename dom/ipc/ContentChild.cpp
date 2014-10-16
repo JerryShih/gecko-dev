@@ -39,7 +39,6 @@
 #include "mozilla/layers/ImageBridgeChild.h"
 #include "mozilla/layers/PCompositorChild.h"
 #include "mozilla/layers/SharedBufferManagerChild.h"
-#include "mozilla/layers/VsyncEventChild.h"
 #include "mozilla/net/NeckoChild.h"
 
 #if defined(MOZ_CONTENT_SANDBOX)
@@ -913,13 +912,6 @@ ContentChild::AllocPSharedBufferManagerChild(mozilla::ipc::Transport* aTransport
                                              base::ProcessId aOtherProcess)
 {
     return SharedBufferManagerChild::StartUpInChildProcess(aTransport, aOtherProcess);
-}
-
-PVsyncEventChild*
-ContentChild::AllocPVsyncEventChild(mozilla::ipc::Transport* aTransport,
-                                    base::ProcessId aOtherProcess)
-{
-    return VsyncEventChild::Create(aTransport, aOtherProcess);
 }
 
 PImageBridgeChild*

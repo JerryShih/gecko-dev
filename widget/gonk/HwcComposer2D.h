@@ -109,9 +109,6 @@ public:
     // Hwc vsync event handle function
     void Vsync(int aDisplay, int64_t aTimestamp);
 
-    // Vsync event rate per second.
-    uint32_t GetHWVsyncRate() const;
-
     void Invalidate();
 #endif
 
@@ -150,7 +147,6 @@ private:
     android::sp<android::Fence> mPrevDisplayFence;
 
     GonkVsyncTimer*         mVsyncTimer;
-    uint32_t                mVsyncRate;
     bool                    mHwcEventCallbackInited;
     Mutex                   mHwcEventCallbackLock;
 #endif
