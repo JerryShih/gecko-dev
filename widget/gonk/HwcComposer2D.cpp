@@ -293,7 +293,7 @@ void
 HwcComposer2D::RegisterVsyncTimer(GonkVsyncTimer* aGonkVsyncTimer)
 {
     MOZ_ASSERT(NS_IsMainThread());
-    MOZ_ASSERT(!mVsyncObserver);
+    MOZ_ASSERT(!mVsyncTimer);
 
     mVsyncTimer = aGonkVsyncTimer;
 }

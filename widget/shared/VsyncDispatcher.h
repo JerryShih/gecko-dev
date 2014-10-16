@@ -50,9 +50,8 @@ public:
   virtual void RemoveObserver(VsyncObserver* aVsyncObserver,
                               bool aAlwaysTrigger) = 0;
 
-  // Dispatch vsync event to all registered observer. Return true if registry
-  // need next vsync event.
-  virtual bool Dispatch(TimeStamp aTimestamp, uint64_t aFrameNumber) = 0;
+  // Dispatch vsync event to all registered observer.
+  virtual void Dispatch(TimeStamp aTimestamp, uint64_t aFrameNumber) = 0;
 
 protected:
   virtual ~VsyncEventRegistry() { }
@@ -66,10 +65,6 @@ public:
 
   virtual void Startup() = 0;
   virtual void Shutdown() = 0;
-
-  // Notify VsyncDispatcher that we have observer in registry and need the vsync
-  // tick for next frame.
-  virtual void VsyncTickNeeded() = 0;
 
   // Get the registry interface.
   virtual VsyncEventRegistry* GetInputDispatcherRegistry();

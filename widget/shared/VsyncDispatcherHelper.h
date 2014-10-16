@@ -37,12 +37,9 @@ protected:
   typedef ThreadPolicy ThreadGuard;
 
 public:
-  VsyncEventRegistryImpl(VsyncDispatcher* aVsyncDispatcher)
-    : mVsyncDispatcher(aVsyncDispatcher)
-    , mObserverMutex("VsyncEventRegistry Lock")
-    , mVsyncEventNeeded(false)
+  VsyncEventRegistryImpl()
+    : mObserverMutex("VsyncEventRegistry Lock")
   {
-    MOZ_ASSERT(mVsyncDispatcher);
   }
 
   virtual ~VsyncEventRegistryImpl() { }
@@ -56,7 +53,6 @@ public:
     ObserverList* list = GetObserverList(aAlwaysTrigger);
     if (!list->Contains(aVsyncObserver)) {
       list->AppendElement(aVsyncObserver);
-      CheckObserverNumber();
     }
   }
 
@@ -68,12 +64,11 @@ public:
     ObserverList* list = GetObserverList(aAlwaysTrigger);
     if (list->Contains(aVsyncObserver)) {
       list->RemoveElement(aVsyncObserver);
-      CheckObserverNumber();
     }
   }
 
   // Dispatch vsync event to all registered observer.
-  virtual bool Dispatch(TimeStamp aTimestamp, uint64_t aFrameNumber) MOZ_OVERRIDE
+  virtual void Dispatch(TimeStamp aTimestamp, uint64_t aFrameNumber) MOZ_OVERRIDE
   {
     ThreadGuard threadGuard(mObserverMutex);
 
@@ -85,8 +80,6 @@ public:
       mTemporaryObserverList[i]->VsyncTick(aTimestamp, aFrameNumber);
     }
     mTemporaryObserverList.Clear();
-
-    return (GetObserverNum() > 0);
   }
 
 protected:
@@ -95,28 +88,7 @@ protected:
     return aAlwaysTrigger ? &mObserverList : &mTemporaryObserverList;
   }
 
-  // Return the total observer number.
-  virtual uint32_t GetObserverNum() const
-  {
-    return mObserverList.Length() + mTemporaryObserverList.Length();
-  }
-
-  void CheckObserverNumber()
-  {
-    if (!!GetObserverNum() !=  mVsyncEventNeeded) {
-      mVsyncEventNeeded = !mVsyncEventNeeded;
-
-      if (mVsyncEventNeeded) {
-        mVsyncDispatcher->VsyncTickNeeded();
-      }
-    }
-  }
-
-  VsyncDispatcher* mVsyncDispatcher;
-
   mutable Mutex mObserverMutex;
-
-  bool mVsyncEventNeeded;
 
   // The observer in mObserverList will always retain until we call remove
   // function.

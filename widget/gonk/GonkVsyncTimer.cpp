@@ -20,7 +20,7 @@ GonkVsyncTimer::GonkVsyncTimer(VsyncTimerObserver* aObserver)
   : PlatformVsyncTimer(aObserver)
   , mInited(false)
 {
-
+  MOZ_ASSERT(aObserver);
 }
 
 GonkVsyncTimer::~GonkVsyncTimer()
@@ -46,20 +46,16 @@ GonkVsyncTimer::Startup()
   MOZ_ASSERT(!mInited);
   MOZ_ASSERT(mObserver);
 
-  bool result = false;
-
-  mInited = true;
-
   if (gfxPrefs::FrameUniformityHWVsyncEnabled()) {
     if (HwcComposer2D::GetInstance()->InitHwcEventCallback()) {
       HwcComposer2D::GetInstance()->RegisterVsyncTimer(this);
-      result = true;
+      mInited = true;
 
       LOGI("GonkVsyncTimer: use hwc vsync");
     }
   }
 
-  return result;
+  return mInited;
 }
 
 void

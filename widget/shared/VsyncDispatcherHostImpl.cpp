@@ -35,16 +35,14 @@ VsyncDispatcherHostImpl::Startup()
   mInited = true;
 
   // Init all vsync event registry;
-  mInputDispatcher = new VsyncEventRegistryImpl<VsyncRegistryThreadSafePolicy>(this);
-  mCompositor = new VsyncEventRegistryImpl<VsyncRegistryThreadSafePolicy>(this);
+  mInputDispatcher = new VsyncEventRegistryImpl<VsyncRegistryThreadSafePolicy>();
+  mCompositor = new VsyncEventRegistryImpl<VsyncRegistryThreadSafePolicy>();
 
   // Get platform dependent vsync timer.
   // We only use the vsync timer at Chrome process.
-  // Content side doesn't need to do this. Chrome will send the vsync event
-  // to content via PVsyncEvent ipc protocol.
   mTimer = PlatformVsyncTimerFactory::Create(this);
   MOZ_ASSERT(mTimer);
-  // Start the timer.
+  // Start vsync timer.
   mTimer->Enable(true);
 }
 
@@ -71,7 +69,6 @@ VsyncDispatcherHostImpl::Shutdown()
 
 VsyncDispatcherHostImpl::VsyncDispatcherHostImpl()
   : mInited(false)
-  , mVsyncEventNeeded(false)
   , mInputDispatcher(nullptr)
   , mCompositor(nullptr)
   , mTimer(nullptr)
@@ -112,31 +109,11 @@ VsyncDispatcherHostImpl::NotifyVsync(TimeStamp aTimestamp)
   mCurrentTimestamp = aTimestamp;
   ++mCurrentFrameNumber;
 
-  if (!mVsyncEventNeeded) {
-    return;
-  }
-
-  // Dispatch vsync event to input dispatcher
+  // Dispatch vsync event to input dispatcher.
   mInputDispatcher->Dispatch(mCurrentTimestamp, mCurrentFrameNumber);
 
   // Dispatch vsync event to compositor.
   mCompositor->Dispatch(mCurrentTimestamp, mCurrentFrameNumber);
-}
-
-void
-VsyncDispatcherHostImpl::VsyncTickNeeded()
-{
-//  MOZ_ASSERT(mTimer);
-//
-//  // We check the observer number here to enable/disable vsync event
-//  if (!!GetVsyncObserverCount() !=  mVsyncEventNeeded) {
-//    mVsyncEventNeeded = !mVsyncEventNeeded;
-//
-//    mTimer->Enable(mVsyncEventNeeded);
-//  }
-
-  mVsyncEventNeeded = true;
-  mTimer->Enable(mVsyncEventNeeded);
 }
 
 } // namespace mozilla

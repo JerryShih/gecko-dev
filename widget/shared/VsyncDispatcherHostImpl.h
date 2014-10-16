@@ -30,9 +30,6 @@ public:
   virtual void Startup() MOZ_OVERRIDE;
   virtual void Shutdown() MOZ_OVERRIDE;
 
-  // This function will be called when the registry need vsync tick.
-  virtual void VsyncTickNeeded() MOZ_OVERRIDE;
-
   virtual VsyncEventRegistry* GetInputDispatcherRegistry() MOZ_OVERRIDE;
   virtual VsyncEventRegistry* GetCompositorRegistry() MOZ_OVERRIDE;
 
@@ -46,7 +43,6 @@ private:
   static StaticRefPtr<VsyncDispatcherHostImpl> sVsyncDispatcherHost;
 
   bool mInited;
-  bool mVsyncEventNeeded;
 
   // Registries
   VsyncEventRegistryImpl<VsyncRegistryThreadSafePolicy>* mInputDispatcher;
