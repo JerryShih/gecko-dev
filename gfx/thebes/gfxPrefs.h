@@ -208,8 +208,6 @@ private:
   DECL_GFX_PREF(Once, "gfx.frameuniformity.hw-vsync.enabled",  FrameUniformityHWVsyncEnabled, bool, false);
   // Compositor align with vsync
   DECL_GFX_PREF(Once, "gfx.frameuniformity.compositor-vsync.enabled", FrameUniformityCompositorVsyncEnabled, bool, true);
-  // Refresh driver align with vsync
-  DECL_GFX_PREF(Once, "gfx.frameuniformity.refreshdriver-vsync.enabled", FrameUniformityRefreshDriverVsyncEnabled, bool, false);
   DECL_GFX_PREF(Once, "gfx.touch.resample",                    TouchResampling, bool, false);
   // These times should be in nanoseconds
   DECL_GFX_PREF(Once, "gfx.touch.resample.max-predict",        TouchResampleMaxPredict, int32_t, 8000000);
