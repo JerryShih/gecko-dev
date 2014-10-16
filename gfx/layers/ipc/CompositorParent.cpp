@@ -196,7 +196,6 @@ CompositorVsyncObserver::CompositorVsyncObserver(CompositorParent* aCompositorPa
   , mNeedsComposite(false)
   , mIsObservingVsync(false)
   , mCompositorParent(aCompositorParent)
-  , mCurrentCompositeTask(nullptr)
 {
 
 }
@@ -205,9 +204,6 @@ CompositorVsyncObserver::~CompositorVsyncObserver()
 {
   MOZ_ASSERT(NS_IsMainThread());
   UnobserveVsync(true);
-  if (mCurrentCompositeTask) {
-    mCurrentCompositeTask->Cancel();
-  }
   mCompositorParent = nullptr;
 }
 
@@ -239,10 +235,22 @@ CompositorVsyncObserver::NotifyVsync(TimeStamp aVsyncTimestamp)
 
   MonitorAutoLock lock(mNeedsCompositeMonitor);
   if (mNeedsComposite && mCompositorParent) {
-    mCurrentCompositeTask = NewRunnableMethod(mCompositorParent.get(),
-                                              &CompositorParent::CompositeCallback,
-                                              TimeStamp::Now());
-    CompositorParent::CompositorLoop()->PostTask(FROM_HERE, mCurrentCompositeTask);
+    /**
+     * WARNING WARNING WARNING WARNING
+     * The Compositor thread is an android chromium thread. Since we use
+     * nsRefPtr for the CompositorParent and CompositorVsyncObserver, we have a
+     * situation where this and the CompositorParent could be deleted while the
+     * task is scheduled in the MessageLoop. Thus when the task finally
+     * executes, the CompositorParent could be deleted. Because it is a chromium
+     * thread, we can't use the nsRunnable class to keep a reference. Instead,
+     * MANUALLY add a reference before we post the task and MANUALLY delete the reference
+     * when the task executes. MAKE SURE YOU MANUALLY DELETE THE REFERENCeS.
+     */
+    mCompositorParent->AddRef();
+    CompositorParent::CompositorLoop()->PostTask(FROM_HERE,
+                                        NewRunnableMethod(mCompositorParent.get(),
+                                                          &CompositorParent::CompositeCallback,
+                                                          aVsyncTimestamp));
     mNeedsComposite = false;
     return true;
   } else {
@@ -250,14 +258,6 @@ CompositorVsyncObserver::NotifyVsync(TimeStamp aVsyncTimestamp)
     // unregister the vsync.
     UnobserveVsync(false);
     return false;
-  }
-}
-
-void
-CompositorVsyncObserver::CancelCurrentComposite()
-{
-  if (mCurrentCompositeTask) {
-    mCurrentCompositeTask->Cancel();
   }
 }
 
@@ -493,9 +493,6 @@ CompositorParent::RecvFlushRendering()
 {
   // If we're waiting to do a composite, then cancel it
   // and do it immediately instead.
-  if (gfxPrefs::VsyncAlignedCompositor()) {
-    mCompositorVsyncObserver->CancelCurrentComposite();  
-  }
   if (mCurrentCompositeTask) {
     CancelCurrentCompositeTask();
     ForceComposeToTarget(nullptr);
@@ -617,9 +614,6 @@ CompositorParent::ForceComposition()
 void
 CompositorParent::CancelCurrentCompositeTask()
 {
-  if (gfxPrefs::VsyncAlignedCompositor()) {
-    mCompositorVsyncObserver->CancelCurrentComposite();  
-  }
   if (mCurrentCompositeTask) {
     mCurrentCompositeTask->Cancel();
     mCurrentCompositeTask = nullptr;
@@ -782,7 +776,9 @@ CompositorParent::CompositeCallback(TimeStamp aScheduleTime)
     // TODO: ensure it aligns with the refresh / start time of
     // animations
     mLastCompose = aScheduleTime;
-    mCompositorVsyncObserver->CancelCurrentComposite();
+    // WARNING WARNING WARNING WARNING
+    // READ THE COMMENT IN CompositorVsyncObserver::NotifyVsync
+    this->Release();
   } else {
     mLastCompose = TimeStamp::Now();
   }
