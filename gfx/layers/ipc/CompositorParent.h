@@ -53,7 +53,6 @@ class APZCTreeManager;
 class AsyncCompositionManager;
 class Compositor;
 class CompositorParent;
-class DispatchComposite;
 class LayerManagerComposite;
 class LayerTransactionParent;
 
@@ -124,7 +123,6 @@ class CompositorParent MOZ_FINAL : public PCompositorParent,
 {
   NS_INLINE_DECL_THREADSAFE_REFCOUNTING_WITH_MAIN_THREAD_DESTRUCTION(CompositorParent)
   friend class CompositorVsyncObserver;
-  friend class DispatchComposite;
 
 public:
   explicit CompositorParent(nsIWidget* aWidget,

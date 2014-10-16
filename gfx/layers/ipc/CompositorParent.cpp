@@ -491,15 +491,15 @@ CompositorParent::RecvMakeSnapshot(const SurfaceDescriptor& aInSnapshot,
 bool
 CompositorParent::RecvFlushRendering()
 {
-  // If we're waiting to do a composite, then cancel it
-  // and do it immediately instead.
   if (gfxPrefs::VsyncAlignedCompositor()) {
-    mCompositorVsyncObserver->SetNeedsComposite(false);
+    mCompositorVsyncObserver->SetNeedsComposite(true);
   } else if (mCurrentCompositeTask) {
+    // If we're waiting to do a composite, then cancel it
+    // and do it immediately instead.
     CancelCurrentCompositeTask();
+    ForceComposeToTarget(nullptr);
   }
 
-  ForceComposeToTarget(nullptr);
   return true;
 }
 
