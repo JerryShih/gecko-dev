@@ -196,6 +196,7 @@ CompositorVsyncObserver::CompositorVsyncObserver(CompositorParent* aCompositorPa
   , mNeedsComposite(false)
   , mIsObservingVsync(false)
   , mCompositorParent(aCompositorParent)
+  , mCurrentCompositeTask(nullptr)
 {
 
 }
@@ -205,6 +206,8 @@ CompositorVsyncObserver::~CompositorVsyncObserver()
   MOZ_ASSERT(NS_IsMainThread());
   UnobserveVsync(true);
   mCompositorParent = nullptr;
+  mNeedsComposite = false;
+  CancelCurrentCompositeTask();
 }
 
 /**
@@ -235,22 +238,10 @@ CompositorVsyncObserver::NotifyVsync(TimeStamp aVsyncTimestamp)
 
   MonitorAutoLock lock(mNeedsCompositeMonitor);
   if (mNeedsComposite && mCompositorParent) {
-    /**
-     * WARNING WARNING WARNING WARNING
-     * The Compositor thread is an android chromium thread. Since we use
-     * nsRefPtr for the CompositorParent and CompositorVsyncObserver, we have a
-     * situation where this and the CompositorParent could be deleted while the
-     * task is scheduled in the MessageLoop. Thus when the task finally
-     * executes, the CompositorParent could be deleted. Because it is a chromium
-     * thread, we can't use the nsRunnable class to keep a reference. Instead,
-     * MANUALLY add a reference before we post the task and MANUALLY delete the reference
-     * when the task executes. MAKE SURE YOU MANUALLY DELETE THE REFERENCeS.
-     */
-    mCompositorParent->AddRef();
-    CompositorParent::CompositorLoop()->PostTask(FROM_HERE,
-                                        NewRunnableMethod(mCompositorParent.get(),
-                                                          &CompositorParent::CompositeCallback,
-                                                          aVsyncTimestamp));
+    mCurrentCompositeTask = NewRunnableMethod(mCompositorParent.get(),
+                                                      &CompositorParent::CompositeCallback,
+                                                      aVsyncTimestamp);
+    CompositorParent::CompositorLoop()->PostTask(FROM_HERE, mCurrentCompositeTask);
     mNeedsComposite = false;
     return true;
   } else {
@@ -264,7 +255,18 @@ CompositorVsyncObserver::NotifyVsync(TimeStamp aVsyncTimestamp)
 bool
 CompositorVsyncObserver::NeedsComposite()
 {
+  MonitorAutoLock lock(mNeedsCompositeMonitor);
   return mNeedsComposite;
+}
+
+void
+CompositorVsyncObserver::CancelCurrentCompositeTask()
+{
+  MonitorAutoLock lock(mNeedsCompositeMonitor);
+  if (mCurrentCompositeTask) {
+    mCurrentCompositeTask->Cancel();
+    mCurrentCompositeTask = nullptr;
+  }
 }
 
 void
@@ -491,8 +493,10 @@ CompositorParent::RecvMakeSnapshot(const SurfaceDescriptor& aInSnapshot,
 bool
 CompositorParent::RecvFlushRendering()
 {
-  if (gfxPrefs::VsyncAlignedCompositor()) {
-    mCompositorVsyncObserver->SetNeedsComposite(true);
+  if (gfxPrefs::VsyncAlignedCompositor() && mCompositorVsyncObserver->NeedsComposite()) {
+    mCompositorVsyncObserver->SetNeedsComposite(false);
+    CancelCurrentCompositeTask();
+    ForceComposeToTarget(nullptr);
   } else if (mCurrentCompositeTask) {
     // If we're waiting to do a composite, then cancel it
     // and do it immediately instead.
@@ -618,10 +622,7 @@ void
 CompositorParent::CancelCurrentCompositeTask()
 {
   if (gfxPrefs::VsyncAlignedCompositor()) {
-    // Since vsync notifications can come in anytime, and we can have multiple
-    // posted task, we can't cancel just one task. Just stop posting tasks
-    // instead.
-    mCompositorVsyncObserver->SetNeedsComposite(false);
+    mCompositorVsyncObserver->CancelCurrentCompositeTask();
   } else if (mCurrentCompositeTask) {
     mCurrentCompositeTask->Cancel();
     mCurrentCompositeTask = nullptr;
@@ -784,10 +785,6 @@ CompositorParent::CompositeCallback(TimeStamp aScheduleTime)
     // TODO: ensure it aligns with the refresh / start time of
     // animations
     mLastCompose = aScheduleTime;
-    mCompositorVsyncObserver->SetNeedsComposite(false);
-    // WARNING WARNING WARNING WARNING
-    // READ THE COMMENT IN CompositorVsyncObserver::NotifyVsync
-    this->Release();
   } else {
     mLastCompose = TimeStamp::Now();
   }

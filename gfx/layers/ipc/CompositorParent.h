@@ -105,6 +105,7 @@ public:
   virtual bool NotifyVsync(TimeStamp aVsyncTimestamp) MOZ_OVERRIDE;
   void SetNeedsComposite(bool aSchedule);
   bool NeedsComposite();
+  void CancelCurrentCompositeTask();
 
 private:
   virtual ~CompositorVsyncObserver();
@@ -116,6 +117,7 @@ private:
   bool mNeedsComposite;
   bool mIsObservingVsync;
   nsRefPtr<CompositorParent> mCompositorParent;
+  CancelableTask* mCurrentCompositeTask;
 };
 
 class CompositorParent MOZ_FINAL : public PCompositorParent,
