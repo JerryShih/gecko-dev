@@ -8,8 +8,6 @@
 
 #include <stdint.h>
 
-class MessageLoop;
-
 namespace mozilla {
 
 class TimeStamp;

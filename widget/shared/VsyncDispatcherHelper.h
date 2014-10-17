@@ -6,12 +6,10 @@
 #ifndef mozilla_widget_shared_VsyncDispatcherHelper_h
 #define mozilla_widget_shared_VsyncDispatcherHelper_h
 
-#include "base/task.h"
 #include "mozilla/Mutex.h"
 #include "mozilla/TimeStamp.h"
-#include "mozilla/VsyncDispatcher.h"
 #include "nsTArray.h"
-#include "nsThreadUtils.h"
+#include "VsyncDispatcher.h"
 
 namespace mozilla {
 
