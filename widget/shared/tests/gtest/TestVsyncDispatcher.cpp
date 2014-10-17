@@ -5,10 +5,7 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 #include "gtest/gtest.h"
 #include "gmock/gmock.h"
-#include "nsThreadUtils.h"
 #include "mozilla/TimeStamp.h"
-#include "mozilla/ReentrantMonitor.h"
-#include "mozilla/Monitor.h"
 
 // Test target
 #include "VsyncDispatcher.h"
@@ -272,4 +269,8 @@ TEST_F(SilkHostTest, ObserverPriority)
   }
 
   mTimer.SendVsync(1000);
+
+  // Clean up.
+  compositorRegistry->RemoveObserver(&compositorObserver, false);
+  inputDispatcherRegistry->RemoveObserver(&inputDispatcherObserver, false);
 }
