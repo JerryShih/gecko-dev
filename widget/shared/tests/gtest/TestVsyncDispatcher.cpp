@@ -22,24 +22,15 @@ using ::testing::InSequence;
 using ::testing::Return;
 
 // A manual timer for testing purepose.
-// Send vsync notification while a test case explicit calls
-// FakeTimer::SendVsync
+// Send vsync notification while a test case explicit calls SendVsync
 class FakeTimer: public PlatformVsyncTimer
 {
 public:
   FakeTimer(VsyncTimerObserver* aObserver)
     : PlatformVsyncTimer(aObserver)
-//    , mRate(60)
   {
     /* Pass */
   }
-
-//  virtual uint32_t GetVsyncRate()
-//  {
-//    // Return 0 as a test?
-//    // Discuss with jerry regarding to expected behavior
-//    return mVsyncRate;
-//  }
 
   // Send out a vsync notification manually.
   void SendVsync(double aMicroseconds)
@@ -48,20 +39,11 @@ public:
     mObserver->NotifyVsync(ts);
   }
 
-//  void SetVsyncRate(uint32_t aRate)
-//  {
-//    // Retrun an unreasonable value and define how VsyncTimerObserver
-//    // handle this codition.
-//    mRate = aRate;
-//  }
-
-  void AssignObserver(VsyncTimerObserver *aObserver)
+  // Bind this timer with the observer.
+  void Bind(VsyncTimerObserver *aObserver)
   {
     mObserver = aObserver;
   }
-
-protected:
-//  uint32_t mRate;
 };
 
 class MockTimer: public FakeTimer
@@ -98,7 +80,7 @@ class SilkHostTest : public ::testing::Test
 public:
   static PlatformVsyncTimer *Create(VsyncTimerObserver *aObserver)
   {
-    gThis->mTimer.AssignObserver(aObserver);
+    gThis->mTimer.Bind(aObserver);
     return &gThis->mTimer;
   }
 
@@ -106,11 +88,11 @@ public:
   {
     gThis = this;
 
+    // Initiate mock timer.
     mTimer.Init();
-    // Request: new PlatfomrVsyncTimerFactory API
-    // We need to have a way to replace PlatformVsyncTimer by MockTimer.
     PlatformVsyncTimerFactory::SetCustomCreator(&SilkHostTest ::Create);
 
+    // Create testing target - VsyncDispatcherHostImp
     mDispatcher = VsyncDispatcher::GetInstance();
     mHostImp = static_cast<VsyncDispatcherHostImpl *>(mDispatcher);
 
@@ -119,7 +101,7 @@ public:
 
   virtual void TearDown()
   {
-    // XXX: Shutdonw lead crash check with Jerry
+    // CRASH!!
     //mHostImp->Shutdown();
     PlatformVsyncTimerFactory::SetCustomCreator(nullptr);
   }
@@ -133,24 +115,10 @@ protected:
 
 /*static*/ SilkHostTest  *SilkHostTest::gThis;
 
-//// Principle to check:
-////   A user can get DispathcerHost interface from VsyncDispatcher in
-////   chrome process.
-////   A user can get DispatcherClient interface from VsyncDispatcher in
-////   content process.
-//TEST_F(SilkHostTest, QueryInterface)
-//{
-//  // Interface qurey test.
-//  VsyncDispatcherClient* client = mDispatcher->AsVsyncDispatcherClient();
-//  EXPECT_TRUE(client == nullptr);
-//
-//  VsyncDispatcherHost* host = mDispatcher->AsVsyncDispatcherHost();
-//  EXPECT_TRUE(host != nullptr);
-//}
-
 // Principle to check:
-//   A observer registers to via VsyncEventRegistry::AddObserver(_, true) should
-//   keep receive vsync tick before unregistry.
+//   An observer registers to dispatcher by
+//   VsyncEventRegistry::AddObserver(_, true) should keep receive vsync tick
+//   before unregistry.
 TEST_F(SilkHostTest, AlwasyTriggerRegistry)
 {
   NiceMock<MockObserver> observer;
@@ -175,8 +143,9 @@ TEST_F(SilkHostTest, AlwasyTriggerRegistry)
 }
 
 // Principle to check:
-//   A observer registers to via VsyncEventRegistry::AddObserver(_, false) should
-//   receive one and only one vsync tick.
+//   An observer registers to dispatcher by
+//   VsyncEventRegistry::AddObserver(_, false) should keep receive one and only
+//   one vsync tick.
 TEST_F(SilkHostTest, NotAlwasyTriggerRegistry)
 {
   NiceMock<MockObserver> observer;
@@ -258,8 +227,9 @@ TEST_F(SilkHostTest, TimerEnabling)
 TEST_F(SilkHostTest, TimeStampPersistence)
 {
   NiceMock<MockObserver> observer;
+  const double predefinedTimestamp = 279470273;
+  TimeStamp ts = TimeStamp() + TimeDuration::FromMicroseconds(predefinedTimestamp);
 
-  TimeStamp ts = TimeStamp() + TimeDuration::FromMicroseconds(123000000);
   EXPECT_CALL(observer, VsyncTick(ts,_))
     .Times(1)
     .WillOnce(Return(false));
@@ -267,7 +237,7 @@ TEST_F(SilkHostTest, TimeStampPersistence)
   VsyncEventRegistry* registry = mDispatcher->GetCompositorRegistry();
   registry->AddObserver(&observer, false);
 
-  mTimer.SendVsync(123000000);
+  mTimer.SendVsync(predefinedTimestamp);
 
   registry->RemoveObserver(&observer, false);
 }
@@ -276,7 +246,6 @@ TEST_F(SilkHostTest, TimeStampPersistence)
 //   VsyncDispatcher should send vsync notifictions in the following order
 //   1. InputDispatcher observers
 //   2. Compositor observers
-//   3. RefreshDriver observers.
 TEST_F(SilkHostTest, ObserverPriority)
 {
 //  VsyncEventRegistry* refreshDriverRegistry = mDispatcher->GetRefreshDriverRegistry();
@@ -285,10 +254,8 @@ TEST_F(SilkHostTest, ObserverPriority)
 
   NiceMock<MockObserver> inputDispatcherObserver;
   NiceMock<MockObserver> compositorObserver;
-//  NiceMock<MockObserver> refreshDriverobserver;
 
-  // AddObserver in reverse order.
-//  refreshDriverRegistry->AddObserver(&refreshDriverobserver, false);
+  // add observers in reverse order.
   compositorRegistry ->AddObserver(&compositorObserver, false);
   inputDispatcherRegistry->AddObserver(&inputDispatcherObserver, false);
 
@@ -302,22 +269,7 @@ TEST_F(SilkHostTest, ObserverPriority)
     EXPECT_CALL(compositorObserver, VsyncTick(_,_))
       .Times(1)
       .WillOnce(Return(false));
-
-//    EXPECT_CALL(refreshDriverobserver, VsyncTick(_,_))
-//      .Times(1)
-//      .WillOnce(Return(false));
   }
 
   mTimer.SendVsync(1000);
-}
-
-
-// Unclear test cases
-// Jerry:
-// What if a VyncTimerObserver take more then 16 ms in NotifyVsync callback?
-// What's the behavior we expect in VsyncDispatcher?
-// Write a perf log?
-TEST_F(SilkHostTest, NotificationTimeout)
-{
-
 }
