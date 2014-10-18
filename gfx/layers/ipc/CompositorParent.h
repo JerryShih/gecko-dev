@@ -106,6 +106,7 @@ public:
   void SetNeedsComposite(bool aSchedule);
   bool NeedsComposite();
   void CancelCurrentCompositeTask();
+  void NotifyCompositeTaskExecuted();
 
 private:
   virtual ~CompositorVsyncObserver();

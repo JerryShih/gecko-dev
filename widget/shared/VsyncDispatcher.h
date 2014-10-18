@@ -18,7 +18,7 @@ class TimeStamp;
 class VsyncObserver
 {
 public:
-  // The vsync-aligned task. Return true if there has a task ticked.
+  // The vsync-aligned task. Return true if there some work was done.
   virtual bool NotifyVsync (TimeStamp aVsyncTimestamp) = 0;
 
 protected:

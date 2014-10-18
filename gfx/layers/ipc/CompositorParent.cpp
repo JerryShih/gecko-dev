@@ -260,6 +260,13 @@ CompositorVsyncObserver::NeedsComposite()
 }
 
 void
+CompositorVsyncObserver::NotifyCompositeTaskExecuted()
+{
+  MonitorAutoLock lock(mNeedsCompositeMonitor);
+  mCurrentCompositeTask = nullptr;
+}
+
+void
 CompositorVsyncObserver::CancelCurrentCompositeTask()
 {
   MonitorAutoLock lock(mNeedsCompositeMonitor);
@@ -785,6 +792,7 @@ CompositorParent::CompositeCallback(TimeStamp aScheduleTime)
     // TODO: ensure it aligns with the refresh / start time of
     // animations
     mLastCompose = aScheduleTime;
+    mCompositorVsyncObserver->NotifyCompositeTaskExecuted();
   } else {
     mLastCompose = TimeStamp::Now();
   }
