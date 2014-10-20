@@ -20,34 +20,11 @@ using ::testing::Return;
 
 // A manual timer for testing purepose.
 // Send vsync notification while a test case explicit calls SendVsync
-class FakeTimer: public PlatformVsyncTimer
+class MockTimer: public PlatformVsyncTimer
 {
 public:
-  FakeTimer(VsyncTimerObserver* aObserver)
+  MockTimer(VsyncTimerObserver* aObserver)
     : PlatformVsyncTimer(aObserver)
-  {
-    /* Pass */
-  }
-
-  // Send out a vsync notification manually.
-  void SendVsync(double aMicroseconds)
-  {
-    TimeStamp ts = TimeStamp() + TimeDuration::FromMicroseconds(aMicroseconds);
-    mObserver->NotifyVsync(ts);
-  }
-
-  // Bind this timer with the observer.
-  void Bind(VsyncTimerObserver *aObserver)
-  {
-    mObserver = aObserver;
-  }
-};
-
-class MockTimer: public FakeTimer
-{
-public:
-  MockTimer()
-    : FakeTimer(nullptr)
   {
     /* Pass */
   }
@@ -56,6 +33,13 @@ public:
   {
     ON_CALL(*this, Startup())
       .WillByDefault(Return(true));
+  }
+
+  // Send out a vsync notification manually.
+  void SendVsync(double aMicroseconds)
+  {
+    TimeStamp ts = TimeStamp() + TimeDuration::FromMicroseconds(aMicroseconds);
+    mObserver->NotifyVsync(ts);
   }
 
   // Open question: do we need Startup/ Shutdown test cases?
@@ -77,16 +61,23 @@ class SilkHostTest : public ::testing::Test
 public:
   static PlatformVsyncTimer *Create(VsyncTimerObserver *aObserver)
   {
-    gThis->mTimer.Bind(aObserver);
-    return &gThis->mTimer;
+    gThis->mTimer = new NiceMock<MockTimer>(aObserver);
+    gThis->mTimer->Init();
+
+    return gThis->mTimer;
+  }
+
+  SilkHostTest()
+    : mHostImp(nullptr),
+      mDispatcher(nullptr),
+      mTimer(nullptr)
+  {
+    gThis = this;
   }
 
   virtual void SetUp()
   {
-    gThis = this;
-
     // Initiate mock timer.
-    mTimer.Init();
     PlatformVsyncTimerFactory::SetCustomCreator(&SilkHostTest ::Create);
 
     // Create testing target - VsyncDispatcherHostImp
@@ -98,16 +89,17 @@ public:
 
   virtual void TearDown()
   {
-    // CRASH!!
-    //mHostImp->Shutdown();
+    mHostImp->Shutdown();
     PlatformVsyncTimerFactory::SetCustomCreator(nullptr);
   }
 
 protected:
   VsyncDispatcherHostImpl   *mHostImp;
   VsyncDispatcher           *mDispatcher;
-  NiceMock<MockTimer>       mTimer;
-  static SilkHostTest  *gThis;
+  NiceMock<MockTimer>       *mTimer;
+
+private:
+  static SilkHostTest       *gThis;
 };
 
 /*static*/ SilkHostTest  *SilkHostTest::gThis;
@@ -130,13 +122,13 @@ TEST_F(SilkHostTest, AlwasyTriggerRegistry)
   registry->AddObserver(&observer, true);
 
   // Send twice, receive twice.
-  mTimer.SendVsync(1000);
-  mTimer.SendVsync(2000);
+  mTimer->SendVsync(1000);
+  mTimer->SendVsync(2000);
 
   // Unregistration.
   // After taht, send once, recieve none.
   registry->RemoveObserver(&observer, true);
-  mTimer.SendVsync(3000);
+  mTimer->SendVsync(3000);
 }
 
 // Principle to check:
@@ -156,8 +148,8 @@ TEST_F(SilkHostTest, NotAlwasyTriggerRegistry)
   registry->AddObserver(&observer, false);
 
   // Send twice, receive once.
-  mTimer.SendVsync(1000);
-  mTimer.SendVsync(2000);
+  mTimer->SendVsync(1000);
+  mTimer->SendVsync(2000);
 
   registry->RemoveObserver(&observer, false);
 }
@@ -190,7 +182,7 @@ TEST_F(SilkHostTest, NotificationSequence)
 
   for (int i = 0; i < times; i++)
   {
-    mTimer.SendVsync(i * 1000);
+    mTimer->SendVsync(i * 1000);
   }
 
   registry->RemoveObserver(&observer, true);
@@ -205,9 +197,9 @@ TEST_F(SilkHostTest, TimerEnabling)
   {
     InSequence s;
 
-    EXPECT_CALL(mTimer, Enable(true))
+    EXPECT_CALL(*mTimer, Enable(true))
       .Times(1);
-    EXPECT_CALL(mTimer, Enable(false))
+    EXPECT_CALL(*mTimer, Enable(false))
       .Times(1);
   }
 
@@ -234,7 +226,7 @@ TEST_F(SilkHostTest, TimeStampPersistence)
   VsyncEventRegistry* registry = mDispatcher->GetCompositorRegistry();
   registry->AddObserver(&observer, false);
 
-  mTimer.SendVsync(predefinedTimestamp);
+  mTimer->SendVsync(predefinedTimestamp);
 
   registry->RemoveObserver(&observer, false);
 }
@@ -268,7 +260,7 @@ TEST_F(SilkHostTest, ObserverPriority)
       .WillOnce(Return(false));
   }
 
-  mTimer.SendVsync(1000);
+  mTimer->SendVsync(1000);
 
   // Clean up.
   compositorRegistry->RemoveObserver(&compositorObserver, false);
