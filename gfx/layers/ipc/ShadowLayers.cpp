@@ -617,6 +617,7 @@ ShadowLayerForwarder::EndTransaction(InfallibleTArray<EditReply>* aReplies,
     common.animations() = mutant->GetAnimations();
     common.invalidRegion() = mutant->GetInvalidRegion();
     common.metrics() = mutant->GetAllFrameMetrics();
+    mutant->GetPosDumpInfo(common.isDumpLayerPos(), common.className());
     attrs.specific() = null_t();
     mutant->FillSpecificAttributes(attrs.specific());
 

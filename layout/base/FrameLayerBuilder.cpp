@@ -2877,6 +2877,8 @@ ContainerState::ProcessDisplayItems(nsDisplayList* aList)
       forceInactive = true;
     }
 
+    nsRefPtr<Layer> finalSelectedLayer = nullptr;
+
     // Assign the item to a layer
     if (layerState == LAYER_ACTIVE_FORCE ||
         (layerState == LAYER_INACTIVE && !mManager->IsWidgetLayerManager()) ||
@@ -3047,6 +3049,8 @@ ContainerState::ProcessDisplayItems(nsDisplayList* aList)
       mLayerBuilder->AddLayerDisplayItem(ownLayer, item,
                                          layerState,
                                          topLeft, nullptr);
+
+      finalSelectedLayer = ownLayer;
     } else {
       PaintedLayerData* paintedLayerData =
         FindPaintedLayerFor(item, itemVisibleRect, animatedGeometryRoot, topLeft,
@@ -3075,11 +3079,31 @@ ContainerState::ProcessDisplayItems(nsDisplayList* aList)
         paintedLayerData->Accumulate(this, item, opaquePixels,
             itemVisibleRect, itemDrawRect, itemClip);
       }
+
+      finalSelectedLayer = paintedLayerData->mLayer;
     }
 
     if (itemSameCoordinateSystemChildren &&
         itemSameCoordinateSystemChildren->NeedsTransparentSurface()) {
       aList->SetNeedsTransparentSurface();
+    }
+
+    //bignose test
+    //silk
+    nsAutoString className;
+    if (finalSelectedLayer.get() && item->Frame()->GetContent()) {
+      if (item->Frame()
+              ->GetContent()
+              ->GetAttr(kNameSpaceID_None, nsGkAtoms::_class, className))
+      {
+        // We can get the class name from gfxPref. Use "silk" string for WIP implementation.
+        if (!className.IsEmpty() && className.Find("silk") != kNotFound) {
+          finalSelectedLayer->SetPosDumpInfo(true, NS_LossyConvertUTF16toASCII(className).get());
+        }
+        else {
+          finalSelectedLayer->SetPosDumpInfo(false, nullptr);
+        }
+      }
     }
   }
 

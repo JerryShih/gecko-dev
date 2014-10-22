@@ -346,6 +346,7 @@ LayerTransactionParent::RecvUpdate(const InfallibleTArray<Edit>& cset,
       layer->SetAnimations(common.animations());
       layer->SetInvalidRegion(common.invalidRegion());
       layer->SetFrameMetrics(common.metrics());
+      layer->SetPosDumpInfo(common.isDumpLayerPos(), common.className().c_str());
 
       typedef SpecificLayerAttributes Specific;
       const SpecificLayerAttributes& specific = attrs.specific();

@@ -1503,6 +1503,23 @@ public:
   AsyncPanZoomController* GetAsyncPanZoomController(uint32_t aIndex) const;
   // The FrameMetricsChanged function is used internally to ensure the APZC array length
   // matches the frame metrics array length.
+
+  // Pass class name info to compositor to print the layer position.
+  void SetPosDumpInfo(bool aPosDump, const char* aClassName)
+  {
+    if (mPosDump != aPosDump || (aClassName && !mClassName.compare(aClassName))) {
+      mPosDump = aPosDump;
+      mClassName = aClassName;
+      Mutated();
+    }
+  }
+
+  void GetPosDumpInfo(bool& aPosDump, std::string& aClassName) const
+  {
+    aPosDump = mPosDump;
+    aClassName = mClassName;
+  }
+
 private:
   void FrameMetricsChanged();
 public:
@@ -1652,6 +1669,11 @@ protected:
 #ifdef MOZ_DUMP_PAINTING
   nsTArray<nsCString> mExtraDumpInfo;
 #endif
+
+  // The compoisitor will dump the layer's position if mPosDump is true.
+  bool mPosDump;
+  // The class name in html.
+  std::string mClassName;
 };
 
 /**
