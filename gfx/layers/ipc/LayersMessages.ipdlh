@@ -216,7 +216,10 @@ struct CommonLayerAttributes {
   Animation[] animations;
   nsIntRegion invalidRegion;
   FrameMetrics[] metrics;
-  string contentDescription;
+
+  // Show layer uniformity.
+  bool isDumpLayerPos;
+  string className;
 };
 
 struct PaintedLayerAttributes {

@@ -91,6 +91,26 @@ static void DrawLayerInfo(const RenderTargetIntRect& aClipRect,
                                           maxWidth);
 }
 
+static void DumpLayerPos(Layer* aLayer)
+{
+  bool needDumpPos = false;
+  std::string className;
+
+  aLayer->GetPosDumpInfo(needDumpPos, className);
+  if (needDumpPos){
+    Matrix4x4 transform = aLayer->AsLayerComposite()->GetShadowTransform();
+    if (!transform.Is2D()) {
+      return;
+    }
+
+    Point translation = transform.As2D().GetTranslation();
+
+    //print to adb log or to gecko profiler
+    printf_stderr("layer pos dump: addr:(%p) pos:(%d,%d), class name:(%s)",
+        aLayer, (int)translation.x, (int)translation.y, className.c_str());
+  }
+}
+
 static void PrintUniformityInfo(Layer* aLayer)
 {
 #ifdef MOZ_ENABLE_PROFILER_SPS
@@ -248,6 +268,9 @@ RenderLayers(ContainerT* aContainer,
     } else {
       layerToRender->RenderLayer(RenderTargetPixel::ToUntyped(clipRect));
     }
+
+    // Dump layer position to check the uniformity.
+    DumpLayerPos(layer);
 
     if (gfxPrefs::UniformityInfo()) {
       PrintUniformityInfo(layer);
