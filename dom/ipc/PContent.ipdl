@@ -37,6 +37,7 @@ include protocol PTestShell;
 include protocol PVoicemail;
 include protocol PJavaScript;
 include protocol PRemoteSpellcheckEngine;
+include protocol PVsyncEvent;
 include DOMTypes;
 include JavaScriptTypes;
 include InputStreamParams;
@@ -338,6 +339,7 @@ prio(normal upto urgent) intr protocol PContent
     parent opens PSharedBufferManager;
     parent opens PImageBridge;
     child opens PBackground;
+    parent opens PVsyncEvent;
 
     manages PAsmJSCacheEntry;
     manages PBlob;

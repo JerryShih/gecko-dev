@@ -433,10 +433,12 @@ private:
     PImageBridgeParent*
     AllocPImageBridgeParent(mozilla::ipc::Transport* aTransport,
                             base::ProcessId aOtherProcess) MOZ_OVERRIDE;
-
     PSharedBufferManagerParent*
     AllocPSharedBufferManagerParent(mozilla::ipc::Transport* aTranport,
-                                     base::ProcessId aOtherProcess) MOZ_OVERRIDE;
+                                    base::ProcessId aOtherProcess) MOZ_OVERRIDE;
+    PVsyncEventParent*
+    AllocPVsyncEventParent(mozilla::ipc::Transport* aTranport,
+                           base::ProcessId aOtherProcess) MOZ_OVERRIDE;
     PBackgroundParent*
     AllocPBackgroundParent(Transport* aTransport, ProcessId aOtherProcess)
                            MOZ_OVERRIDE;

@@ -69,6 +69,7 @@
 #include "mozilla/layers/CompositorParent.h"
 #include "mozilla/layers/ImageBridgeParent.h"
 #include "mozilla/layers/SharedBufferManagerParent.h"
+#include "mozilla/layout/VsyncEventParent.h"
 #include "mozilla/net/NeckoParent.h"
 #include "mozilla/plugins/PluginBridge.h"
 #include "mozilla/Preferences.h"
@@ -217,6 +218,7 @@ using namespace mozilla::embedding;
 using namespace mozilla::hal;
 using namespace mozilla::ipc;
 using namespace mozilla::layers;
+using namespace mozilla::layout;
 using namespace mozilla::net;
 using namespace mozilla::jsipc;
 using namespace mozilla::widget;
@@ -2104,6 +2106,10 @@ ContentParent::InitInternal(ProcessPriority aInitialPriority,
 #else
             opened = PImageBridge::Open(this);
             MOZ_ASSERT(opened);
+
+            if (gfxPrefs::VsyncAlignedRefreshDriver()) {
+                MOZ_ALWAYS_TRUE(PVsyncEvent::Open(this));
+            }
 #endif
         }
 #ifdef MOZ_WIDGET_GONK
@@ -2838,9 +2844,16 @@ ContentParent::AllocPBackgroundParent(Transport* aTransport,
 
 PSharedBufferManagerParent*
 ContentParent::AllocPSharedBufferManagerParent(mozilla::ipc::Transport* aTransport,
-                                                base::ProcessId aOtherProcess)
+                                               base::ProcessId aOtherProcess)
 {
     return SharedBufferManagerParent::Create(aTransport, aOtherProcess);
+}
+
+PVsyncEventParent*
+ContentParent::AllocPVsyncEventParent(mozilla::ipc::Transport* aTransport,
+                                      base::ProcessId aOtherProcess)
+{
+    return VsyncEventParent::Create(aTransport, aOtherProcess);
 }
 
 bool

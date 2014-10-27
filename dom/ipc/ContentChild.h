@@ -122,7 +122,11 @@ public:
 
     PSharedBufferManagerChild*
     AllocPSharedBufferManagerChild(mozilla::ipc::Transport* aTransport,
-                                    base::ProcessId aOtherProcess) MOZ_OVERRIDE;
+                                   base::ProcessId aOtherProcess) MOZ_OVERRIDE;
+
+    PVsyncEventChild*
+    AllocPVsyncEventChild(mozilla::ipc::Transport* aTransport,
+                          base::ProcessId aOtherProcess) MOZ_OVERRIDE;
 
     PImageBridgeChild*
     AllocPImageBridgeChild(mozilla::ipc::Transport* aTransport,

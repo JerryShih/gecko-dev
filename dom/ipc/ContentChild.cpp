@@ -42,6 +42,7 @@
 #include "mozilla/layers/ImageBridgeChild.h"
 #include "mozilla/layers/PCompositorChild.h"
 #include "mozilla/layers/SharedBufferManagerChild.h"
+#include "mozilla/layout/VsyncEventChild.h"
 #include "mozilla/net/NeckoChild.h"
 #include "mozilla/plugins/PluginModuleParent.h"
 
@@ -180,6 +181,7 @@ using namespace mozilla::embedding;
 using namespace mozilla::hal_sandbox;
 using namespace mozilla::ipc;
 using namespace mozilla::layers;
+using namespace mozilla::layout;
 using namespace mozilla::net;
 using namespace mozilla::jsipc;
 #if defined(MOZ_WIDGET_GONK)
@@ -1038,9 +1040,16 @@ ContentChild::AllocPCompositorChild(mozilla::ipc::Transport* aTransport,
 
 PSharedBufferManagerChild*
 ContentChild::AllocPSharedBufferManagerChild(mozilla::ipc::Transport* aTransport,
-                                              base::ProcessId aOtherProcess)
+                                             base::ProcessId aOtherProcess)
 {
     return SharedBufferManagerChild::StartUpInChildProcess(aTransport, aOtherProcess);
+}
+
+PVsyncEventChild*
+ContentChild::AllocPVsyncEventChild(mozilla::ipc::Transport* aTransport,
+                                    base::ProcessId aOtherProcess)
+{
+    return VsyncEventChild::Create(aTransport, aOtherProcess);
 }
 
 PImageBridgeChild*

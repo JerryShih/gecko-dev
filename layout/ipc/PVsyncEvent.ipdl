@@ -1,0 +1,42 @@
+/* -*- Mode: C++; tab-width: 2; indent-tabs-mode: nil; c-basic-offset: 2 -*- */
+/* This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
+
+include ProtocolTypes;
+
+using class mozilla::TimeStamp from "mozilla/TimeStamp.h";
+
+namespace mozilla {
+namespace layout {
+
+struct VsyncData
+{
+  // The vsync event timetamp.
+  TimeStamp timestamp;
+  // The monotonic increased frame count for each vsync update.
+  //uint64_t frameNumber;
+};
+
+/*
+ * The PVsyncEvent protocol is used to notify vsync event from chrome to content process.
+ * It also provides the interfaces for content to register/unregister vsync event notification.
+ */
+sync protocol PVsyncEvent
+{
+child:
+  // Send vsync event from chrome to content process.
+  async NotifyVsyncEvent(VsyncData aVsyncData);
+
+parent:
+  // Re/unregister vsync event notification for child side.
+  async RegisterVsyncEvent();
+  async UnregisterVsyncEvent();
+
+  // Get the vsync event rate
+  sync GetVsyncRate() returns (uint32_t vsyncRate);
+};
+
+} // namespace layout
+} // namespace mozilla
+
