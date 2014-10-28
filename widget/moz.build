@@ -149,6 +149,7 @@ UNIFIED_SOURCES += [
     'nsShmImage.cpp',
     'nsTransferable.cpp',
     'nsXPLookAndFeel.cpp',
+    'PlatformVsyncTimer.cpp',
     'PuppetWidget.cpp',
     'ScreenProxy.cpp',
     'SharedWidgetUtils.cpp',
