@@ -159,6 +159,12 @@ nsWindow::nsWindow()
 
     nsAppShell::NotifyScreenInitialized();
 
+#if ANDROID_VERSION >= 17
+    // Since refresh driver need the hw vsync event at early stage, we init the
+    // hwc event here. Only android > 17 has hwc event.
+    HwcComposer2D::GetInstance()->InitHwcEventCallback();
+#endif
+
     // This is a hack to force initialization of the compositor
     // resources, if we're going to use omtc.
     //
