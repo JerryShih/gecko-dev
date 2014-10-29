@@ -91,14 +91,27 @@ public:
     bool Render(EGLDisplay dpy, EGLSurface sur);
 
     void EnableVsync(bool aEnable);
+
 #if ANDROID_VERSION >= 17
-    bool RegisterHwcEventCallback();
+    // Hwc vsync event handle function.
     void Vsync(int aDisplay, int64_t aTimestamp);
+
+    // Invalidate event handle function.
     void Invalidate();
+
+    bool HasHWVsync() const;
+
+    uint32_t GetHWVsyncRate() const;
 #endif
+
     void SetCompositorParent(layers::CompositorParent* aCompositorParent);
 
 private:
+#if ANDROID_VERSION >= 17
+    // Init vsync, hotplug and invalidate callback.
+    void InitHwcEventCallback();
+#endif
+
     void Reset();
     void Prepare(buffer_handle_t fbHandle, int fence);
     bool Commit();
@@ -130,6 +143,7 @@ private:
     android::sp<android::Fence> mPrevRetireFence;
     android::sp<android::Fence> mPrevDisplayFence;
     nsecs_t                 mLastVsyncTime;
+    uint32_t                mVsyncRate;
 #endif
     nsTArray<layers::LayerComposite*> mHwcLayerMap;
     bool                    mPrepared;
