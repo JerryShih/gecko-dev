@@ -115,6 +115,9 @@ HwcComposer2D::HwcComposer2D()
     , mPrevRetireFence(Fence::NO_FENCE)
     , mPrevDisplayFence(Fence::NO_FENCE)
     , mLastVsyncTime(0)
+    , mVsyncRate(0)
+    , mHwcEventCallbackInited(false)
+    , mHwcEventCallbackLock("HwcEventCallback lock")
 #endif
     , mPrepared(false)
     , mHasHWVsync(false)
@@ -159,9 +162,7 @@ HwcComposer2D::Init(hwc_display_t dpy, hwc_surface_t sur, gl::GLContext* aGLCont
         mRBSwapSupport = false;
     }
 
-    if (RegisterHwcEventCallback()) {
-        EnableVsync(true);
-    }
+    InitHwcEventCallback();
 #else
     char propValue[PROPERTY_VALUE_MAX];
     property_get("ro.display.colorfill", propValue, "0");
@@ -190,6 +191,12 @@ void
 HwcComposer2D::EnableVsync(bool aEnable)
 {
 #if ANDROID_VERSION >= 17
+    if (!gfxPrefs::HardwareVsyncEnabled()) {
+        return;
+    }
+
+    MOZ_ASSERT(mHasHWVsync);
+
     if (NS_IsMainThread()) {
         RunVsyncEventControl(aEnable);
     } else {
@@ -202,30 +209,76 @@ HwcComposer2D::EnableVsync(bool aEnable)
 
 #if ANDROID_VERSION >= 17
 bool
-HwcComposer2D::RegisterHwcEventCallback()
+HwcComposer2D::InitHwcEventCallback()
 {
+    // Since we have the Invalidate callback, we still need to call
+    // registerProcs for non-vsync case. Thus, InitHwcEventCallback will be call
+    // in HwcComposer2D::Init() and VsyncDispatcher::Startup(). These two callers
+    // are at different thread, so we use a mutex to protect our data.
+    // Why we just call InitHwcEventCallback() in HwcComposer2D::Init()? It's
+    // because that we need vsync event(for refresh driver) before the the
+    // LayerTransaction protocol creation(it will call the HwcComposer2D::Init()).
+    // Thus, we need to call InitHwcEventCallback() before HwcComposer2D::Init().
+    MutexAutoLock lock(mHwcEventCallbackLock);
+
+    if (mHwcEventCallbackInited) {
+        return mHasHWVsync;
+    }
+    mHwcEventCallbackInited = true;
+
+    // Init the hw event callback.
     HwcDevice* device = (HwcDevice*)GetGonkDisplay()->GetHWCDevice();
     if (!device || !device->registerProcs) {
-        LOGE("Failed to get hwc");
+        LOGE("Failed to get hwc.");
         return false;
     }
-
-    // Disable Vsync first, and then register callback functions.
+    // Disable vsync event for non-vsync case.
     device->eventControl(device, HWC_DISPLAY_PRIMARY, HWC_EVENT_VSYNC, false);
     device->registerProcs(device, &sHWCProcs);
-    mHasHWVsync = true;
 
-    if (!gfxPrefs::HardwareVsyncEnabled()) {
-        device->eventControl(device, HWC_DISPLAY_PRIMARY, HWC_EVENT_VSYNC, false);
-        mHasHWVsync = false;
+    if (gfxPrefs::HardwareVsyncEnabled()) {
+        // Query the hw vsync period
+        if (!device->getDisplayAttributes) {
+            LOGE("Failed to query hwc vsync attribute.");
+            return false;
+        }
+
+        const uint32_t HWC_ATTRIBUTES[] = {
+            HWC_DISPLAY_VSYNC_PERIOD,
+            HWC_DISPLAY_NO_ATTRIBUTE
+        };
+        int32_t hwcAttributeValues[sizeof(HWC_ATTRIBUTES) / sizeof(HWC_ATTRIBUTES[0])];
+
+        device->getDisplayAttributes(device, 0, 0, HWC_ATTRIBUTES, hwcAttributeValues);
+        if (hwcAttributeValues[0] > 0) {
+            mVsyncRate = 1.0e9 / hwcAttributeValues[0] + 0.5;
+        } else {
+            LOGE("Failed to get hwc vsync attribute.");
+            return false;
+        }
+
+        mHasHWVsync = true;
+        // Since we have the vsync pref, turn on the vsync event.
+        device->eventControl(device, HWC_DISPLAY_PRIMARY, HWC_EVENT_VSYNC, true);
     }
 
     return mHasHWVsync;
 }
 
+uint32_t
+HwcComposer2D::GetHWVsyncRate() const
+{
+    MOZ_ASSERT(mHasHWVsync);
+    MOZ_ASSERT(mVsyncRate);
+
+    return mVsyncRate;
+}
+
 void
 HwcComposer2D::RunVsyncEventControl(bool aEnable)
 {
+    MOZ_ASSERT(mHasHWVsync);
+
     if (mHasHWVsync) {
         HwcDevice* device = (HwcDevice*)GetGonkDisplay()->GetHWCDevice();
         if (device && device->eventControl) {
@@ -237,6 +290,7 @@ HwcComposer2D::RunVsyncEventControl(bool aEnable)
 void
 HwcComposer2D::Vsync(int aDisplay, nsecs_t aVsyncTimestamp)
 {
+    MOZ_ASSERT(mHasHWVsync);
     TimeStamp vsyncTime = mozilla::TimeStamp(aVsyncTimestamp);
     nsecs_t vsyncInterval = aVsyncTimestamp - mLastVsyncTime;
     if (vsyncInterval < 16000000 || vsyncInterval > 17000000) {
