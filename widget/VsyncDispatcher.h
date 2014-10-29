@@ -6,25 +6,20 @@
 #ifndef mozilla_widget_VsyncDispatcher_h
 #define mozilla_widget_VsyncDispatcher_h
 
-#include "base/message_loop.h"
 #include "mozilla/Mutex.h"
+#include "mozilla/TimeStamp.h"
 #include "nsISupportsImpl.h"
 #include "nsTArray.h"
 #include "ThreadSafeRefcountingWithMainThreadDestruction.h"
 
-class MessageLoop;
-
 namespace mozilla {
-class TimeStamp;
 
-namespace layers {
-class CompositorVsyncObserver;
-}
+class TimeStamp;
 
 class VsyncObserver
 {
   // Must be destroyed on main thread since the compositor is as well
-  NS_INLINE_DECL_THREADSAFE_REFCOUNTING_WITH_MAIN_THREAD_DESTRUCTION(VsyncObserver)
+  NS_INLINE_DECL_THREADSAFE_REFCOUNTING_WITH_MAIN_THREAD_DESTRUCTION(VsyncObserver);
 
 public:
   // The method called when a vsync occurs. Return true if some work was done.
@@ -42,27 +37,42 @@ class VsyncDispatcher
   NS_INLINE_DECL_THREADSAFE_REFCOUNTING(VsyncDispatcher)
 
 public:
+  static void Startup();
+  static void Shutdown();
+
   static VsyncDispatcher* GetInstance();
+
   // Called on the vsync thread when a hardware vsync occurs
   void NotifyVsync(TimeStamp aVsyncTimestamp);
+
+  uint32_t GetVsyncRate();
 
   // Compositor vsync observers must be added/removed on the compositor thread
   void AddCompositorVsyncObserver(VsyncObserver* aVsyncObserver);
   void RemoveCompositorVsyncObserver(VsyncObserver* aVsyncObserver);
 
+  void AddRefreshDriverVsyncObserver(VsyncObserver* aVsyncObserver);
+  void RemoveRefreshDriverVsyncObserver(VsyncObserver* aVsyncObserver);
+
 private:
   VsyncDispatcher();
   virtual ~VsyncDispatcher();
+
   void DispatchTouchEvents(bool aNotifiedCompositors, TimeStamp aVsyncTime);
 
   // Called on the vsync thread. Returns true if observers were notified
-  bool NotifyVsyncObservers(TimeStamp aVsyncTimestamp, nsTArray<nsRefPtr<VsyncObserver>>& aObservers);
+  bool NotifyVsyncObservers(Mutex& aMutex,
+                            TimeStamp aVsyncTimestamp,
+                            nsTArray<nsRefPtr<VsyncObserver>>& aObservers);
 
   // Can have multiple compositors. On desktop, this is 1 compositor per window
   Mutex mCompositorObserverLock;
   nsTArray<nsRefPtr<VsyncObserver>> mCompositorObservers;
+
+  Mutex mRefreshDriverObserverLock;
+  nsTArray<nsRefPtr<VsyncObserver>> mRefreshDriverObservers;
 };
 
 } // namespace mozilla
 
-#endif // __mozilla_widget_VsyncDispatcher_h
+#endif // mozilla_widget_VsyncDispatcher_h

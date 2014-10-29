@@ -9,6 +9,7 @@
 #include "mozilla/layers/ImageBridgeChild.h"
 #include "mozilla/layers/SharedBufferManagerChild.h"
 #include "mozilla/layers/ISurfaceAllocator.h"     // for GfxMemoryImageReporter
+#include "mozilla/VsyncDispatcher.h"
 
 #include "prlog.h"
 
@@ -386,6 +387,17 @@ gfxPlatform::Init()
     mozilla::gl::GLContext::StaticInit();
 #endif
 
+#ifdef MOZ_WIDGET_GONK
+    // Startup the vsync dispatcher host at Chrome process.
+    // Currently, we only have gonk implementation, so we only enable the
+    // dispatcher with GONK and OMTC.
+    if (gfxPrefs::VsyncEnabled() && UsesOffMainThreadCompositing() &&
+      XRE_GetProcessType() == GeckoProcessType_Default)
+    {
+       VsyncDispatcher::Startup();
+    }
+#endif
+
     InitLayersIPC();
 
     nsresult rv;
@@ -493,6 +505,14 @@ gfxPlatform::Shutdown()
         gPlatform->mMemoryPressureObserver = nullptr;
         gPlatform->mSkiaGlue = nullptr;
     }
+
+#ifdef MOZ_WIDGET_GONK
+    if (gfxPrefs::VsyncEnabled() && UsesOffMainThreadCompositing() &&
+      XRE_GetProcessType() == GeckoProcessType_Default)
+    {
+       VsyncDispatcher::Shutdown();
+    }
+#endif
 
 #ifdef MOZ_WIDGET_ANDROID
     // Shut down the texture pool

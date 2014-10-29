@@ -10,6 +10,7 @@
 
 #ifdef MOZ_WIDGET_GONK
 #include "GeckoTouchDispatcher.h"
+#include "HwcComposer2D.h"
 #endif
 
 using namespace mozilla::layers;
@@ -18,27 +19,69 @@ namespace mozilla {
 
 StaticRefPtr<VsyncDispatcher> sVsyncDispatcher;
 
+/*static*/ void
+VsyncDispatcher::Startup()
+{
+  MOZ_ASSERT(NS_IsMainThread());
+  MOZ_ASSERT(XRE_GetProcessType() == GeckoProcessType_Default);
+  MOZ_ASSERT(!sVsyncDispatcher);
+
+  sVsyncDispatcher = new VsyncDispatcher();
+
+#if defined(MOZ_WIDGET_GONK) && ANDROID_VERSION >= 17
+  gfxPrefs::GetSingleton();
+
+  // Init vsync event
+  if (gfxPrefs::HardwareVsyncEnabled()) {
+    MOZ_ALWAYS_TRUE(HwcComposer2D::GetInstance()->InitHwcEventCallback());
+  }
+#endif
+}
+
+/*static*/ void
+VsyncDispatcher::Shutdown()
+{
+  MOZ_ASSERT(NS_IsMainThread());
+  MOZ_ASSERT(XRE_GetProcessType() == GeckoProcessType_Default);
+  MOZ_ASSERT(sVsyncDispatcher);
+
+  sVsyncDispatcher = nullptr;
+}
+
 /*static*/ VsyncDispatcher*
 VsyncDispatcher::GetInstance()
 {
-  if (!sVsyncDispatcher) {
-    sVsyncDispatcher = new VsyncDispatcher();
-    ClearOnShutdown(&sVsyncDispatcher);
-  }
+  MOZ_ASSERT(sVsyncDispatcher);
 
   return sVsyncDispatcher;
 }
 
 VsyncDispatcher::VsyncDispatcher()
   : mCompositorObserverLock("CompositorObserverLock")
+  , mRefreshDriverObserverLock("RefreshDriverObserverLock")
 {
-
 }
 
 VsyncDispatcher::~VsyncDispatcher()
 {
-  MutexAutoLock lock(mCompositorObserverLock);
-  mCompositorObservers.Clear();
+  {
+    MutexAutoLock lock(mCompositorObserverLock);
+    mCompositorObservers.Clear();
+  }
+  {
+    MutexAutoLock lock(mRefreshDriverObserverLock);
+    mRefreshDriverObservers.Clear();
+  }
+}
+
+uint32_t
+VsyncDispatcher::GetVsyncRate()
+{
+#if defined(MOZ_WIDGET_GONK) && ANDROID_VERSION >= 17
+  return HwcComposer2D::GetInstance()->GetHWVsyncRate();
+#else
+  return 60;
+#endif
 }
 
 void
@@ -56,20 +99,27 @@ VsyncDispatcher::DispatchTouchEvents(bool aNotifiedCompositors, TimeStamp aVsync
 void
 VsyncDispatcher::NotifyVsync(TimeStamp aVsyncTimestamp)
 {
+  // Notify compositor.
   bool notifiedCompositors = false;
-  if (gfxPrefs::VsyncAlignedCompositor()) {
-    MutexAutoLock lock(mCompositorObserverLock);
-    notifiedCompositors = NotifyVsyncObservers(aVsyncTimestamp, mCompositorObservers);
-  }
+  notifiedCompositors = NotifyVsyncObservers(mCompositorObserverLock,
+                                             aVsyncTimestamp,
+                                             mCompositorObservers);
 
+  // Notify input dispatcher.
   DispatchTouchEvents(notifiedCompositors, aVsyncTimestamp);
+
+  // Noitfy refresh driver.
+  NotifyVsyncObservers(mRefreshDriverObserverLock,
+                       aVsyncTimestamp,
+                       mRefreshDriverObservers);
 }
 
 bool
-VsyncDispatcher::NotifyVsyncObservers(TimeStamp aVsyncTimestamp, nsTArray<nsRefPtr<VsyncObserver>>& aObservers)
+VsyncDispatcher::NotifyVsyncObservers(Mutex& aMutex, TimeStamp aVsyncTimestamp, nsTArray<nsRefPtr<VsyncObserver>>& aObservers)
 {
-  // Callers should lock the respective lock for the aObservers before calling this function
-  for (size_t i = 0; i < aObservers.Length(); i++) {
+  MutexAutoLock lock(aMutex);
+
+  for (size_t i = 0; i < aObservers.Length(); ++i) {
     aObservers[i]->NotifyVsync(aVsyncTimestamp);
  }
  return !aObservers.IsEmpty();
@@ -80,6 +130,7 @@ VsyncDispatcher::AddCompositorVsyncObserver(VsyncObserver* aVsyncObserver)
 {
   MOZ_ASSERT(CompositorParent::IsInCompositorThread());
   MutexAutoLock lock(mCompositorObserverLock);
+
   if (!mCompositorObservers.Contains(aVsyncObserver)) {
     mCompositorObservers.AppendElement(aVsyncObserver);
   }
@@ -90,10 +141,31 @@ VsyncDispatcher::RemoveCompositorVsyncObserver(VsyncObserver* aVsyncObserver)
 {
   MOZ_ASSERT(CompositorParent::IsInCompositorThread());
   MutexAutoLock lock(mCompositorObserverLock);
+
   if (mCompositorObservers.Contains(aVsyncObserver)) {
     mCompositorObservers.RemoveElement(aVsyncObserver);
   } else {
     NS_WARNING("Could not delete a compositor vsync observer\n");
+  }
+}
+
+void
+VsyncDispatcher::AddRefreshDriverVsyncObserver(VsyncObserver* aVsyncObserver)
+{
+  MutexAutoLock lock(mRefreshDriverObserverLock);
+
+  if (!mRefreshDriverObservers.Contains(aVsyncObserver)) {
+    mRefreshDriverObservers.AppendElement(aVsyncObserver);
+  }
+}
+
+void
+VsyncDispatcher::RemoveRefreshDriverVsyncObserver(VsyncObserver* aVsyncObserver)
+{
+  MutexAutoLock lock(mRefreshDriverObserverLock);
+
+  if (mRefreshDriverObservers.Contains(aVsyncObserver)) {
+    mRefreshDriverObservers.RemoveElement(aVsyncObserver);
   }
 }
 
