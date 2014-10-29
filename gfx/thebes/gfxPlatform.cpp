@@ -9,6 +9,7 @@
 #include "mozilla/layers/ImageBridgeChild.h"
 #include "mozilla/layers/SharedBufferManagerChild.h"
 #include "mozilla/layers/ISurfaceAllocator.h"     // for GfxMemoryImageReporter
+#include "mozilla/VsyncDispatcher.h"
 
 #include "prlog.h"
 
@@ -394,6 +395,13 @@ gfxPlatform::Init()
     mozilla::gl::GLContext::StaticInit();
 #endif
 
+    // Startup the vsync dispatcher at Chrome process.
+    if (gfxPrefs::VsyncEnabled() && UsesOffMainThreadCompositing() &&
+      XRE_GetProcessType() == GeckoProcessType_Default)
+    {
+       VsyncDispatcher::Startup();
+    }
+
     InitLayersIPC();
 
     nsresult rv;
@@ -506,6 +514,12 @@ gfxPlatform::Shutdown()
 
         gPlatform->mMemoryPressureObserver = nullptr;
         gPlatform->mSkiaGlue = nullptr;
+    }
+
+    if (gfxPrefs::VsyncEnabled() && UsesOffMainThreadCompositing() &&
+      XRE_GetProcessType() == GeckoProcessType_Default)
+    {
+       VsyncDispatcher::Shutdown();
     }
 
 #ifdef MOZ_WIDGET_ANDROID
