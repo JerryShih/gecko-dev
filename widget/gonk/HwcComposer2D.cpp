@@ -26,10 +26,10 @@
 #include "mozilla/layers/PLayerTransaction.h"
 #include "mozilla/layers/ShadowLayerUtilsGralloc.h"
 #include "mozilla/layers/TextureHostOGL.h"  // for TextureHostOGL
+#include "mozilla/ArrayUtils.h"
 #include "mozilla/StaticPtr.h"
 #include "cutils/properties.h"
 #include "gfx2DGlue.h"
-#include "GeckoTouchDispatcher.h"
 
 #ifdef MOZ_ENABLE_PROFILER_SPS
 #include "GeckoProfiler.h"
@@ -115,11 +115,17 @@ HwcComposer2D::HwcComposer2D()
     , mPrevRetireFence(Fence::NO_FENCE)
     , mPrevDisplayFence(Fence::NO_FENCE)
     , mLastVsyncTime(0)
+    , mVsyncRate(0)
 #endif
     , mPrepared(false)
     , mHasHWVsync(false)
     , mLock("mozilla.HwcComposer2D.mLock")
 {
+#if ANDROID_VERSION >= 17
+    // Init hwc vsync, hotplug and invalidate event.
+    // Only android > 17 has this function.
+    InitHwcEventCallback();
+#endif
 }
 
 HwcComposer2D::~HwcComposer2D() {
@@ -158,10 +164,6 @@ HwcComposer2D::Init(hwc_display_t dpy, hwc_surface_t sur, gl::GLContext* aGLCont
         mColorFill = false;
         mRBSwapSupport = false;
     }
-
-    if (RegisterHwcEventCallback()) {
-        EnableVsync(true);
-    }
 #else
     char propValue[PROPERTY_VALUE_MAX];
     property_get("ro.display.colorfill", propValue, "0");
@@ -190,6 +192,12 @@ void
 HwcComposer2D::EnableVsync(bool aEnable)
 {
 #if ANDROID_VERSION >= 17
+    if (!gfxPrefs::HardwareVsyncEnabled()) {
+        return;
+    }
+
+    MOZ_ASSERT(mHasHWVsync);
+
     if (NS_IsMainThread()) {
         RunVsyncEventControl(aEnable);
     } else {
@@ -201,31 +209,59 @@ HwcComposer2D::EnableVsync(bool aEnable)
 }
 
 #if ANDROID_VERSION >= 17
-bool
-HwcComposer2D::RegisterHwcEventCallback()
+void
+HwcComposer2D::InitHwcEventCallback()
 {
+    // Init the hw event callback.
     HwcDevice* device = (HwcDevice*)GetGonkDisplay()->GetHWCDevice();
     if (!device || !device->registerProcs) {
-        LOGE("Failed to get hwc");
-        return false;
+        LOGE("Failed to get hwc.");
+        return;
     }
-
-    // Disable Vsync first, and then register callback functions.
+    // Turn off vsync event by default. Call EnableVsync() if we need vsync
+    // later.
     device->eventControl(device, HWC_DISPLAY_PRIMARY, HWC_EVENT_VSYNC, false);
     device->registerProcs(device, &sHWCProcs);
-    mHasHWVsync = true;
 
     if (!gfxPrefs::HardwareVsyncEnabled()) {
-        device->eventControl(device, HWC_DISPLAY_PRIMARY, HWC_EVENT_VSYNC, false);
-        mHasHWVsync = false;
+        return;
     }
 
+    // Query the hw vsync period
+    const uint32_t HWC_ATTRIBUTES[] = {
+        HWC_DISPLAY_VSYNC_PERIOD,
+        HWC_DISPLAY_NO_ATTRIBUTE
+    };
+    int32_t values[ArrayLength(HWC_ATTRIBUTES)] = { 0 };
+
+    device->getDisplayAttributes(device, 0, 0, HWC_ATTRIBUTES, values);
+    if (values[0] <= 0) {
+        LOGE("Failed to get hwc vsync attribute.");
+        return;
+    }
+
+    mVsyncRate = 1.0e9 / values[0] + 0.5;
+
+    mHasHWVsync = true;
+}
+
+bool
+HwcComposer2D::HasHWVsync() const
+{
     return mHasHWVsync;
+}
+
+uint32_t
+HwcComposer2D::GetHWVsyncRate() const
+{
+    return mVsyncRate;
 }
 
 void
 HwcComposer2D::RunVsyncEventControl(bool aEnable)
 {
+    MOZ_ASSERT(mHasHWVsync);
+
     if (mHasHWVsync) {
         HwcDevice* device = (HwcDevice*)GetGonkDisplay()->GetHWCDevice();
         if (device && device->eventControl) {
@@ -237,6 +273,8 @@ HwcComposer2D::RunVsyncEventControl(bool aEnable)
 void
 HwcComposer2D::Vsync(int aDisplay, nsecs_t aVsyncTimestamp)
 {
+    MOZ_ASSERT(mHasHWVsync);
+
     TimeStamp vsyncTime = mozilla::TimeStamp(aVsyncTimestamp);
     nsecs_t vsyncInterval = aVsyncTimestamp - mLastVsyncTime;
     if (vsyncInterval < 16000000 || vsyncInterval > 17000000) {
@@ -257,11 +295,6 @@ HwcComposer2D::Vsync(int aDisplay, nsecs_t aVsyncTimestamp)
 void
 HwcComposer2D::Invalidate()
 {
-    if (!Initialized()) {
-        LOGE("HwcComposer2D::Invalidate failed!");
-        return;
-    }
-
     MutexAutoLock lock(mLock);
     if (mCompositorParent) {
         mCompositorParent->ScheduleRenderOnCompositorThread();

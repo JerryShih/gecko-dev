@@ -159,6 +159,9 @@ nsWindow::nsWindow()
 
     nsAppShell::NotifyScreenInitialized();
 
+    // Force to initialize hwc2d at early stage.
+    HwcComposer2D::GetInstance();
+
     // This is a hack to force initialization of the compositor
     // resources, if we're going to use omtc.
     //
