@@ -6,26 +6,15 @@
 #ifndef mozilla_widget_VsyncDispatcher_h
 #define mozilla_widget_VsyncDispatcher_h
 
-#include "base/message_loop.h"
 #include "mozilla/Mutex.h"
-#include "nsISupportsImpl.h"
+#include "mozilla/TimeStamp.h"
 #include "nsTArray.h"
 #include "ThreadSafeRefcountingWithMainThreadDestruction.h"
 
-class MessageLoop;
-
 namespace mozilla {
-class TimeStamp;
-
-namespace layers {
-class CompositorVsyncObserver;
-}
 
 class VsyncObserver
 {
-  // Must be destroyed on main thread since the compositor is as well
-  NS_INLINE_DECL_THREADSAFE_REFCOUNTING_WITH_MAIN_THREAD_DESTRUCTION(VsyncObserver)
-
 public:
   // The method called when a vsync occurs. Return true if some work was done.
   // Vsync notifications will occur on the hardware vsync thread
@@ -39,30 +28,58 @@ protected:
 // VsyncDispatcher is used to dispatch vsync events to the registered observers.
 class VsyncDispatcher
 {
-  NS_INLINE_DECL_THREADSAFE_REFCOUNTING(VsyncDispatcher)
+  NS_INLINE_DECL_THREADSAFE_REFCOUNTING_WITH_MAIN_THREAD_DESTRUCTION(VsyncDispatcher);
 
 public:
+  // Startup/shutdown vsync dispatcher framework. It should run at Chrome
+  // main thread.
+  static void Startup();
+  static void Shutdown();
+
   static VsyncDispatcher* GetInstance();
-  // Called on the vsync thread when a hardware vsync occurs
+
+  // Called on the vsync thread when a vsync event occurs.
   void NotifyVsync(TimeStamp aVsyncTimestamp);
 
-  // Compositor vsync observers must be added/removed on the compositor thread
+  // Return the vsync rate per second.
+  uint32_t GetVsyncRate() const ;
+
+  // Add/remove vsync observer for compositor and refresh driver.
+  // The observer should call remove observer before its dtor.
+  // These function can run at any thread.
   void AddCompositorVsyncObserver(VsyncObserver* aVsyncObserver);
   void RemoveCompositorVsyncObserver(VsyncObserver* aVsyncObserver);
+
+  void AddRefreshDriverVsyncObserver(VsyncObserver* aVsyncObserver);
+  void RemoveRefreshDriverVsyncObserver(VsyncObserver* aVsyncObserver);
 
 private:
   VsyncDispatcher();
   virtual ~VsyncDispatcher();
+
+  void AddObserver(Mutex& aMutex,
+                   nsTArray<VsyncObserver*>& aObserverList,
+                   VsyncObserver* aVsyncObserver);
+  void RemoveObserver(Mutex& aMutex,
+                      nsTArray<VsyncObserver*>& aObserverList,
+                      VsyncObserver* aVsyncObserver);
+
   void DispatchTouchEvents(bool aNotifiedCompositors, TimeStamp aVsyncTime);
 
-  // Called on the vsync thread. Returns true if observers were notified
-  bool NotifyVsyncObservers(TimeStamp aVsyncTimestamp, nsTArray<nsRefPtr<VsyncObserver>>& aObservers);
+  // Called on the vsync thread. Returns true if observers were notified.
+  bool NotifyVsyncObservers(Mutex& aMutex,
+                            TimeStamp aVsyncTimestamp,
+                            nsTArray<VsyncObserver*>& aObservers);
 
-  // Can have multiple compositors. On desktop, this is 1 compositor per window
+  // Can have multiple compositors. On desktop, this is 1 compositor per window.
   Mutex mCompositorObserverLock;
-  nsTArray<nsRefPtr<VsyncObserver>> mCompositorObservers;
+  nsTArray<VsyncObserver*> mCompositorObservers;
+
+  // Chrome and Content's refresh driver observer list.
+  Mutex mRefreshDriverObserverLock;
+  nsTArray<VsyncObserver*> mRefreshDriverObservers;
 };
 
 } // namespace mozilla
 
-#endif // __mozilla_widget_VsyncDispatcher_h
+#endif // mozilla_widget_VsyncDispatcher_h
