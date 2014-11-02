@@ -65,6 +65,8 @@
 #endif
 #include "mozilla/VsyncDispatcher.h"
 
+#include "mozilla/VsyncDispatcherTrace.h"
+
 #ifdef MOZ_WIDGET_GONK
 #include "GeckoTouchDispatcher.h"
 #endif
@@ -842,6 +844,8 @@ SetShadowProperties(Layer* aLayer)
 void
 CompositorParent::CompositeToTarget(DrawTarget* aTarget, const nsIntRect* aRect)
 {
+  VSYNC_SCOPED_SYSTRACE_LABEL_PRINTF("CompositorParent::CompositeToTargetd");
+
   profiler_tracing("Paint", "Composite", TRACING_INTERVAL_START);
   PROFILER_LABEL("CompositorParent", "Composite",
     js::ProfileEntry::Category::GRAPHICS);
@@ -1000,6 +1004,9 @@ CompositorParent::ShadowLayersUpdated(LayerTransactionParent* aLayerTree,
 
   MOZ_ASSERT(aTransactionId > mPendingTransaction);
   mPendingTransaction = aTransactionId;
+
+  VSYNC_SCOPED_SYSTRACE_LABEL_PRINTF("CompositorParent::ShadowLayersUpdated tid:%d",
+        (int)mPendingTransaction);
 
   if (root) {
     SetShadowProperties(root);
@@ -1641,6 +1648,9 @@ CrossProcessCompositorParent::ShadowLayersUpdated(
     mNotifyAfterRemotePaint = false;
   }
 
+  VSYNC_SCOPED_SYSTRACE_LABEL_PRINTF("CrossProcessCompositorParent::ShadowLayersUpdated tid:%d",
+        (int)aTransactionId);
+
   aLayerTree->SetPendingTransactionId(aTransactionId);
 }
 
@@ -1650,6 +1660,8 @@ CrossProcessCompositorParent::DidComposite(uint64_t aId)
   LayerTransactionParent *layerTree = sIndirectLayerTrees[aId].mLayerTree;
   if (layerTree && layerTree->GetPendingTransactionId()) {
     unused << SendDidComposite(aId, layerTree->GetPendingTransactionId());
+    VSYNC_SCOPED_SYSTRACE_LABEL_PRINTF("CrossProcessCompositorParent::DidComposite tid:%d",
+          (int)layerTree->GetPendingTransactionId());
     layerTree->SetPendingTransactionId(0);
   }
 }

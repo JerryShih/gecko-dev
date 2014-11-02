@@ -14,6 +14,8 @@
 #include "gfx2DGlue.h"
 #include "SharedSurfaceGralloc.h"
 
+#include "mozilla/VsyncDispatcherTrace.h"
+
 namespace mozilla {
 namespace layers {
 
@@ -97,6 +99,8 @@ GrallocTextureClientOGL::WaitForBufferOwnership()
 
 #if defined(MOZ_WIDGET_GONK) && ANDROID_VERSION >= 17
    if (mReleaseFenceHandle.IsValid()) {
+     VSYNC_SCOPED_SYSTRACE_LABEL("GrallocTextureClientOGL::WaitForBufferOwnership");
+
      android::sp<Fence> fence = mReleaseFenceHandle.mFence;
 #if ANDROID_VERSION == 17
      fence->waitForever(1000, "GrallocTextureClientOGL::Lock");

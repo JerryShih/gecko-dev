@@ -153,6 +153,8 @@ protected:
    */
   void Tick()
   {
+    VSYNC_SCOPED_SYSTRACE_LABEL("RefreshDriverTimer::Tick");
+
     TickInternal(JS_Now(), TimeStamp::Now());
   }
 
@@ -180,6 +182,8 @@ protected:
 private:
   void TickInternal(int64_t aJSNow, TimeStamp aTimestampNow)
   {
+    VSYNC_SCOPED_SYSTRACE_LABEL("RefreshDriverTimer::Tick");
+
     MOZ_ASSERT(NS_IsMainThread());
 
     ScheduleNextTick(aTimestampNow);
@@ -1354,6 +1358,8 @@ nsRefreshDriver::ArrayFor(mozFlushType aFlushType)
 void
 nsRefreshDriver::DoTick()
 {
+  VSYNC_SCOPED_SYSTRACE_LABEL("nsRefreshDriver::DoTick");
+
   NS_PRECONDITION(!IsFrozen(), "Why are we notified while frozen?");
   NS_PRECONDITION(mPresContext, "Why are we notified after disconnection?");
   NS_PRECONDITION(!nsContentUtils::GetCurrentJSContext(),
@@ -1424,6 +1430,12 @@ static void GetProfileTimelineSubDocShells(nsDocShell* aRootDocShell,
 void
 nsRefreshDriver::Tick(int64_t aNowEpoch, TimeStamp aNowTime)
 {
+  VSYNC_SCOPED_SYSTRACE_LABEL_PRINTF("nsRefreshDriver::Tick, pid:%d, cid:%d, wait:%d, skip:%d",
+      (int)mPendingTransaction,
+      (int)mCompletedTransaction,
+      (int)mWaitingForTransaction,
+      (int)mSkippedPaints);
+
   NS_PRECONDITION(!nsContentUtils::GetCurrentJSContext(),
                   "Shouldn't have a JSContext on the stack");
 
@@ -1804,6 +1816,12 @@ nsRefreshDriver::Thaw()
 void
 nsRefreshDriver::FinishedWaitingForTransaction()
 {
+  VSYNC_SCOPED_SYSTRACE_LABEL_PRINTF("nsRefreshDriver::FinishedWaitingForTransaction, pid:%d, cid:%d, wait:%d, skip:%d",
+      (int)mPendingTransaction,
+      (int)mCompletedTransaction,
+      (int)mWaitingForTransaction,
+      (int)mSkippedPaints);
+
   mWaitingForTransaction = false;
   if (mSkippedPaints &&
       !IsInRefresh() &&
@@ -1827,6 +1845,12 @@ nsRefreshDriver::GetTransactionId()
     mSkippedPaints = false;
   }
 
+  VSYNC_SCOPED_SYSTRACE_LABEL_PRINTF("nsRefreshDriver::GetTransactionId, pid:%d, cid:%d, wait:%d, skip:%d",
+      (int)mPendingTransaction,
+      (int)mCompletedTransaction,
+      (int)mWaitingForTransaction,
+      (int)mSkippedPaints);
+
   return mPendingTransaction;
 }
 
@@ -1840,6 +1864,12 @@ nsRefreshDriver::RevokeTransactionId(uint64_t aTransactionId)
     FinishedWaitingForTransaction();
   }
   mPendingTransaction--;
+
+  VSYNC_SCOPED_SYSTRACE_LABEL_PRINTF("nsRefreshDriver::RevokeTransactionId, pid:%d, cid:%d, wait:%d, skip:%d",
+      (int)mPendingTransaction,
+      (int)mCompletedTransaction,
+      (int)mWaitingForTransaction,
+      (int)mSkippedPaints);
 }
 
 mozilla::TimeStamp
@@ -1851,6 +1881,13 @@ nsRefreshDriver::GetTransactionStart()
 void
 nsRefreshDriver::NotifyTransactionCompleted(uint64_t aTransactionId)
 {
+  VSYNC_SCOPED_SYSTRACE_LABEL_PRINTF("nsRefreshDriver::NotifyTransactionCompleted start, recv_id:%d pid:%d, cid:%d, wait:%d, skip:%d",
+      (int)aTransactionId,
+      (int)mPendingTransaction,
+      (int)mCompletedTransaction,
+      (int)mWaitingForTransaction,
+      (int)mSkippedPaints);
+
   if (aTransactionId > mCompletedTransaction) {
     if (mPendingTransaction > mCompletedTransaction + 1 &&
         mWaitingForTransaction) {
@@ -1860,6 +1897,12 @@ nsRefreshDriver::NotifyTransactionCompleted(uint64_t aTransactionId)
       mCompletedTransaction = aTransactionId;
     }
   }
+
+  VSYNC_SCOPED_SYSTRACE_LABEL_PRINTF("nsRefreshDriver::NotifyTransactionCompleted end, pid:%d, cid:%d, wait:%d, skip:%d",
+      (int)mPendingTransaction,
+      (int)mCompletedTransaction,
+      (int)mWaitingForTransaction,
+      (int)mSkippedPaints);
 }
 
 void
@@ -1932,6 +1975,8 @@ nsRefreshDriver::SetThrottled(bool aThrottled)
 void
 nsRefreshDriver::DoRefresh()
 {
+  VSYNC_SCOPED_SYSTRACE_LABEL("nsRefreshDriver::DoRefresh()");
+
   // Don't do a refresh unless we're in a state where we should be refreshing.
   if (!IsFrozen() && mPresContext && mActiveTimer) {
     DoTick();
