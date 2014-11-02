@@ -57,6 +57,7 @@
 #include "mozilla/ipc/PBackgroundChild.h"
 #include "nsIIPCBackgroundChildCreateCallback.h"
 #include "mozilla/layout/VsyncEventChild.h"
+#include "mozilla/VsyncDispatcherTrace.h"
 
 using namespace mozilla;
 using namespace mozilla::ipc;

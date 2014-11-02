@@ -124,6 +124,7 @@ EXPORTS.mozilla += [
     'TextRange.h',
     'TouchEvents.h',
     'VsyncDispatcher.h',
+    'VsyncDispatcherTrace.h',
     'WidgetUtils.h',
 ]
 
@@ -165,6 +166,7 @@ UNIFIED_SOURCES += [
 # nsBaseWidget.cpp needs to be built separately because of name clashes in the OS X headers
 SOURCES += [
     'nsBaseWidget.cpp',
+    'VsyncDispatcherTrace.cpp',
 ]
 
 if CONFIG['MOZ_INSTRUMENT_EVENT_LOOP']:
