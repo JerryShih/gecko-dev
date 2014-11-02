@@ -51,6 +51,7 @@
 #include "nsDocShell.h"
 #include "nsISimpleEnumerator.h"
 #include "mozilla/VsyncDispatcher.h"
+#include "mozilla/VsyncDispatcherTrace.h"
 #include "mozilla/layout/VsyncEventChild.h"
 #include "gfxPrefs.h"
 
@@ -282,6 +283,8 @@ private:
 
       int64_t jsnow = jsRefNow - diff.ToMicroseconds();
       TimeStamp now = aTimestamp;
+
+      VSYNC_SCOPED_SYSTRACE_LABEL_PRINTF("RD tick, diff:%d", jsnow - mLastFireEpoch);
 
       nsTArray<nsRefPtr<nsRefreshDriver> > drivers(mRefreshDrivers);
       // RD is short for RefreshDriver.
