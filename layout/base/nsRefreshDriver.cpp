@@ -148,6 +148,7 @@ protected:
    */
   void Tick()
   {
+    VSYNC_SCOPED_SYSTRACE_LABEL("RefreshDriverTimer::Tick");
     int64_t jsnow = JS_Now();
     TimeStamp now = TimeStamp::Now();
 
@@ -284,7 +285,7 @@ private:
       int64_t jsnow = jsRefNow - diff.ToMicroseconds();
       TimeStamp now = aTimestamp;
 
-      VSYNC_SCOPED_SYSTRACE_LABEL_PRINTF("RD tick, diff:%d", jsnow - mLastFireEpoch);
+      VSYNC_SCOPED_SYSTRACE_LABEL("VsyncRefreshDriverTimer::NotifyVsync");
 
       nsTArray<nsRefPtr<nsRefreshDriver> > drivers(mRefreshDrivers);
       // RD is short for RefreshDriver.
@@ -1242,6 +1243,8 @@ nsRefreshDriver::ArrayFor(mozFlushType aFlushType)
 void
 nsRefreshDriver::DoTick()
 {
+  VSYNC_SCOPED_SYSTRACE_LABEL("nsRefreshDriver::DoTick");
+
   NS_PRECONDITION(!IsFrozen(), "Why are we notified while frozen?");
   NS_PRECONDITION(mPresContext, "Why are we notified after disconnection?");
   NS_PRECONDITION(!nsContentUtils::GetCurrentJSContext(),
@@ -1312,6 +1315,8 @@ static void GetProfileTimelineSubDocShells(nsDocShell* aRootDocShell,
 void
 nsRefreshDriver::Tick(int64_t aNowEpoch, TimeStamp aNowTime)
 {
+  VSYNC_SCOPED_SYSTRACE_LABEL("nsRefreshDriver::Tick");
+
   NS_PRECONDITION(!nsContentUtils::GetCurrentJSContext(),
                   "Shouldn't have a JSContext on the stack");
 
@@ -1816,6 +1821,8 @@ nsRefreshDriver::SetThrottled(bool aThrottled)
 void
 nsRefreshDriver::DoRefresh()
 {
+  VSYNC_SCOPED_SYSTRACE_LABEL("nsRefreshDriver::DoRefresh()");
+
   // Don't do a refresh unless we're in a state where we should be refreshing.
   if (!IsFrozen() && mPresContext && mActiveTimer) {
     DoTick();

@@ -37,6 +37,7 @@
 #endif
 
 #if ANDROID_VERSION >= 17
+#include "mozilla/VsyncDispatcherTrace.h"
 #include "libdisplay/FramebufferSurface.h"
 #include "gfxPrefs.h"
 #include "nsThreadUtils.h"
@@ -290,6 +291,8 @@ HwcComposer2D::RunVsyncEventControl(bool aEnable)
 void
 HwcComposer2D::Vsync(int aDisplay, nsecs_t aVsyncTimestamp)
 {
+    VSYNC_SCOPED_SYSTRACE_LABEL("HwcComposer2D::Vsync");
+
     MOZ_ASSERT(mHasHWVsync);
     TimeStamp vsyncTime = mozilla::TimeStamp(aVsyncTimestamp);
     nsecs_t vsyncInterval = aVsyncTimestamp - mLastVsyncTime;
