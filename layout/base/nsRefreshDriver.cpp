@@ -51,6 +51,8 @@
 #include "nsDocShell.h"
 #include "nsISimpleEnumerator.h"
 
+#include "mozilla/VsyncDispatcherTrace.h"
+
 using namespace mozilla;
 using namespace mozilla::widget;
 
@@ -143,6 +145,8 @@ protected:
    */
   void Tick()
   {
+    VSYNC_SCOPED_SYSTRACE_LABEL("Timer::Tick()");
+
     int64_t jsnow = JS_Now();
     TimeStamp now = TimeStamp::Now();
 
@@ -1026,6 +1030,8 @@ nsRefreshDriver::ArrayFor(mozFlushType aFlushType)
 void
 nsRefreshDriver::DoTick()
 {
+  VSYNC_SCOPED_SYSTRACE_LABEL("nsRefreshDriver::DoTick");
+
   NS_PRECONDITION(!IsFrozen(), "Why are we notified while frozen?");
   NS_PRECONDITION(mPresContext, "Why are we notified after disconnection?");
   NS_PRECONDITION(!nsContentUtils::GetCurrentJSContext(),
@@ -1096,6 +1102,8 @@ static void GetProfileTimelineSubDocShells(nsDocShell* aRootDocShell,
 void
 nsRefreshDriver::Tick(int64_t aNowEpoch, TimeStamp aNowTime)
 {
+  VSYNC_SCOPED_SYSTRACE_LABEL("nsRefreshDriver::Tick");
+
   NS_PRECONDITION(!nsContentUtils::GetCurrentJSContext(),
                   "Shouldn't have a JSContext on the stack");
 
