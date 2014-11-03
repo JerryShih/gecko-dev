@@ -149,6 +149,7 @@ protected:
   void Tick()
   {
     VSYNC_SCOPED_SYSTRACE_LABEL("RefreshDriverTimer::Tick");
+
     int64_t jsnow = JS_Now();
     TimeStamp now = TimeStamp::Now();
 
@@ -1315,7 +1316,11 @@ static void GetProfileTimelineSubDocShells(nsDocShell* aRootDocShell,
 void
 nsRefreshDriver::Tick(int64_t aNowEpoch, TimeStamp aNowTime)
 {
-  VSYNC_SCOPED_SYSTRACE_LABEL("nsRefreshDriver::Tick");
+  VSYNC_SCOPED_SYSTRACE_LABEL_PRINTF("nsRefreshDriver::Tick, pid:%d, cid:%d, wait:%d, skip:%d",
+      (int)mPendingTransaction,
+      (int)mCompletedTransaction,
+      (int)mWaitingForTransaction,
+      (int)mSkippedPaints);
 
   NS_PRECONDITION(!nsContentUtils::GetCurrentJSContext(),
                   "Shouldn't have a JSContext on the stack");
@@ -1693,6 +1698,12 @@ nsRefreshDriver::Thaw()
 void
 nsRefreshDriver::FinishedWaitingForTransaction()
 {
+  VSYNC_SCOPED_SYSTRACE_LABEL_PRINTF("nsRefreshDriver::FinishedWaitingForTransaction, pid:%d, cid:%d, wait:%d, skip:%d",
+      (int)mPendingTransaction,
+      (int)mCompletedTransaction,
+      (int)mWaitingForTransaction,
+      (int)mSkippedPaints);
+
   mWaitingForTransaction = false;
   if (mSkippedPaints &&
       !IsInRefresh() &&
@@ -1740,6 +1751,12 @@ nsRefreshDriver::GetTransactionStart()
 void
 nsRefreshDriver::NotifyTransactionCompleted(uint64_t aTransactionId)
 {
+  VSYNC_SCOPED_SYSTRACE_LABEL_PRINTF("nsRefreshDriver::NotifyTransactionCompleted, pid:%d, cid:%d, wait:%d, skip:%d",
+      (int)mPendingTransaction,
+      (int)mCompletedTransaction,
+      (int)mWaitingForTransaction,
+      (int)mSkippedPaints);
+
   if (aTransactionId > mCompletedTransaction) {
     if (mPendingTransaction > mCompletedTransaction + 1 &&
         mWaitingForTransaction) {
