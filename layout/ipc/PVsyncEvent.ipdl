@@ -1,0 +1,43 @@
+/* -*- Mode: C++; tab-width: 2; indent-tabs-mode: nil; c-basic-offset: 2 -*- */
+/* This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
+
+include protocol PBackground;
+
+using class mozilla::TimeStamp from "mozilla/TimeStamp.h";
+
+namespace mozilla {
+namespace layout {
+
+/*
+ * The PVsyncEvent is a sub-protocol in PBackground and it is used to notify
+ * the vsync event from chrome to content process. It also provides the
+ * interfaces for content to observe/unobserve vsync event notification.
+ */
+sync protocol PVsyncEvent
+{
+  manager PBackground;
+
+child:
+  // Send vsync event from chrome to content process.
+  async NotifyVsyncEvent(TimeStamp aVsyncTimestamp);
+
+  // Reply the vsync rate request from content.
+  async ReplyVsyncRate(uint32_t vsyncRate);
+
+parent:
+  __delete__();
+
+  // Observe vsync event notification or not for child side.
+  async ObserveVsync();
+  async UnobserveVsync();
+
+  // Request vsync rate by async method. We will get the reply by
+  // "ReplyVsyncRate" message.
+  async RequestVsyncRate();
+};
+
+} // namespace layout
+} // namespace mozilla
+
