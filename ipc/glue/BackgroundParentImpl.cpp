@@ -11,6 +11,7 @@
 #include "mozilla/dom/ipc/BlobParent.h"
 #include "mozilla/ipc/BackgroundParent.h"
 #include "mozilla/ipc/PBackgroundTestParent.h"
+#include "mozilla/layout/VsyncEventParent.h"
 #include "nsThreadUtils.h"
 #include "nsTraceRefcnt.h"
 #include "nsXULAppAPI.h"
@@ -202,6 +203,28 @@ BackgroundParentImpl::DeallocPFileDescriptorSetParent(
   MOZ_ASSERT(aActor);
 
   delete static_cast<FileDescriptorSetParent*>(aActor);
+  return true;
+}
+
+
+BackgroundParentImpl::PVsyncEventParent*
+BackgroundParentImpl::AllocPVsyncEventParent()
+{
+  AssertIsInMainProcess();
+  AssertIsOnBackgroundThread();
+
+  return mozilla::layout::VsyncEventParent::Create();
+}
+
+bool
+BackgroundParentImpl::DeallocPVsyncEventParent(PVsyncEventParent* aActor)
+{
+  AssertIsInMainProcess();
+  AssertIsOnBackgroundThread();
+  MOZ_ASSERT(aActor);
+
+  static_cast<mozilla::layout::VsyncEventParent*>(aActor)->Destroy();
+
   return true;
 }
 

@@ -9,6 +9,7 @@
 #include "mozilla/dom/indexedDB/PBackgroundIDBFactoryChild.h"
 #include "mozilla/dom/ipc/BlobChild.h"
 #include "mozilla/ipc/PBackgroundTestChild.h"
+#include "mozilla/layout/VsyncEventChild.h"
 #include "nsTraceRefcnt.h"
 
 namespace {
@@ -151,6 +152,22 @@ BackgroundChildImpl::DeallocPFileDescriptorSetChild(
   MOZ_ASSERT(aActor);
 
   delete static_cast<FileDescriptorSetChild*>(aActor);
+  return true;
+}
+
+BackgroundChildImpl::PVsyncEventChild*
+BackgroundChildImpl::AllocPVsyncEventChild()
+{
+  return mozilla::layout::VsyncEventChild::Create();
+}
+
+bool
+BackgroundChildImpl::DeallocPVsyncEventChild(PVsyncEventChild* aActor)
+{
+  MOZ_ASSERT(aActor);
+
+  static_cast<mozilla::layout::VsyncEventChild*>(aActor)->Destory();
+
   return true;
 }
 

@@ -59,6 +59,12 @@ protected:
   virtual bool
   DeallocPFileDescriptorSetParent(PFileDescriptorSetParent* aActor)
                                   MOZ_OVERRIDE;
+
+  virtual PVsyncEventParent*
+  AllocPVsyncEventParent() MOZ_OVERRIDE;
+
+  virtual bool
+  DeallocPVsyncEventParent(PVsyncEventParent* aActor) MOZ_OVERRIDE;
 };
 
 } // namespace ipc

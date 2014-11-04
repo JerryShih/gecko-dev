@@ -69,6 +69,12 @@ protected:
 
   virtual bool
   DeallocPFileDescriptorSetChild(PFileDescriptorSetChild* aActor) MOZ_OVERRIDE;
+
+  virtual PVsyncEventChild*
+  AllocPVsyncEventChild() MOZ_OVERRIDE;
+
+  virtual bool
+  DeallocPVsyncEventChild(PVsyncEventChild* aActor) MOZ_OVERRIDE;
 };
 
 class BackgroundChildImpl::ThreadLocal MOZ_FINAL
