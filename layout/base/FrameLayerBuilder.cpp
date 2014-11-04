@@ -3088,7 +3088,6 @@ ContainerState::ProcessDisplayItems(nsDisplayList* aList)
       aList->SetNeedsTransparentSurface();
     }
 
-    //bignose test
     //silk
     nsAutoString className;
     if (finalSelectedLayer.get() && item->Frame()->GetContent()) {
@@ -3099,8 +3098,7 @@ ContainerState::ProcessDisplayItems(nsDisplayList* aList)
         // We can get the class name from gfxPref. Use "silk" string for WIP implementation.
         if (!className.IsEmpty() && className.Find("silk") != kNotFound) {
           finalSelectedLayer->SetPosDumpInfo(true, NS_LossyConvertUTF16toASCII(className).get());
-        }
-        else {
+        } else {
           finalSelectedLayer->SetPosDumpInfo(false, nullptr);
         }
       }

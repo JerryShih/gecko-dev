@@ -178,7 +178,7 @@ public:
 
   }
 
-  void Update(uint32_t aFrameNumber, DataType aData)
+  void Update(uint32_t aFrameNumber, DataType aData, bool aCorner = false)
   {
     if (!aCircularRecording) {
       if ( mNum >= DataNum) {
@@ -186,7 +186,15 @@ public:
       }
     }
 
-    mDataArray[mNextDataIndex] = LogData(aData, aFrameNumber);
+    mDataArray[mNextDataIndex] = LogData(aData, aFrameNumber, aCorner);
+    if (aCorner) {
+      if (mNextDataIndex > 0) {
+        mDataArray[mNextDataIndex-1].SetCorner();
+      } else if (!mDataArray.empty()) {
+        // special, if mNextDataIndex == 0
+        mDataArray[mDataArray.size()-1].SetCorner();
+      }
+    }
     mNextDataIndex = (mNextDataIndex + 1) % DataNum;
     mNum = std::min(mNum+1, DataNum);
   }
@@ -209,7 +217,7 @@ public:
         mPrintRawFunc(mMsg.c_str(), mDataArray[index].mFrameNumber, mDataArray[index].mDataValue);
       }
       else {
-        PrintRawDefault(mMsg.c_str(), mDataArray[index].mFrameNumber, mDataArray[index].mDataValue);
+        PrintRawDefault(mMsg.c_str(), mDataArray[index].mFrameNumber, mDataArray[index].mDataValue, mDataArray[index].mCorner);
       }
       index = (index + 1) % DataNum;
     }
@@ -251,39 +259,53 @@ private:
     LogData()
       : mDataValue(0)
       , mFrameNumber(0)
+      , mCorner(false)
     {
     }
 
-    LogData(DataType aDataValue, uint32_t aFrameNumber)
+    LogData(DataType aDataValue, uint32_t aFrameNumber, bool aCorner = false)
+      : mDataValue(aDataValue)
+      , mFrameNumber(aFrameNumber)
+      , mCorner(aCorner)
     {
-      mDataValue = aDataValue;
-      mFrameNumber = aFrameNumber;
     }
 
     LogData(const LogData& aLogData)
+      : mDataValue(aLogData.mDataValue)
+      , mFrameNumber(aLogData.mFrameNumber)
+      , mCorner(aLogData.mCorner)
     {
-      mDataValue = aLogData.mDataValue;
-      mFrameNumber = aLogData.mFrameNumber;
     }
 
     LogData& operator=(const LogData& rLogData)
     {
       mDataValue = rLogData.mDataValue;
       mFrameNumber = rLogData.mFrameNumber;
+      mCorner = rLogData.mCorner;
 
       return *this;
     }
 
+    void SetCorner(bool aSet = true)
+    {
+      mCorner = aSet;
+    }
+
     DataType mDataValue;
     uint32_t mFrameNumber;
+    bool mCorner;
   };
 
-  void PrintRawDefault(const char* aMsg, uint32_t aFrameNumber, int64_t aDataValue)
+  void PrintRawDefault(const char* aMsg, uint32_t aFrameNumber, DataType aDataValue, bool aCorner)
   {
-    printf_stderr("%-20s, %d, %5.3f",
+    if (aCorner) {
+      return;
+    }
+
+    printf_stderr("%-20s, %d, %5.3f%s",
                   aMsg,
                   aFrameNumber,
-                  aDataValue * 0.001f);
+                  (float)aDataValue);
   }
   void PrintStatisticDefault(const char* aMsg,
                              float aAvg,

@@ -40,6 +40,9 @@
 #include "ProfilerMarkers.h"            // for ProfilerMarkers
 #endif
 
+// Debug
+#include "DumpLayerPos.h"
+
 #define CULLING_LOG(...)
 // #define CULLING_LOG(...) printf_stderr("CULLING: " __VA_ARGS__)
 
@@ -89,26 +92,6 @@ static void DrawLayerInfo(const RenderTargetIntRect& aClipRect,
   aManager->GetTextRenderer()->RenderText(ss.str().c_str(), gfx::IntPoint(topLeft.x, topLeft.y),
                                           aLayer->GetEffectiveTransform(), 16,
                                           maxWidth);
-}
-
-static void DumpLayerPos(Layer* aLayer)
-{
-  bool needDumpPos = false;
-  std::string className;
-
-  aLayer->GetPosDumpInfo(needDumpPos, className);
-  if (needDumpPos){
-    Matrix4x4 transform = aLayer->AsLayerComposite()->GetShadowTransform();
-    if (!transform.Is2D()) {
-      return;
-    }
-
-    Point translation = transform.As2D().GetTranslation();
-
-    //print to adb log or to gecko profiler
-    printf_stderr("layer pos dump: addr:(%p) pos:(%d,%d), class name:(%s)",
-        aLayer, (int)translation.x, (int)translation.y, className.c_str());
-  }
 }
 
 static void PrintUniformityInfo(Layer* aLayer)
@@ -270,7 +253,9 @@ RenderLayers(ContainerT* aContainer,
     }
 
     // Dump layer position to check the uniformity.
-    DumpLayerPos(layer);
+    if (layer->GetType() == Layer::LayerType::TYPE_CONTAINER) {
+      DumpLayer::DumpPosInfo(layer);
+    }
 
     if (gfxPrefs::UniformityInfo()) {
       PrintUniformityInfo(layer);

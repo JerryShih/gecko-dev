@@ -51,6 +51,8 @@
 #endif
 #define LOG_TAG "HWComposer"
 
+#include "DumpLayerPos.h"
+
 /*
  * By default the debug message of hwcomposer (LOG_DEBUG level) are undefined,
  * but can be enabled by uncommenting HWC_DEBUG below.
@@ -383,6 +385,10 @@ HwcComposer2D::PrepareLayerList(Layer* aLayer,
             LOGD("Container layer needs intermediate surface");
             return false;
         }
+
+        // Dump
+        DumpLayer::DumpPosInfo(aLayer);
+
         nsAutoTArray<Layer*, 12> children;
         container->SortChildrenBy3DZOrder(children);
 

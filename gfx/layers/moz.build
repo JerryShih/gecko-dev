@@ -20,6 +20,7 @@ EXPORTS += [
     'CompositorTypes.h',
     'CopyableCanvasLayer.h',
     'D3D9SurfaceImage.h',
+    'DumpLayerPos.h',
     'FrameMetrics.h',
     'GLImages.h',
     'GrallocImages.h',
