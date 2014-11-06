@@ -30,6 +30,11 @@ pref("browser.sessionstore.resume_from_crash", false);
 pref("browser.tabs.remote.autostart.1", false);
 #endif
 
+pref("gfx.vsync", true);
+pref("gfx.vsync.hw-vsync.enabled", true);
+pref("gfx.vsync.compositor", true);
+pref("gfx.vsync.refresh-driver", true);
+
 // Bug 945235: Prevent all bars to be considered visible:
 pref("toolkit.defaultChromeFeatures", "chrome,dialog=no,close,resizable,scrollbars,extrachrome");
 
