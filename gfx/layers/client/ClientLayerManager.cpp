@@ -35,6 +35,8 @@
 #include "LayerMetricsWrapper.h"
 #endif
 
+#include "mozilla/VsyncDispatcherTrace.h"
+
 namespace mozilla {
 namespace layers {
 
@@ -526,6 +528,9 @@ ClientLayerManager::StopFrameTimeRecording(uint32_t         aStartIndex,
 void
 ClientLayerManager::ForwardTransaction(bool aScheduleComposite)
 {
+  VSYNC_SCOPED_SYSTRACE_LABEL_PRINTF("ClientLayerManager::ForwardTransaction");
+
+
   mPhase = PHASE_FORWARD;
 
   mLatestTransactionId = mTransactionIdAllocator->GetTransactionId();
@@ -542,6 +547,10 @@ ClientLayerManager::ForwardTransaction(bool aScheduleComposite)
   if (mForwarder->EndTransaction(&replies, mRegionToClear,
         mLatestTransactionId, aScheduleComposite, mPaintSequenceNumber,
         mIsRepeatTransaction, transactionStart, &sent)) {
+
+    VSYNC_SCOPED_SYSTRACE_LABEL_PRINTF("in mForwarder->EndTransaction, send=%d",(int)sent);
+
+
     for (nsTArray<EditReply>::size_type i = 0; i < replies.Length(); ++i) {
       const EditReply& reply = replies[i];
 
@@ -600,6 +609,9 @@ ClientLayerManager::ForwardTransaction(bool aScheduleComposite)
   }
 
   if (!sent) {
+    VSYNC_SCOPED_SYSTRACE_LABEL_PRINTF("mTransactionIdAllocator->RevokeTransactionId");
+
+
     // Clear the transaction id so that it doesn't get returned
     // unless we forwarded to somewhere that doesn't actually
     // have a compositor.

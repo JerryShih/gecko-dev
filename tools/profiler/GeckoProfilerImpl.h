@@ -277,7 +277,7 @@ static inline void profiler_tracing(const char* aCategory, const char* aInfo,
 
 // Uncomment this to turn on systrace or build with
 // ac_add_options --enable-systace
-//#define MOZ_USE_SYSTRACE
+#define MOZ_USE_SYSTRACE
 #ifdef MOZ_USE_SYSTRACE
 # define ATRACE_TAG ATRACE_TAG_ALWAYS
 // We need HAVE_ANDROID_OS to be defined for Trace.h.
