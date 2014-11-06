@@ -296,6 +296,7 @@ private:
         if (drivers[i]->IsTestControllingRefreshesEnabled()) {
           continue;
         }
+        VSYNC_SCOPED_SYSTRACE_LABEL("TickDriver");
         TickDriver(drivers[i], jsnow, now);
       }
       profiler_tracing("Paint", "RD", TRACING_INTERVAL_END);
@@ -1727,6 +1728,12 @@ nsRefreshDriver::GetTransactionId()
     mSkippedPaints = false;
   }
 
+  VSYNC_SCOPED_SYSTRACE_LABEL_PRINTF("nsRefreshDriver::GetTransactionId, pid:%d, cid:%d, wait:%d, skip:%d",
+      (int)mPendingTransaction,
+      (int)mCompletedTransaction,
+      (int)mWaitingForTransaction,
+      (int)mSkippedPaints);
+
   return mPendingTransaction;
 }
 
@@ -1740,6 +1747,12 @@ nsRefreshDriver::RevokeTransactionId(uint64_t aTransactionId)
     FinishedWaitingForTransaction();
   }
   mPendingTransaction--;
+
+  VSYNC_SCOPED_SYSTRACE_LABEL_PRINTF("nsRefreshDriver::RevokeTransactionId, pid:%d, cid:%d, wait:%d, skip:%d",
+      (int)mPendingTransaction,
+      (int)mCompletedTransaction,
+      (int)mWaitingForTransaction,
+      (int)mSkippedPaints);
 }
 
 mozilla::TimeStamp
@@ -1751,7 +1764,8 @@ nsRefreshDriver::GetTransactionStart()
 void
 nsRefreshDriver::NotifyTransactionCompleted(uint64_t aTransactionId)
 {
-  VSYNC_SCOPED_SYSTRACE_LABEL_PRINTF("nsRefreshDriver::NotifyTransactionCompleted, pid:%d, cid:%d, wait:%d, skip:%d",
+  VSYNC_SCOPED_SYSTRACE_LABEL_PRINTF("nsRefreshDriver::NotifyTransactionCompleted start, recv_id:%d pid:%d, cid:%d, wait:%d, skip:%d",
+      (int)aTransactionId,
       (int)mPendingTransaction,
       (int)mCompletedTransaction,
       (int)mWaitingForTransaction,
@@ -1766,6 +1780,12 @@ nsRefreshDriver::NotifyTransactionCompleted(uint64_t aTransactionId)
       mCompletedTransaction = aTransactionId;
     }
   }
+
+  VSYNC_SCOPED_SYSTRACE_LABEL_PRINTF("nsRefreshDriver::NotifyTransactionCompleted end, pid:%d, cid:%d, wait:%d, skip:%d",
+      (int)mPendingTransaction,
+      (int)mCompletedTransaction,
+      (int)mWaitingForTransaction,
+      (int)mSkippedPaints);
 }
 
 void
