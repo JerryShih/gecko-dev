@@ -118,7 +118,6 @@ HwcComposer2D::HwcComposer2D()
     , mLastVsyncTime(0)
     , mVsyncRate(0)
     , mHwcEventCallbackInited(false)
-    , mHwcEventCallbackLock("HwcEventCallback lock")
 #endif
     , mPrepared(false)
     , mHasHWVsync(false)
@@ -162,8 +161,6 @@ HwcComposer2D::Init(hwc_display_t dpy, hwc_surface_t sur, gl::GLContext* aGLCont
         mColorFill = false;
         mRBSwapSupport = false;
     }
-
-    InitHwcEventCallback();
 #else
     char propValue[PROPERTY_VALUE_MAX];
     property_get("ro.display.colorfill", propValue, "0");
@@ -209,31 +206,21 @@ HwcComposer2D::EnableVsync(bool aEnable)
 }
 
 #if ANDROID_VERSION >= 17
-bool
+void
 HwcComposer2D::InitHwcEventCallback()
 {
-    // Since we have the Invalidate callback, we still need to call
-    // registerProcs for non-vsync case. Thus, InitHwcEventCallback will be call
-    // in HwcComposer2D::Init() and VsyncDispatcher::Startup(). These two callers
-    // are at different thread, so we use a mutex to protect our data.
-    // Why we just call InitHwcEventCallback() in HwcComposer2D::Init()? It's
-    // because that we need vsync event(for refresh driver) before the the
-    // LayerTransaction protocol creation(it will call the HwcComposer2D::Init()).
-    // Thus, we need to call InitHwcEventCallback() before HwcComposer2D::Init().
-    MutexAutoLock lock(mHwcEventCallbackLock);
+    MOZ_ASSERT(!mHwcEventCallbackInited);
 
-    if (mHwcEventCallbackInited) {
-        return mHasHWVsync;
-    }
     mHwcEventCallbackInited = true;
 
     // Init the hw event callback.
     HwcDevice* device = (HwcDevice*)GetGonkDisplay()->GetHWCDevice();
     if (!device || !device->registerProcs) {
         LOGE("Failed to get hwc.");
-        return false;
+        return;
     }
-    // Disable vsync event for non-vsync case.
+    // Turn off vsync event by default. Call EnableVsync() if we need vsync
+    // later.
     device->eventControl(device, HWC_DISPLAY_PRIMARY, HWC_EVENT_VSYNC, false);
     device->registerProcs(device, &sHWCProcs);
 
@@ -241,7 +228,7 @@ HwcComposer2D::InitHwcEventCallback()
         // Query the hw vsync period
         if (!device->getDisplayAttributes) {
             LOGE("Failed to query hwc vsync attribute.");
-            return false;
+            return;
         }
 
         const uint32_t HWC_ATTRIBUTES[] = {
@@ -255,14 +242,16 @@ HwcComposer2D::InitHwcEventCallback()
             mVsyncRate = 1.0e9 / hwcAttributeValues[0] + 0.5;
         } else {
             LOGE("Failed to get hwc vsync attribute.");
-            return false;
+            return;
         }
 
         mHasHWVsync = true;
-        // Since we have the vsync pref, turn on the vsync event.
-        device->eventControl(device, HWC_DISPLAY_PRIMARY, HWC_EVENT_VSYNC, true);
     }
+}
 
+bool
+HwcComposer2D::HasHWVsync() const
+{
     return mHasHWVsync;
 }
 
@@ -270,7 +259,6 @@ uint32_t
 HwcComposer2D::GetHWVsyncRate() const
 {
     MOZ_ASSERT(mHasHWVsync);
-    MOZ_ASSERT(mVsyncRate);
 
     return mVsyncRate;
 }
@@ -314,10 +302,7 @@ HwcComposer2D::Vsync(int aDisplay, nsecs_t aVsyncTimestamp)
 void
 HwcComposer2D::Invalidate()
 {
-    if (!Initialized()) {
-        LOGE("HwcComposer2D::Invalidate failed!");
-        return;
-    }
+    MOZ_ASSERT(mHwcEventCallbackInited);
 
     MutexAutoLock lock(mLock);
     if (mCompositorParent) {

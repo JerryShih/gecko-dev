@@ -93,8 +93,10 @@ public:
     void EnableVsync(bool aEnable);
 
 #if ANDROID_VERSION >= 17
-    // Init vsync, hotplug and invalidate callback. Return true if we have hw vsync.
-    bool InitHwcEventCallback();
+    // Init vsync, hotplug and invalidate callback.
+    void InitHwcEventCallback();
+
+    bool HasHWVsync() const;
 
     // Hwc vsync event handle function.
     void Vsync(int aDisplay, int64_t aTimestamp);
@@ -142,7 +144,6 @@ private:
     nsecs_t                 mLastVsyncTime;
     uint32_t                mVsyncRate;
     bool                    mHwcEventCallbackInited;
-    Mutex                   mHwcEventCallbackLock;
 #endif
     nsTArray<layers::LayerComposite*> mHwcLayerMap;
     bool                    mPrepared;
