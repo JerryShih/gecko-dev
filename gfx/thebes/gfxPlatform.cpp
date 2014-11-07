@@ -387,7 +387,6 @@ gfxPlatform::Init()
     mozilla::gl::GLContext::StaticInit();
 #endif
 
-#ifdef MOZ_WIDGET_GONK
     // Startup the vsync dispatcher host at Chrome process.
     // Currently, we only have gonk implementation, so we only enable the
     // dispatcher with GONK and OMTC.
@@ -396,7 +395,6 @@ gfxPlatform::Init()
     {
        VsyncDispatcher::Startup();
     }
-#endif
 
     InitLayersIPC();
 
@@ -506,13 +504,11 @@ gfxPlatform::Shutdown()
         gPlatform->mSkiaGlue = nullptr;
     }
 
-#ifdef MOZ_WIDGET_GONK
     if (gfxPrefs::VsyncEnabled() && UsesOffMainThreadCompositing() &&
       XRE_GetProcessType() == GeckoProcessType_Default)
     {
        VsyncDispatcher::Shutdown();
     }
-#endif
 
 #ifdef MOZ_WIDGET_ANDROID
     // Shut down the texture pool
