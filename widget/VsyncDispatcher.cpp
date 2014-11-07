@@ -33,7 +33,8 @@ VsyncDispatcher::Startup()
 
   // Init vsync event
   if (gfxPrefs::HardwareVsyncEnabled()) {
-    MOZ_ALWAYS_TRUE(HwcComposer2D::GetInstance()->InitHwcEventCallback());
+    MOZ_ALWAYS_TRUE(HwcComposer2D::GetInstance()->HasHWVsync());
+    HwcComposer2D::GetInstance()->EnableVsync(true);
   }
 #endif
 }
