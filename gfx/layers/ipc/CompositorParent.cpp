@@ -237,6 +237,8 @@ CompositorVsyncObserver::SetNeedsComposite(bool aNeedsComposite)
 bool
 CompositorVsyncObserver::NotifyVsync(TimeStamp aVsyncTimestamp)
 {
+  VSYNC_SCOPED_SYSTRACE_LABEL("CompositorVsyncObserver::NotifyVsync");
+
   // Called from the vsync dispatch thread
   MOZ_ASSERT(!CompositorParent::IsInCompositorThread());
   MOZ_ASSERT(!NS_IsMainThread());
@@ -266,10 +268,6 @@ void
 CompositorVsyncObserver::Composite(TimeStamp aVsyncTimestamp)
 {
   MOZ_ASSERT(CompositorParent::IsInCompositorThread());
-  {
-    MonitorAutoLock lock(mCurrentCompositeTaskMonitor);
-    mCurrentCompositeTask = nullptr;
-  }
 
   if (mNeedsComposite && mCompositorParent) {
     mNeedsComposite = false;
@@ -278,6 +276,11 @@ CompositorVsyncObserver::Composite(TimeStamp aVsyncTimestamp)
     // We're getting vsync notifications but we don't need to composite so
     // unregister the vsync.
     UnobserveVsync();
+  }
+
+  {
+    MonitorAutoLock lock(mCurrentCompositeTaskMonitor);
+    mCurrentCompositeTask = nullptr;
   }
 
   DispatchTouchEvents(aVsyncTimestamp);
@@ -297,6 +300,8 @@ CompositorVsyncObserver::NeedsComposite()
 void
 CompositorVsyncObserver::ObserveVsync()
 {
+  VSYNC_SCOPED_SYSTRACE_LABEL("CompositorVsyncObserver::ObserveVsync");
+
   MOZ_ASSERT(CompositorParent::IsInCompositorThread());
   VsyncDispatcher::GetInstance()->AddCompositorVsyncObserver(this);
   mIsObservingVsync = true;
@@ -305,6 +310,8 @@ CompositorVsyncObserver::ObserveVsync()
 void
 CompositorVsyncObserver::UnobserveVsync()
 {
+  VSYNC_SCOPED_SYSTRACE_LABEL("CompositorVsyncObserver::UnobserveVsync");
+
   MOZ_ASSERT(CompositorParent::IsInCompositorThread() || NS_IsMainThread());
   VsyncDispatcher::GetInstance()->RemoveCompositorVsyncObserver(this);
   mIsObservingVsync = false;
