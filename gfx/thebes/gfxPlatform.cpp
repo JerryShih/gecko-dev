@@ -365,6 +365,63 @@ static const char *gPrefLangNames[] = {
     "x-unicode",
 };
 
+void
+VsyncSource::AddVsyncDispatcher(VsyncDispatcher* aVsyncDispatcher)
+{
+  MOZ_ASSERT(NS_IsMainThread());
+  GetGlobalDisplay().AddVsyncDispatcher(aVsyncDispatcher);
+}
+
+void
+VsyncSource::RemoveVsyncDispatcher(VsyncDispatcher* aVsyncDispatcher)
+{
+  MOZ_ASSERT(NS_IsMainThread());
+  GetGlobalDisplay().RemoveVsyncDispatcher(aVsyncDispatcher);
+}
+
+// Called when the widget switches to a different monitor
+void
+VsyncSource::SwitchDisplay(VsyncDispatcher* aVsyncDispatcher)
+{
+  NS_WARNING("Switching displays is not yet implemented");
+}
+
+void
+VsyncSource::Display::AddVsyncDispatcher(VsyncDispatcher* aVsyncDispatcher)
+{
+  mVsyncDispatchers.AppendElement(aVsyncDispatcher);
+}
+
+VsyncSource::Display&
+VsyncSource::FindDisplay(VsyncDispatcher* aVsyncDispatcher)
+{
+  return GetGlobalDisplay();
+}
+
+void
+VsyncSource::Display::NotifyVsync(TimeStamp aVsyncTimestamp)
+{
+  // Called on the hardware vsync thread
+  for (size_t i = 0; i < mVsyncDispatchers.Length(); i++) {
+    mVsyncDispatchers[i]->NotifyVsync(aVsyncTimestamp);
+  }
+}
+
+VsyncSource::Display::Display()
+{
+}
+
+VsyncSource::Display::~Display()
+{
+  mVsyncDispatchers.Clear();
+}
+
+void
+VsyncSource::Display::RemoveVsyncDispatcher(VsyncDispatcher* aVsyncDispatcher)
+{
+  mVsyncDispatchers.RemoveElement(aVsyncDispatcher);
+}
+
 gfxPlatform::gfxPlatform()
   : mTileWidth(-1)
   , mTileHeight(-1)
@@ -548,8 +605,10 @@ gfxPlatform::Init()
 
     RegisterStrongMemoryReporter(new GfxMemoryImageReporter());
 
-    if (gfxPrefs::HardwareVsyncEnabled() && gfxPrefs::VsyncAlignedCompositor()) {
-      gPlatform->InitHardwareVsync();
+    if (XRE_IsParentProcess()) {
+      if (gfxPrefs::HardwareVsyncEnabled() && gfxPrefs::VsyncAlignedCompositor()) {
+        gPlatform->mVsyncSource = gPlatform->InitHardwareVsync();
+      }
     }
 }
 
@@ -597,6 +656,10 @@ gfxPlatform::Shutdown()
 
         gPlatform->mMemoryPressureObserver = nullptr;
         gPlatform->mSkiaGlue = nullptr;
+
+        if (gPlatform->mVsyncSource && XRE_IsParentProcess()) {
+          delete gPlatform->mVsyncSource;
+        }
     }
 
 #ifdef MOZ_WIDGET_ANDROID

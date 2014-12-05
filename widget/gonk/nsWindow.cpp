@@ -169,6 +169,7 @@ nsWindow::nsWindow()
     if (!ShouldUseOffMainThreadCompositing()) {
         MOZ_CRASH("How can we render apps, then?");
     }
+
     // Update sUsingHwc whenever layers.composer2d.enabled changes
     Preferences::AddBoolVarCache(&sUsingHwc, "layers.composer2d.enabled");
 }
@@ -210,6 +211,21 @@ nsWindow::DoDraw(void)
     listener = targetWindow->GetWidgetListener();
     if (listener) {
         listener->DidPaintWindow();
+    }
+}
+
+void
+nsWindow::NotifyVsync(TimeStamp aVsyncTimestamp)
+{
+    if (!gFocusedWindow) {
+      return;
+    }
+
+    VsyncDispatcher* vsyncDispatcher = gFocusedWindow->GetVsyncDispatcher();
+    // During bootup, there is a delay between when the nsWindow is created
+    // and when the Compositor is created, but vsync is already turned on
+    if (vsyncDispatcher) {
+      vsyncDispatcher->NotifyVsync(aVsyncTimestamp);
     }
 }
 

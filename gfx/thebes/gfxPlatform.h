@@ -25,6 +25,7 @@
 #include "GfxInfoCollector.h"
 
 #include "mozilla/layers/CompositorTypes.h"
+#include "mozilla/TimeStamp.h"
 
 class gfxASurface;
 class gfxFont;
@@ -40,6 +41,7 @@ class nsIObserver;
 struct gfxRGBA;
 
 namespace mozilla {
+class VsyncDispatcher;
 namespace gl {
 class GLContext;
 class SkiaGLGlue;
@@ -156,6 +158,46 @@ GetBackendName(mozilla::gfx::BackendType aBackend)
   }
   MOZ_CRASH("Incomplete switch");
 }
+
+// Controls how and when to enable/disable vsync. Lives as long as the
+// gfxPlatform does on the parent process
+namespace mozilla {
+namespace gfx {
+class VsyncSource
+{
+public:
+  // Controls vsync unique to each display and unique on each platform
+  class Display {
+    public:
+      Display();
+      virtual ~Display();
+      // Should only be called on the main thread
+      void AddVsyncDispatcher(mozilla::VsyncDispatcher* aVsyncDispatcher);
+      void RemoveVsyncDispatcher(mozilla::VsyncDispatcher* aVsyncDispatcher);
+      // Notified when this display's vsync occurs
+      void NotifyVsync(mozilla::TimeStamp aVsyncTimestamp);
+
+      // These should all only be called on the compositor thread
+      virtual void EnableVsync() = 0;
+      virtual void DisableVsync() = 0;
+      virtual bool IsVsyncEnabled() = 0;
+
+    private:
+      nsTArray<nsRefPtr<mozilla::VsyncDispatcher>> mVsyncDispatchers;
+  }; // end Display
+
+  void AddVsyncDispatcher(mozilla::VsyncDispatcher* aVsyncDispatcher);
+  void RemoveVsyncDispatcher(mozilla::VsyncDispatcher* aVsyncDispatcher);
+  // Called when the widget switches to a different monitor
+  virtual void SwitchDisplay(mozilla::VsyncDispatcher* aVsyncDispatcher);
+  virtual ~VsyncSource() {}
+
+protected:
+  virtual Display& GetGlobalDisplay() = 0; // Works across all displays
+  virtual Display& FindDisplay(mozilla::VsyncDispatcher* aVsyncDispatcher);
+}; // VsyncSource
+} // gfx
+} // mozilla
 
 class gfxPlatform {
 public:
@@ -344,8 +386,8 @@ public:
     *CreateFontGroup(const mozilla::FontFamilyList& aFontFamilyList,
                      const gfxFontStyle *aStyle,
                      gfxUserFontSet *aUserFontSet) = 0;
-                                          
-                                          
+
+
     /**
      * Look up a local platform font using the full font face name.
      * (Needed to support @font-face src local().)
@@ -583,6 +625,17 @@ public:
     static bool UsesOffMainThreadCompositing();
 
     bool HasEnoughTotalSystemMemoryForSkiaGL();
+
+    /**
+     * Get the hardware vsync source for each platform.
+     * Should only exist and be valid on the parent process
+     */
+    virtual mozilla::gfx::VsyncSource* GetHardwareVsync() {
+      MOZ_ASSERT(mVsyncSource != nullptr);
+      MOZ_ASSERT(XRE_IsParentProcess());
+      return mVsyncSource;
+    }
+
 protected:
     gfxPlatform();
     virtual ~gfxPlatform();
@@ -593,7 +646,10 @@ protected:
     /**
      * Initialized hardware vsync based on each platform.
      */
-    virtual void InitHardwareVsync() {}
+    virtual mozilla::gfx::VsyncSource* InitHardwareVsync() {
+      MOZ_CRASH("Hardware vsync not supported on platform yet");
+      return nullptr;
+    }
 
     /**
      * Helper method, creates a draw target for a specific Azure backend.
@@ -647,7 +703,7 @@ protected:
 
     int8_t  mBidiNumeralOption;
 
-    // whether to always search font cmaps globally 
+    // whether to always search font cmaps globally
     // when doing system font fallback
     int8_t  mFallbackUsesCmaps;
 
@@ -658,6 +714,9 @@ protected:
     int32_t mWordCacheMaxEntries;
 
     uint32_t mTotalSystemMemory;
+
+    // Hardware vsync source. Only valid on parent process
+    mozilla::gfx::VsyncSource* mVsyncSource;
 
 private:
     /**

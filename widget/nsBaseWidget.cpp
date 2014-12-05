@@ -43,6 +43,7 @@
 #include "mozilla/MouseEvents.h"
 #include "GLConsts.h"
 #include "mozilla/unused.h"
+#include "mozilla/VsyncDispatcher.h"
 
 #ifdef ACCESSIBILITY
 #include "nsAccessibilityService.h"
@@ -109,6 +110,7 @@ nsBaseWidget::nsBaseWidget()
 : mWidgetListener(nullptr)
 , mAttachedWidgetListener(nullptr)
 , mContext(nullptr)
+, mVsyncDispatcher(nullptr)
 , mCursor(eCursor_standard)
 , mUpdateCursor(true)
 , mBorderStyle(eBorderStyle_none)
@@ -227,8 +229,12 @@ nsBaseWidget::~nsBaseWidget()
 
   NS_IF_RELEASE(mContext);
   delete mOriginalBounds;
-}
 
+  // Can have base widgets that are things like tooltips
+  if (gfxPrefs::HardwareVsyncEnabled() && mVsyncDispatcher) {
+    mVsyncDispatcher->Shutdown();
+  }
+}
 
 //-------------------------------------------------------------------------
 //
@@ -921,6 +927,24 @@ nsBaseWidget::GetPreferredCompositorBackends(nsTArray<LayersBackend>& aHints)
   aHints.AppendElement(LayersBackend::LAYERS_BASIC);
 }
 
+void nsBaseWidget::CreateVsyncDispatcher()
+{
+  if (gfxPrefs::HardwareVsyncEnabled()) {
+    // Parent directly listens to the vsync source whereas
+    // child process communicate via IPC
+    // Should be called AFTER gfxPlatform is initialized
+    if (XRE_IsParentProcess()) {
+      mVsyncDispatcher = new VsyncDispatcher();
+    }
+  }
+}
+
+VsyncDispatcher*
+nsBaseWidget::GetVsyncDispatcher()
+{
+  return mVsyncDispatcher;
+}
+
 void nsBaseWidget::CreateCompositor(int aWidth, int aHeight)
 {
   // This makes sure that gfxPlatforms gets initialized if it hasn't by now.
@@ -938,6 +962,7 @@ void nsBaseWidget::CreateCompositor(int aWidth, int aHeight)
     return;
   }
 
+  CreateVsyncDispatcher();
   mCompositorParent = NewCompositorParent(aWidth, aHeight);
   MessageChannel *parentChannel = mCompositorParent->GetIPCChannel();
   nsRefPtr<ClientLayerManager> lm = new ClientLayerManager(this);

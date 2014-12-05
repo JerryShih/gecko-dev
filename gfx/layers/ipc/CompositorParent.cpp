@@ -170,7 +170,6 @@ CompositorThreadHolder::CreateCompositorThread()
   }
 
   CreateCompositorMap();
-
   return compositorThread;
 }
 
@@ -202,16 +201,15 @@ CompositorVsyncObserver::CompositorVsyncObserver(CompositorParent* aCompositorPa
   , mCurrentCompositeTaskMonitor("CurrentCompositeTaskMonitor")
   , mCurrentCompositeTask(nullptr)
 {
-
 }
 
 CompositorVsyncObserver::~CompositorVsyncObserver()
 {
   MOZ_ASSERT(NS_IsMainThread());
-  UnobserveVsync();
+  // The VsyncDispatcher is cleaned up before this in the nsBaseWidget, which stops vsync listeners
+  CancelCurrentCompositeTask();
   mCompositorParent = nullptr;
   mNeedsComposite = false;
-  CancelCurrentCompositeTask();
 }
 
 /**
@@ -288,15 +286,11 @@ CompositorVsyncObserver::NeedsComposite()
   return mNeedsComposite;
 }
 
-/**
- * Since the vsync thread has its own locks before notifying us of vsync
- * we can't register/unregister from the vsync thread. Any other thread is fine
- */
 void
 CompositorVsyncObserver::ObserveVsync()
 {
   MOZ_ASSERT(CompositorParent::IsInCompositorThread());
-  VsyncDispatcher::GetInstance()->AddCompositorVsyncObserver(this);
+  mCompositorParent->mWidget->GetVsyncDispatcher()->AddCompositorVsyncObserver(this);
   mIsObservingVsync = true;
 }
 
@@ -304,7 +298,7 @@ void
 CompositorVsyncObserver::UnobserveVsync()
 {
   MOZ_ASSERT(CompositorParent::IsInCompositorThread() || NS_IsMainThread());
-  VsyncDispatcher::GetInstance()->RemoveCompositorVsyncObserver(this);
+  mCompositorParent->mWidget->GetVsyncDispatcher()->RemoveCompositorVsyncObserver(this);
   mIsObservingVsync = false;
 }
 
@@ -1147,12 +1141,9 @@ CompositorParent::AllocPLayerTransactionParent(const nsTArray<LayersBackend>& aB
 {
   MOZ_ASSERT(aId == 0);
 
-  // mWidget doesn't belong to the compositor thread, so it should be set to
-  // nullptr before returning from this method, to avoid accessing it elsewhere.
   nsIntRect rect;
   mWidget->GetClientBounds(rect);
   InitializeLayerManager(aBackendHints);
-  mWidget = nullptr;
 
   if (!mLayerManager) {
     NS_WARNING("Failed to initialise Compositor");

@@ -35,6 +35,8 @@ class BasicLayerManager;
 class CompositorChild;
 class CompositorParent;
 }
+
+class VsyncDispatcher;
 }
 
 namespace base {
@@ -134,6 +136,8 @@ public:
                                           LayerManagerPersistence aPersistence = LAYER_MANAGER_CURRENT,
                                           bool* aAllowRetaining = nullptr);
 
+  VsyncDispatcher*        GetVsyncDispatcher() MOZ_OVERRIDE;
+  virtual void            CreateVsyncDispatcher();
   virtual CompositorParent* NewCompositorParent(int aSurfaceWidth, int aSurfaceHeight);
   virtual void            CreateCompositor();
   virtual void            CreateCompositor(int aWidth, int aHeight);
@@ -407,6 +411,7 @@ protected:
   nsRefPtr<LayerManager> mBasicLayerManager;
   nsRefPtr<CompositorChild> mCompositorChild;
   nsRefPtr<CompositorParent> mCompositorParent;
+  nsRefPtr<mozilla::VsyncDispatcher> mVsyncDispatcher;
   nsRefPtr<WidgetShutdownObserver> mShutdownObserver;
   nsCursor          mCursor;
   bool              mUpdateCursor;

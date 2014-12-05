@@ -34,6 +34,7 @@
 #include "libdisplay/FramebufferSurface.h"
 #include "gfxPrefs.h"
 #include "nsThreadUtils.h"
+#include "nsWindow.h"
 
 #ifndef HWC_BLIT
 #define HWC_BLIT (HWC_FRAMEBUFFER_TARGET + 1)
@@ -114,6 +115,12 @@ HwcComposer2D::HwcComposer2D()
     , mHasHWVsync(false)
     , mLock("mozilla.HwcComposer2D.mLock")
 {
+#if ANDROID_VERSION >= 17
+    // Since we need vsync pretty early for the refresh driver
+    // and we can't initialize HwcComposer2D::Init until the compositor inits for the GLContext
+    // Initialize the vsync callback here
+    RegisterHwcEventCallback();
+#endif
 }
 
 HwcComposer2D::~HwcComposer2D() {
@@ -152,10 +159,6 @@ HwcComposer2D::Init(hwc_display_t dpy, hwc_surface_t sur, gl::GLContext* aGLCont
         mColorFill = false;
         mRBSwapSupport = false;
     }
-
-    if (RegisterHwcEventCallback()) {
-        EnableVsync(true);
-    }
 #else
     char propValue[PROPERTY_VALUE_MAX];
     property_get("ro.display.colorfill", propValue, "0");
@@ -180,17 +183,19 @@ HwcComposer2D::GetInstance()
     return sInstance;
 }
 
-void
+bool
 HwcComposer2D::EnableVsync(bool aEnable)
 {
 #if ANDROID_VERSION >= 17
-    if (NS_IsMainThread()) {
-        RunVsyncEventControl(aEnable);
-    } else {
-        nsRefPtr<nsIRunnable> event =
-            NS_NewRunnableMethodWithArg<bool>(this, &HwcComposer2D::RunVsyncEventControl, aEnable);
-        NS_DispatchToMainThread(event);
+    MOZ_ASSERT(NS_IsMainThread());
+    if (mHasHWVsync) {
+        HwcDevice* device = (HwcDevice*)GetGonkDisplay()->GetHWCDevice();
+        if (device && device->eventControl) {
+            device->eventControl(device, HWC_DISPLAY_PRIMARY, HWC_EVENT_VSYNC, aEnable);
+            return aEnable;
+        }
     }
+    return false;
 #endif
 }
 
@@ -210,22 +215,10 @@ HwcComposer2D::RegisterHwcEventCallback()
     mHasHWVsync = true;
 
     if (!gfxPrefs::HardwareVsyncEnabled()) {
-        device->eventControl(device, HWC_DISPLAY_PRIMARY, HWC_EVENT_VSYNC, false);
         mHasHWVsync = false;
     }
 
     return mHasHWVsync;
-}
-
-void
-HwcComposer2D::RunVsyncEventControl(bool aEnable)
-{
-    if (mHasHWVsync) {
-        HwcDevice* device = (HwcDevice*)GetGonkDisplay()->GetHWCDevice();
-        if (device && device->eventControl) {
-            device->eventControl(device, HWC_DISPLAY_PRIMARY, HWC_EVENT_VSYNC, aEnable);
-        }
-    }
 }
 
 void
@@ -237,7 +230,7 @@ HwcComposer2D::Vsync(int aDisplay, nsecs_t aVsyncTimestamp)
       LOGE("Non-uniform vsync interval: %lld\n", vsyncInterval);
     }
     mLastVsyncTime = aVsyncTimestamp;
-    VsyncDispatcher::GetInstance()->NotifyVsync(vsyncTime);
+    nsWindow::NotifyVsync(vsyncTime);
 }
 
 // Called on the "invalidator" thread (run from HAL).

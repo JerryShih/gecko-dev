@@ -89,6 +89,8 @@ public:
 
     virtual bool HaveChoiceOfHWAndSWCanvas() MOZ_OVERRIDE;
     virtual bool UseAcceleratedSkiaCanvas() MOZ_OVERRIDE;
+    virtual mozilla::gfx::VsyncSource* InitHardwareVsync() MOZ_OVERRIDE;
+
 
 #ifdef MOZ_WIDGET_GONK
     virtual bool IsInGonkEmulator() const { return mIsInGonkEmulator; }

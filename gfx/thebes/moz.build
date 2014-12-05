@@ -269,6 +269,9 @@ LOCAL_INCLUDES += [
     '/dom/xml',
 ]
 
+if CONFIG['MOZ_WIDGET_TOOLKIT'] == 'gonk':
+  LOCAL_INCLUDES += ['/widget/gonk']
+
 if CONFIG['MOZ_WIDGET_TOOLKIT'] in ('android', 'gtk2', 'gtk3', 'gonk', 'qt'):
     DEFINES['MOZ_ENABLE_FREETYPE'] = True
 
