@@ -97,6 +97,9 @@ private:
 
 class CompositorVsyncObserver MOZ_FINAL : public VsyncObserver
 {
+  // Must be destroyed on main thread since the compositor is as well.
+  NS_INLINE_DECL_THREADSAFE_REFCOUNTING_WITH_MAIN_THREAD_DESTRUCTION(CompositorVsyncObserver);
+
   friend class CompositorParent;
 
 public:

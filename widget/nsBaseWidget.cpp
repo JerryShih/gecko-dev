@@ -230,8 +230,7 @@ nsBaseWidget::~nsBaseWidget()
   NS_IF_RELEASE(mContext);
   delete mOriginalBounds;
 
-  // Can have base widgets that are things like tooltips
-  if (gfxPrefs::HardwareVsyncEnabled() && mVsyncDispatcher) {
+  if (mVsyncDispatcher) {
     mVsyncDispatcher->Shutdown();
   }
 }
@@ -935,6 +934,7 @@ void nsBaseWidget::CreateVsyncDispatcher()
     // Should be called AFTER gfxPlatform is initialized
     if (XRE_IsParentProcess()) {
       mVsyncDispatcher = new VsyncDispatcher();
+      mVsyncDispatcher->Startup();
     }
   }
 }
