@@ -36,7 +36,10 @@ class CompositorChild;
 class CompositorParent;
 }
 
-class VsyncDispatcher;
+//class VsyncDispatcher;
+
+class ChromeVsyncDispatcher;
+class ContentVsyncDispatcher;
 }
 
 namespace base {
@@ -91,6 +94,11 @@ protected:
 public:
   nsBaseWidget();
 
+  // We provide a map<tabid, widget>, and we access this map at other thread.
+  // We will get assert when we access widget at other thread with
+  // NS_DECL_ISUPPORTS. Do we have performance issue with
+  // NS_DECL_THREADSAFE_ISUPPORTS?
+  //NS_DECL_THREADSAFE_ISUPPORTS
   NS_DECL_ISUPPORTS
 
   // nsIWidget interface
@@ -136,8 +144,17 @@ public:
                                           LayerManagerPersistence aPersistence = LAYER_MANAGER_CURRENT,
                                           bool* aAllowRetaining = nullptr);
 
-  VsyncDispatcher*        GetVsyncDispatcher() MOZ_OVERRIDE;
-  virtual void            CreateVsyncDispatcher();
+  //virtual VsyncDispatcher*        GetVsyncDispatcher() MOZ_OVERRIDE;
+  //virtual void                    CreateVsyncDispatcher();
+  virtual void                    CreateChromeVsyncDispatcher();
+  virtual ChromeVsyncDispatcher*  GetChromeVsyncDispatcher() MOZ_OVERRIDE;
+  virtual ContentVsyncDispatcher* GetContentVsyncDispatcher() MOZ_OVERRIDE;
+
+  virtual void                    BindTabID(uint64_t aTabId) MOZ_OVERRIDE;
+  virtual void                    UnbindTabID(uint64_t aTabId) MOZ_OVERRIDE;
+  static nsIWidget*               GetWidget(uint64_t aTabId);
+
+
   virtual CompositorParent* NewCompositorParent(int aSurfaceWidth, int aSurfaceHeight);
   virtual void            CreateCompositor();
   virtual void            CreateCompositor(int aWidth, int aHeight);
@@ -411,7 +428,9 @@ protected:
   nsRefPtr<LayerManager> mBasicLayerManager;
   nsRefPtr<CompositorChild> mCompositorChild;
   nsRefPtr<CompositorParent> mCompositorParent;
-  nsRefPtr<mozilla::VsyncDispatcher> mVsyncDispatcher;
+  //nsRefPtr<mozilla::VsyncDispatcher> mVsyncDispatcher;
+  nsRefPtr<mozilla::ChromeVsyncDispatcher> mChromeVsyncDispatcher;
+  nsRefPtr<mozilla::ContentVsyncDispatcher> mContentVsyncDispatcher;
   nsRefPtr<WidgetShutdownObserver> mShutdownObserver;
   nsCursor          mCursor;
   bool              mUpdateCursor;

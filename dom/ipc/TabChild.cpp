@@ -89,6 +89,11 @@
 #include "nsIAppsService.h"
 #include "nsNetUtil.h"
 #include "nsIPermissionManager.h"
+//// Vsync event
+//#include "BackgroundChild.h"
+//#include "mozilla/ipc/PBackgroundChild.h"
+//#include "mozilla/layout/VsyncEventChild.h"
+//#include "mozilla/VsyncDispatcher.h"
 
 #define BROWSER_ELEMENT_CHILD_SCRIPT \
     NS_LITERAL_STRING("chrome://global/content/BrowserElementChild.js")
@@ -118,6 +123,72 @@ static bool sActiveDurationMsSet = false;
 
 typedef nsDataHashtable<nsUint64HashKey, TabChild*> TabChildMap;
 static TabChildMap* sTabChildren;
+
+//namespace mozilla {
+//namespace dom{
+//class VsyncEventChildCreateCallback MOZ_FINAL : public nsIIPCBackgroundChildCreateCallback
+//{
+//  NS_DECL_ISUPPORTS
+//
+//public:
+//  VsyncEventChildCreateCallback(TabChild* aTabChild);
+//
+//  static void CreateVsyncDispatcherAndIPCActor(TabChild* aTabChild, PBackgroundChild* aManager);
+//
+//private:
+//  ~VsyncEventChildCreateCallback();
+//
+//  virtual void ActorCreated(PBackgroundChild* aActor) MOZ_OVERRIDE;
+//  virtual void ActorFailed() MOZ_OVERRIDE;
+//
+//  nsRefPtr<TabChild> mTabChild;
+//};
+//}
+//}
+//
+//NS_IMPL_ISUPPORTS(VsyncEventChildCreateCallback, nsIIPCBackgroundChildCreateCallback)
+//
+//VsyncEventChildCreateCallback::VsyncEventChildCreateCallback(TabChild* aTabChild)
+//  : mTabChild(aTabChild)
+//{
+//  MOZ_ASSERT(NS_IsMainThread());
+//  MOZ_ASSERT(mTabChild);
+//}
+//
+//VsyncEventChildCreateCallback::~VsyncEventChildCreateCallback()
+//{
+//}
+//
+///*static*/ void
+//VsyncEventChildCreateCallback::CreateVsyncDispatcherAndIPCActor(TabChild* aTabChild,
+//                                                                PBackgroundChild* aManager)
+//{
+//  MOZ_ASSERT(NS_IsMainThread());
+//  MOZ_ASSERT(aManager);
+//  MOZ_ASSERT(aTabChild);
+//
+//  TabId id = aTabChild->GetTabId();
+//  VsyncEventChild* actor =
+//      static_cast<VsyncEventChild*>(aManager->SendPVsyncEventConstructor(id));
+//  MOZ_ASSERT(actor);
+//
+//  aTabChild->mContentVsyncDispatcher = new ContentVsyncDispatcher(actor);
+//}
+//
+//void
+//VsyncEventChildCreateCallback::ActorCreated(PBackgroundChild* aActor)
+//{
+//  MOZ_ASSERT(NS_IsMainThread());
+//
+//  CreateVsyncDispatcherAndIPCActor(mTabChild, aActor);
+//}
+//
+//void
+//VsyncEventChildCreateCallback::ActorFailed()
+//{
+//  MOZ_ASSERT(NS_IsMainThread());
+//  MOZ_CRASH("Failed!");
+//}
 
 class TabChild::DelayedFireSingleTapEvent MOZ_FINAL : public nsITimerCallback
 {
@@ -3070,6 +3141,11 @@ TabChild::InitRenderingState(const ScrollingBehavior& aScrolling,
                                      BEFORE_FIRST_PAINT,
                                      false);
     }
+
+    //InitVsyncDispatcherChild();
+
+    static_cast<PuppetWidget*>(mWidget.get())->InitContentVsyncDispatcher();
+
     return true;
 }
 
@@ -3339,6 +3415,25 @@ TabChild::CreatePluginWidget(nsIWidget* aParent)
   }
   return pluginWidget.forget();
 }
+
+//void
+//TabChild::InitVsyncDispatcherChild()
+//{
+//  // Init the PVsyncEvent protocol and VsyncDispatcherChild.
+//  // PBackground is created async. Setup VsyncEventCreateCallback callback to
+//  // handle the async connect.
+//  // If we want to use PVsyncEvent immediately, we should use a spin wait here.
+//  PBackgroundChild* backgroundChild = BackgroundChild::GetForCurrentThread();
+//  if (backgroundChild) {
+//    VsyncEventChildCreateCallback::CreateVsyncDispatcherAndIPCActor(this, backgroundChild);
+//  } else {
+//    nsRefPtr<VsyncEventChildCreateCallback> callback = new VsyncEventChildCreateCallback(this);
+//
+//    if (NS_WARN_IF(!BackgroundChild::GetOrCreateForCurrentThread(callback))) {
+//      MOZ_CRASH("Failed!");
+//    }
+//  }
+//}
 
 TabChildGlobal::TabChildGlobal(TabChildBase* aTabChild)
 : mTabChild(aTabChild)

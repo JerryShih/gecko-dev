@@ -36,13 +36,19 @@ class   nsIntRegion;
 class   nsIScreen;
 
 namespace mozilla {
-class VsyncDispatcher;
+//class VsyncDispatcher;
+
+class ChromeVsyncDispatcher;
+class ContentVsyncDispatcher;
+
 namespace dom {
 class TabChild;
 }
+
 namespace plugins {
 class PluginWidgetChild;
 }
+
 namespace layers {
 class Composer2D;
 class CompositorChild;
@@ -50,6 +56,7 @@ class LayerManager;
 class LayerManagerComposite;
 class PLayerTransactionChild;
 }
+
 namespace gfx {
 class DrawTarget;
 }
@@ -692,8 +699,9 @@ class nsIWidget : public nsISupports {
     typedef mozilla::widget::InputContext InputContext;
     typedef mozilla::widget::InputContextAction InputContextAction;
     typedef mozilla::widget::SizeConstraints SizeConstraints;
-    typedef mozilla::VsyncDispatcher VsyncDispatcher;
-
+    //typedef mozilla::VsyncDispatcher VsyncDispatcher;
+    typedef mozilla::ChromeVsyncDispatcher ChromeVsyncDispatcher;
+    typedef mozilla::ContentVsyncDispatcher ContentVsyncDispatcher;
     // Used in UpdateThemeGeometries.
     struct ThemeGeometry {
       // The -moz-appearance value for the themed widget
@@ -871,10 +879,19 @@ class nsIWidget : public nsISupports {
      */
     virtual float GetDPI() = 0;
 
+//    /**
+//     * Returns the VsyncDispatcher associated with this widget
+//     */
+//    virtual VsyncDispatcher* GetVsyncDispatcher() = 0;
+
     /**
-     * Returns the VsyncDispatcher associated with this widget
+     * Returns the VsyncDispatcher associated with this widget.
      */
-    virtual VsyncDispatcher* GetVsyncDispatcher() = 0;
+    virtual ChromeVsyncDispatcher* GetChromeVsyncDispatcher() = 0;
+    virtual ContentVsyncDispatcher* GetContentVsyncDispatcher() = 0;
+
+    virtual void BindTabID(uint64_t aTabId) = 0;
+    virtual void UnbindTabID(uint64_t aTabId) = 0;
 
     /**
      * Return the default scale factor for the window. This is the

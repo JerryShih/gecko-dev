@@ -36,10 +36,15 @@
 #include "nsIWebBrowserChrome3.h"
 #include "mozilla/dom/ipc/IdType.h"
 
+#include "nsIIPCBackgroundChildCreateCallback.h"
+
 class nsICachedFileDescriptorListener;
 class nsIDOMWindowUtils;
 
 namespace mozilla {
+
+class ContentVsyncDispatcher;
+
 namespace layout {
 class RenderFrameChild;
 }
@@ -61,6 +66,7 @@ namespace dom {
 class TabChild;
 class ClonedMessageData;
 class TabChildBase;
+class VsyncEventChildCreateCallback;
 
 class TabChildGlobal : public DOMEventTargetHelper,
                        public nsIContentFrameMessageManager,
@@ -257,6 +263,8 @@ class TabChild MOZ_FINAL : public TabChildBase,
     typedef mozilla::layout::RenderFrameChild RenderFrameChild;
     typedef mozilla::layout::ScrollingBehavior ScrollingBehavior;
     typedef mozilla::layers::ActiveElementManager ActiveElementManager;
+
+    //friend class VsyncEventChildCreateCallback;
 
 public:
     static std::map<TabId, nsRefPtr<TabChild>>& NestedTabChildMap();
@@ -508,6 +516,11 @@ protected:
 #endif
 
 private:
+    // Init the PVsyncEvent protocol and VsyncDispatcherChild.
+    // PBackground protocol is created async. After the channel is created, it
+    // will create the VsyncDispatcherChild.
+    void InitVsyncDispatcherChild();
+
     /**
      * Create a new TabChild object.
      *
@@ -631,6 +644,8 @@ private:
     bool mHasValidInnerSize;
     bool mDestroyed;
     TabId mUniqueId;
+
+    //nsRefPtr<ContentVsyncDispatcher> mContentVsyncDispatcher;
 
     DISALLOW_EVIL_CONSTRUCTORS(TabChild);
 };

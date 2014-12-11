@@ -19,12 +19,20 @@
 #include "PuppetWidget.h"
 #include "nsIWidgetListener.h"
 
+// Vsync event
+#include "BackgroundChild.h"
+#include "mozilla/ipc/PBackgroundChild.h"
+#include "mozilla/layout/VsyncEventChild.h"
+#include "mozilla/VsyncDispatcher.h"
+
 using namespace mozilla;
 using namespace mozilla::dom;
 using namespace mozilla::hal;
 using namespace mozilla::gfx;
 using namespace mozilla::layers;
 using namespace mozilla::widget;
+using namespace mozilla::layout;
+using namespace mozilla::ipc;
 
 static void
 InvalidateRegion(nsIWidget* aWidget, const nsIntRegion& aRegion)
@@ -48,6 +56,87 @@ nsIWidget::CreatePuppetWidget(TabChild* aTabChild)
 namespace mozilla {
 namespace widget {
 
+class VsyncEventChildCreateCallback MOZ_FINAL : public nsIIPCBackgroundChildCreateCallback
+{
+  NS_DECL_ISUPPORTS
+
+public:
+  VsyncEventChildCreateCallback(PuppetWidget* aPuppetWidget);
+
+  static void CreateVsyncDispatcherAndIPCActor(PuppetWidget* aPuppetWidget, PBackgroundChild* aManager);
+
+private:
+  ~VsyncEventChildCreateCallback();
+
+  virtual void ActorCreated(PBackgroundChild* aActor) MOZ_OVERRIDE;
+  virtual void ActorFailed() MOZ_OVERRIDE;
+
+  nsRefPtr<PuppetWidget> mPuppetWidget;
+};
+
+NS_IMPL_ISUPPORTS(VsyncEventChildCreateCallback, nsIIPCBackgroundChildCreateCallback)
+
+VsyncEventChildCreateCallback::VsyncEventChildCreateCallback(PuppetWidget* aPuppetWidget)
+  : mPuppetWidget(aPuppetWidget)
+{
+  MOZ_ASSERT(NS_IsMainThread());
+  MOZ_ASSERT(mPuppetWidget);
+}
+
+VsyncEventChildCreateCallback::~VsyncEventChildCreateCallback()
+{
+}
+
+/*static*/ void
+VsyncEventChildCreateCallback::CreateVsyncDispatcherAndIPCActor(PuppetWidget* aPuppetWidget,
+                                                                PBackgroundChild* aManager)
+{
+  MOZ_ASSERT(NS_IsMainThread());
+  MOZ_ASSERT(aManager);
+  MOZ_ASSERT(aPuppetWidget);
+
+  TabId id = aPuppetWidget->GetOwningTabChild()->GetTabId();
+  VsyncEventChild* actor =
+      static_cast<VsyncEventChild*>(aManager->SendPVsyncEventConstructor(id));
+  MOZ_ASSERT(actor);
+
+  aPuppetWidget->mContentVsyncDispatcher = new ContentVsyncDispatcher(actor);
+}
+
+void
+VsyncEventChildCreateCallback::ActorCreated(PBackgroundChild* aActor)
+{
+  MOZ_ASSERT(NS_IsMainThread());
+
+  CreateVsyncDispatcherAndIPCActor(mPuppetWidget, aActor);
+}
+
+void
+VsyncEventChildCreateCallback::ActorFailed()
+{
+  MOZ_ASSERT(NS_IsMainThread());
+  MOZ_CRASH("Failed!");
+}
+
+void
+PuppetWidget::InitContentVsyncDispatcher()
+{
+  // Init the PVsyncEvent protocol and ContentVsyncDispatcher.
+  // PBackground is created async. Setup VsyncEventCreateCallback callback to
+  // handle the async connect.
+  // If we want to use PVsyncEvent immediately, we should use a spin wait here.
+  PBackgroundChild* backgroundChild = BackgroundChild::GetForCurrentThread();
+  if (backgroundChild) {
+    VsyncEventChildCreateCallback::CreateVsyncDispatcherAndIPCActor(this, backgroundChild);
+  } else {
+    nsRefPtr<VsyncEventChildCreateCallback> callback = new VsyncEventChildCreateCallback(this);
+
+    if (NS_WARN_IF(!BackgroundChild::GetOrCreateForCurrentThread(callback))) {
+      MOZ_CRASH("Failed!");
+    }
+  }
+}
+
 static bool
 IsPopup(const nsWidgetInitData* aInitData)
 {
@@ -66,6 +155,11 @@ MightNeedIMEFocus(const nsWidgetInitData* aInitData)
 #endif
 }
 
+#include <sys/syscall.h>
+static pid_t gettid()
+{
+  return (pid_t) syscall(SYS_thread_selfid);
+}
 
 // Arbitrary, fungible.
 const size_t PuppetWidget::kMaxDimension = 4000;

@@ -47,6 +47,8 @@ class PuppetWidget : public nsBaseWidget,
   // The width and height of the "widget" are clamped to this.
   static const size_t kMaxDimension;
 
+  friend class VsyncEventChildCreateCallback;
+
 public:
   explicit PuppetWidget(TabChild* aTabChild);
 
@@ -55,6 +57,8 @@ protected:
 
 public:
   NS_DECL_ISUPPORTS_INHERITED
+
+  void InitContentVsyncDispatcher();
 
   NS_IMETHOD Create(nsIWidget*        aParent,
                     nsNativeWidget    aNativeParent,

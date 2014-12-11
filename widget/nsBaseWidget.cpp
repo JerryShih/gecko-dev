@@ -84,6 +84,8 @@ int32_t nsIWidget::sPointerIdCounter = 0;
 // nsBaseWidget
 NS_IMPL_ISUPPORTS(nsBaseWidget, nsIWidget)
 
+static Mutex sWidgetMapLock("WidgetMapLock");
+static std::map<uint64_t, nsIWidget*> sWidgetMap;
 
 nsAutoRollup::nsAutoRollup()
 {
@@ -110,7 +112,6 @@ nsBaseWidget::nsBaseWidget()
 : mWidgetListener(nullptr)
 , mAttachedWidgetListener(nullptr)
 , mContext(nullptr)
-, mVsyncDispatcher(nullptr)
 , mCursor(eCursor_standard)
 , mUpdateCursor(true)
 , mBorderStyle(eBorderStyle_none)
@@ -230,8 +231,11 @@ nsBaseWidget::~nsBaseWidget()
   NS_IF_RELEASE(mContext);
   delete mOriginalBounds;
 
-  if (mVsyncDispatcher) {
-    mVsyncDispatcher->Shutdown();
+//  if (mVsyncDispatcher) {
+//    mVsyncDispatcher->Shutdown();
+//  }
+  if (mChromeVsyncDispatcher) {
+    mChromeVsyncDispatcher->Shutdown();
   }
 }
 
@@ -926,23 +930,80 @@ nsBaseWidget::GetPreferredCompositorBackends(nsTArray<LayersBackend>& aHints)
   aHints.AppendElement(LayersBackend::LAYERS_BASIC);
 }
 
-void nsBaseWidget::CreateVsyncDispatcher()
+//void nsBaseWidget::CreateVsyncDispatcher()
+//{
+//  if (gfxPrefs::HardwareVsyncEnabled()) {
+//    // Parent directly listens to the vsync source whereas
+//    // child process communicate via IPC
+//    // Should be called AFTER gfxPlatform is initialized
+//    if (XRE_IsParentProcess()) {
+//      mVsyncDispatcher = new VsyncDispatcher();
+//      mVsyncDispatcher->Startup();
+//    }
+//  }
+//}
+
+//VsyncDispatcher*
+//nsBaseWidget::GetVsyncDispatcher()
+//{
+//  return mVsyncDispatcher;
+//}
+
+void nsBaseWidget::CreateChromeVsyncDispatcher()
 {
   if (gfxPrefs::HardwareVsyncEnabled()) {
     // Parent directly listens to the vsync source whereas
     // child process communicate via IPC
     // Should be called AFTER gfxPlatform is initialized
     if (XRE_IsParentProcess()) {
-      mVsyncDispatcher = new VsyncDispatcher();
-      mVsyncDispatcher->Startup();
+      mChromeVsyncDispatcher = new ChromeVsyncDispatcher();
+      mChromeVsyncDispatcher->Startup();
+
+      printf_stderr("bignose create chrome vsync dispatcher, widget:%p, dispatcher:%p\n", this, mChromeVsyncDispatcher.get());
     }
   }
 }
 
-VsyncDispatcher*
-nsBaseWidget::GetVsyncDispatcher()
+ChromeVsyncDispatcher*
+nsBaseWidget::GetChromeVsyncDispatcher()
 {
-  return mVsyncDispatcher;
+  return mChromeVsyncDispatcher;
+}
+
+ContentVsyncDispatcher*
+nsBaseWidget::GetContentVsyncDispatcher()
+{
+  return mContentVsyncDispatcher;
+}
+
+void
+nsBaseWidget::BindTabID(uint64_t aTabId)
+{
+  MutexAutoLock lock(sWidgetMapLock);
+
+  sWidgetMap[aTabId] = this;
+}
+
+void
+nsBaseWidget::UnbindTabID(uint64_t aTabId)
+{
+  MutexAutoLock lock(sWidgetMapLock);
+
+  sWidgetMap.erase(aTabId);
+}
+
+/*static*/ nsIWidget*
+nsBaseWidget::GetWidget(uint64_t aTabId)
+{
+  MutexAutoLock lock(sWidgetMapLock);
+
+  std::map<uint64_t, nsIWidget*>::iterator iterator;
+  iterator = sWidgetMap.find(aTabId);
+  if (iterator != sWidgetMap.end()) {
+    return iterator->second;
+  }
+
+  return nullptr;
 }
 
 void nsBaseWidget::CreateCompositor(int aWidth, int aHeight)
@@ -962,7 +1023,7 @@ void nsBaseWidget::CreateCompositor(int aWidth, int aHeight)
     return;
   }
 
-  CreateVsyncDispatcher();
+  CreateChromeVsyncDispatcher();
   mCompositorParent = NewCompositorParent(aWidth, aHeight);
   MessageChannel *parentChannel = mCompositorParent->GetIPCChannel();
   nsRefPtr<ClientLayerManager> lm = new ClientLayerManager(this);

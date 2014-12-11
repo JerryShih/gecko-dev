@@ -261,8 +261,21 @@ TabParent::~TabParent()
 void
 TabParent::SetOwnerElement(Element* aElement)
 {
+  if (mFrameElement) {
+    nsCOMPtr<nsIWidget> prevoiusWidget = GetWidget();
+    if (prevoiusWidget) {
+      prevoiusWidget->UnbindTabID(GetTabId());
+    }
+  }
+
   mFrameElement = aElement;
   TryCacheDPIAndScale();
+
+  nsCOMPtr<nsIWidget> currentWidget = GetWidget();
+  if (currentWidget) {
+    printf_stderr("bignose TabParent bind id:%d\n",(int32_t)GetTabId());
+    currentWidget->BindTabID(GetTabId());
+  }
 }
 
 void
@@ -361,6 +374,11 @@ TabParent::ActorDestroy(ActorDestroyReason why)
   }
   if (fmm) {
     fmm->Disconnect();
+  }
+
+  nsCOMPtr<nsIWidget> widget = GetWidget();
+  if (widget) {
+    widget->UnbindTabID(GetTabId());
   }
 }
 
