@@ -115,7 +115,7 @@ nsCocoaWindow::nsCocoaWindow()
 , mInResize(false)
 , mNumModalDescendents(0)
 {
-
+  printf("bignose create nsCocoaWindow\n");
 }
 
 void nsCocoaWindow::DestroyNativeWindow()

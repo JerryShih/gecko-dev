@@ -56,7 +56,7 @@
 #include "BackgroundChild.h"
 #include "mozilla/ipc/PBackgroundChild.h"
 #include "nsIIPCBackgroundChildCreateCallback.h"
-//#include "mozilla/layout/VsyncEventChild.h"
+#include "mozilla/layout/VsyncEventChild.h"
 
 #include "mozilla/Telemetry.h"
 
@@ -194,135 +194,135 @@ protected:
   nsTArray<nsRefPtr<nsRefreshDriver> > mRefreshDrivers;
 };
 
-///*
-// * This timer does not have any underlying timer. It uses VsyncObserver to
-// * tick itself. When a vsync event comes, VsyncObserver::NotifyVsync() will be
-// * called and trigger the refresh driver's Tick().
-// */
-//class VsyncRefreshDriverTimer : public RefreshDriverTimer
-//{
-//public:
-//  VsyncRefreshDriverTimer()
-//    : mObservingVsync(false)
-//  {
-//    MOZ_ASSERT(NS_IsMainThread());
-//  }
-//
-//  virtual ~VsyncRefreshDriverTimer()
-//  {
-//    MOZ_ASSERT(NS_IsMainThread());
-//    // We should stop timer before delete the VsyncRefreshDriverTimer.
-//    MOZ_ASSERT(!mObservingVsync);
-//
-//    // Release the vsync observer.
-//    mVsyncObserver = nullptr;
-//  }
-//
-//protected:
-//  // VsyncObserver is refcounting. We use a separate object instead of making
-//  // VsyncRefreshDriverTimer inherit from VsyncObserver. Thus, we don't need
-//  // to change all other RefreshDriverTimer's creation and destroy.
-//  // Please check RefreshDriver::Shutdown(). We delete the timer at Shutdown().
-//  // We can't delete VsyncRefreshDriverTimer directly if it inherits from
-//  // VsyncObserver.
-//  class VsyncObserverImpl : public VsyncObserver
-//  {
-//    NS_INLINE_DECL_THREADSAFE_REFCOUNTING_WITH_MAIN_THREAD_DESTRUCTION(VsyncObserverImpl);
-//
-//  public:
-//    VsyncObserverImpl(VsyncRefreshDriverTimer* aTimer)
-//      : mTimer(aTimer)
-//    {
-//      MOZ_ASSERT(NS_IsMainThread());
-//      MOZ_ASSERT(mTimer);
-//    }
-//
-//    virtual bool NotifyVsync(TimeStamp aVsyncTimestamp) MOZ_OVERRIDE
-//    {
-//      // Refresh driver's tick should run at main thread.
-//      if (NS_IsMainThread()) {
-//        NotifyVsyncInternal(aVsyncTimestamp);
-//      } else {
-//        nsRefPtr<nsIRunnable> refreshDriverTask =
-//            NS_NewRunnableMethodWithArg<TimeStamp>(this,
-//                                                   &VsyncObserverImpl::NotifyVsyncInternal,
-//                                                   aVsyncTimestamp);
-//        NS_DispatchToMainThread(refreshDriverTask);
-//      }
-//      return true;
-//    }
-//
-//  private:
-//    ~VsyncObserverImpl()
-//    {
-//      MOZ_ASSERT(NS_IsMainThread());
-//    }
-//
-//    void NotifyVsyncInternal(TimeStamp aVsyncTimestamp)
-//    {
-//      MOZ_ASSERT(NS_IsMainThread());
-//
-//      mTimer->NotifyVsync(aVsyncTimestamp);
-//    }
-//
-//    VsyncRefreshDriverTimer* mTimer;
-//  };
-//
-//private:
-//  virtual void ObserveVsync() = 0;
-//  virtual void UnobserveVsync() = 0;
-//  virtual void InitVsyncObserver() = 0;
-//
-//  void NotifyVsync(TimeStamp aVsyncTimestamp)
-//  {
-//    MOZ_ASSERT(NS_IsMainThread());
-//
-//    Tick(aVsyncTimestamp);
-//  }
-//
-//  virtual void StartTimer() MOZ_OVERRIDE
-//  {
-//    MOZ_ASSERT(NS_IsMainThread());
-//
-//    if (!mVsyncObserver) {
-//      InitVsyncObserver();
-//    }
-//
-//    // Check mVsyncObserver after InitVsyncObserver().
-//    MOZ_ASSERT(mVsyncObserver);
-//
-//    if (!mObservingVsync) {
-//      mObservingVsync = true;
-//      ObserveVsync();
-//    }
-//  }
-//
-//  virtual void StopTimer() MOZ_OVERRIDE
-//  {
-//    MOZ_ASSERT(NS_IsMainThread());
-//    MOZ_ASSERT(mVsyncObserver);
-//
-//    if (mObservingVsync) {
-//      mObservingVsync = false;
-//      UnobserveVsync();
-//    }
-//  }
-//
-//  virtual void ScheduleNextTick(TimeStamp) MOZ_OVERRIDE
-//  {
-//    MOZ_ASSERT(NS_IsMainThread());
-//
-//    // After we call StartTimer(), we will receive every vsync tick until we
-//    // call StopTimer(). So we don't need to add vsync observer again.
-//  }
-//
-//protected:
-//  nsRefPtr<VsyncObserverImpl> mVsyncObserver;
-//
-//private:
-//  bool mObservingVsync;
-//};
-//
+/*
+ * This timer does not have any underlying timer. It uses VsyncObserver to
+ * tick itself. When a vsync event comes, VsyncObserver::NotifyVsync() will be
+ * called and trigger the refresh driver's Tick().
+ */
+class VsyncRefreshDriverTimer : public RefreshDriverTimer
+{
+public:
+  VsyncRefreshDriverTimer()
+    : mObservingVsync(false)
+  {
+    MOZ_ASSERT(NS_IsMainThread());
+  }
+
+  virtual ~VsyncRefreshDriverTimer()
+  {
+    MOZ_ASSERT(NS_IsMainThread());
+    // We should stop timer before delete the VsyncRefreshDriverTimer.
+    MOZ_ASSERT(!mObservingVsync);
+
+    // Release the vsync observer.
+    mVsyncObserver = nullptr;
+  }
+
+protected:
+  // VsyncObserver is refcounting. We use a separate object instead of making
+  // VsyncRefreshDriverTimer inherit from VsyncObserver. Thus, we don't need
+  // to change all other RefreshDriverTimer's creation and destroy.
+  // Please check RefreshDriver::Shutdown(). We delete the timer at Shutdown().
+  // We can't delete VsyncRefreshDriverTimer directly if it inherits from
+  // VsyncObserver.
+  class VsyncObserverImpl : public VsyncObserver
+  {
+    NS_INLINE_DECL_THREADSAFE_REFCOUNTING_WITH_MAIN_THREAD_DESTRUCTION(VsyncObserverImpl);
+
+  public:
+    VsyncObserverImpl(VsyncRefreshDriverTimer* aTimer)
+      : mTimer(aTimer)
+    {
+      MOZ_ASSERT(NS_IsMainThread());
+      MOZ_ASSERT(mTimer);
+    }
+
+    virtual bool NotifyVsync(TimeStamp aVsyncTimestamp) MOZ_OVERRIDE
+    {
+      // Refresh driver's tick should run at main thread.
+      if (NS_IsMainThread()) {
+        NotifyVsyncInternal(aVsyncTimestamp);
+      } else {
+        nsRefPtr<nsIRunnable> refreshDriverTask =
+            NS_NewRunnableMethodWithArg<TimeStamp>(this,
+                                                   &VsyncObserverImpl::NotifyVsyncInternal,
+                                                   aVsyncTimestamp);
+        NS_DispatchToMainThread(refreshDriverTask);
+      }
+      return true;
+    }
+
+  private:
+    ~VsyncObserverImpl()
+    {
+      MOZ_ASSERT(NS_IsMainThread());
+    }
+
+    void NotifyVsyncInternal(TimeStamp aVsyncTimestamp)
+    {
+      MOZ_ASSERT(NS_IsMainThread());
+
+      mTimer->NotifyVsync(aVsyncTimestamp);
+    }
+
+    VsyncRefreshDriverTimer* mTimer;
+  };
+
+private:
+  virtual void ObserveVsync() = 0;
+  virtual void UnobserveVsync() = 0;
+  virtual void InitVsyncObserver() = 0;
+
+  void NotifyVsync(TimeStamp aVsyncTimestamp)
+  {
+    MOZ_ASSERT(NS_IsMainThread());
+
+    Tick(aVsyncTimestamp);
+  }
+
+  virtual void StartTimer() MOZ_OVERRIDE
+  {
+    MOZ_ASSERT(NS_IsMainThread());
+
+    if (!mVsyncObserver) {
+      InitVsyncObserver();
+    }
+
+    // Check mVsyncObserver after InitVsyncObserver().
+    MOZ_ASSERT(mVsyncObserver);
+
+    if (!mObservingVsync) {
+      mObservingVsync = true;
+      ObserveVsync();
+    }
+  }
+
+  virtual void StopTimer() MOZ_OVERRIDE
+  {
+    MOZ_ASSERT(NS_IsMainThread());
+    MOZ_ASSERT(mVsyncObserver);
+
+    if (mObservingVsync) {
+      mObservingVsync = false;
+      UnobserveVsync();
+    }
+  }
+
+  virtual void ScheduleNextTick(TimeStamp) MOZ_OVERRIDE
+  {
+    MOZ_ASSERT(NS_IsMainThread());
+
+    // After we call StartTimer(), we will receive every vsync tick until we
+    // call StopTimer(). So we don't need to add vsync observer again.
+  }
+
+protected:
+  nsRefPtr<VsyncObserverImpl> mVsyncObserver;
+
+private:
+  bool mObservingVsync;
+};
+
 //// The vsync timer for chrome.
 //class ChromeVsyncRefreshDriverTimer MOZ_FINAL : public VsyncRefreshDriverTimer
 //{
@@ -347,7 +347,7 @@ protected:
 //    VsyncDispatcher::GetInstance()->RemoveRefreshDriverVsyncObserver(mVsyncObserver);
 //  }
 //};
-//
+
 //// The vsync timer for content.
 //// Content's tick rate is passing from chrome by an async message. We use
 //// DEFAULT_FRAME_RATE rate before we receive the actual rate from chrome.
@@ -976,6 +976,7 @@ nsRefreshDriver::GetRefreshTimerInterval() const
 RefreshDriverTimer*
 nsRefreshDriver::ChooseTimer() const
 {
+
   if (mThrottled) {
     if (!sThrottledRateTimer) {
       sThrottledRateTimer = new InactiveRefreshDriverTimer(GetThrottledTimerInterval(),
@@ -991,13 +992,13 @@ nsRefreshDriver::ChooseTimer() const
 
     bool isDefault = true;
     double rate = GetRegularTimerInterval(&isDefault);
-//    if (gfxPrefs::VsyncAlignedRefreshDriver()) {
-//      if (XRE_GetProcessType() == GeckoProcessType_Default) {
-//        sRegularRateTimer = new ChromeVsyncRefreshDriverTimer();
-//      } else {
-//        sRegularRateTimer = new ContentVsyncRefreshDriverTimer();
-//      }
-//    }
+    if (gfxPrefs::VsyncAlignedRefreshDriver()) {
+      if (XRE_GetProcessType() == GeckoProcessType_Default) {
+        //sRegularRateTimer = new ChromeVsyncRefreshDriverTimer();
+      } else {
+        //sRegularRateTimer = new ContentVsyncRefreshDriverTimer();
+      }
+    }
 #ifdef XP_WIN
     if (PreciseRefreshDriverTimerWindowsDwmVsync::IsSupported()) {
       sRegularRateTimer = new PreciseRefreshDriverTimerWindowsDwmVsync(rate, isDefault);

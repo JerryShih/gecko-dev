@@ -366,35 +366,65 @@ static const char *gPrefLangNames[] = {
     "x-unicode",
 };
 
+//void
+//VsyncSource::AddVsyncDispatcher(VsyncDispatcher* aVsyncDispatcher)
+//{
+//  MOZ_ASSERT(NS_IsMainThread());
+//  GetGlobalDisplay().AddVsyncDispatcher(aVsyncDispatcher);
+//}
+//
+//void
+//VsyncSource::RemoveVsyncDispatcher(VsyncDispatcher* aVsyncDispatcher)
+//{
+//  MOZ_ASSERT(NS_IsMainThread());
+//  GetGlobalDisplay().RemoveVsyncDispatcher(aVsyncDispatcher);
+//}
+
 void
-VsyncSource::AddVsyncDispatcher(VsyncDispatcher* aVsyncDispatcher)
+VsyncSource::AddChromeVsyncDispatcher(ChromeVsyncDispatcher* aChromeVsyncDispatcher)
 {
   MOZ_ASSERT(NS_IsMainThread());
-  GetGlobalDisplay().AddVsyncDispatcher(aVsyncDispatcher);
+  GetGlobalDisplay().AddChromeVsyncDispatcher(aChromeVsyncDispatcher);
 }
 
 void
-VsyncSource::RemoveVsyncDispatcher(VsyncDispatcher* aVsyncDispatcher)
+VsyncSource::RemoveChromeVsyncDispatcher(ChromeVsyncDispatcher* aChromeVsyncDispatcher)
 {
   MOZ_ASSERT(NS_IsMainThread());
-  GetGlobalDisplay().RemoveVsyncDispatcher(aVsyncDispatcher);
+  GetGlobalDisplay().RemoveChromeVsyncDispatcher(aChromeVsyncDispatcher);
 }
 
 // Called when the widget switches to a different monitor
+//void
+//VsyncSource::SwitchDisplay(VsyncDispatcher* aVsyncDispatcher)
+//{
+//  NS_WARNING("Switching displays is not yet implemented");
+//}
 void
-VsyncSource::SwitchDisplay(VsyncDispatcher* aVsyncDispatcher)
+VsyncSource::SwitchDisplay(ChromeVsyncDispatcher* aChromeVsyncDispatcher)
 {
   NS_WARNING("Switching displays is not yet implemented");
 }
 
+//void
+//VsyncSource::Display::AddVsyncDispatcher(VsyncDispatcher* aVsyncDispatcher)
+//{
+//  mVsyncDispatchers.AppendElement(aVsyncDispatcher);
+//}
+
 void
-VsyncSource::Display::AddVsyncDispatcher(VsyncDispatcher* aVsyncDispatcher)
+VsyncSource::Display::AddChromeVsyncDispatcher(ChromeVsyncDispatcher* aChromeVsyncDispatcher)
 {
-  mVsyncDispatchers.AppendElement(aVsyncDispatcher);
+  mChromeVsyncDispatchers.AppendElement(aChromeVsyncDispatcher);
 }
 
+//VsyncSource::Display&
+//VsyncSource::FindDisplay(VsyncDispatcher* aVsyncDispatcher)
+//{
+//  return GetGlobalDisplay();
+//}
 VsyncSource::Display&
-VsyncSource::FindDisplay(VsyncDispatcher* aVsyncDispatcher)
+VsyncSource::FindDisplay(ChromeVsyncDispatcher* aChromeVsyncDispatcher)
 {
   return GetGlobalDisplay();
 }
@@ -403,8 +433,12 @@ void
 VsyncSource::Display::NotifyVsync(TimeStamp aVsyncTimestamp)
 {
   // Called on the hardware vsync thread
-  for (size_t i = 0; i < mVsyncDispatchers.Length(); i++) {
-    mVsyncDispatchers[i]->NotifyVsync(aVsyncTimestamp);
+//  for (size_t i = 0; i < mVsyncDispatchers.Length(); i++) {
+//    mVsyncDispatchers[i]->NotifyVsync(aVsyncTimestamp);
+//  }
+
+  for (size_t i = 0; i < mChromeVsyncDispatchers.Length(); i++) {
+    mChromeVsyncDispatchers[i]->NotifyVsync(aVsyncTimestamp);
   }
 }
 
@@ -414,13 +448,21 @@ VsyncSource::Display::Display()
 
 VsyncSource::Display::~Display()
 {
-  mVsyncDispatchers.Clear();
+  //mVsyncDispatchers.Clear();
+
+  mChromeVsyncDispatchers.Clear();
 }
 
+//void
+//VsyncSource::Display::RemoveVsyncDispatcher(VsyncDispatcher* aVsyncDispatcher)
+//{
+//  mVsyncDispatchers.RemoveElement(aVsyncDispatcher);
+//}
+
 void
-VsyncSource::Display::RemoveVsyncDispatcher(VsyncDispatcher* aVsyncDispatcher)
+VsyncSource::Display::RemoveChromeVsyncDispatcher(ChromeVsyncDispatcher* aChromeVsyncDispatcher)
 {
-  mVsyncDispatchers.RemoveElement(aVsyncDispatcher);
+  mChromeVsyncDispatchers.RemoveElement(aChromeVsyncDispatcher);
 }
 
 gfxPlatform::gfxPlatform()
@@ -609,6 +651,8 @@ gfxPlatform::Init()
     if (XRE_IsParentProcess()) {
       if (gfxPrefs::HardwareVsyncEnabled() && gfxPrefs::VsyncAlignedCompositor()) {
         gPlatform->mVsyncSource = gPlatform->InitHardwareVsync();
+
+        printf_stderr("bignose init vsync source\n");
       }
     }
 }

@@ -41,7 +41,8 @@ class nsIObserver;
 struct gfxRGBA;
 
 namespace mozilla {
-class VsyncDispatcher;
+//class VsyncDispatcher;
+class ChromeVsyncDispatcher;
 namespace gl {
 class GLContext;
 class SkiaGLGlue;
@@ -172,8 +173,11 @@ public:
       Display();
       virtual ~Display();
       // Should only be called on the main thread
-      void AddVsyncDispatcher(mozilla::VsyncDispatcher* aVsyncDispatcher);
-      void RemoveVsyncDispatcher(mozilla::VsyncDispatcher* aVsyncDispatcher);
+//      void AddVsyncDispatcher(mozilla::VsyncDispatcher* aVsyncDispatcher);
+//      void RemoveVsyncDispatcher(mozilla::VsyncDispatcher* aVsyncDispatcher);
+      void AddChromeVsyncDispatcher(mozilla::ChromeVsyncDispatcher* aChromeVsyncDispatcher);
+      void RemoveChromeVsyncDispatcher(mozilla::ChromeVsyncDispatcher* aChromeVsyncDispatcher);
+
       // Notified when this display's vsync occurs
       void NotifyVsync(mozilla::TimeStamp aVsyncTimestamp);
 
@@ -183,18 +187,25 @@ public:
       virtual bool IsVsyncEnabled() = 0;
 
     private:
-      nsTArray<nsRefPtr<mozilla::VsyncDispatcher>> mVsyncDispatchers;
+      //nsTArray<nsRefPtr<mozilla::VsyncDispatcher>> mVsyncDispatchers;
+      nsTArray<nsRefPtr<mozilla::ChromeVsyncDispatcher>> mChromeVsyncDispatchers;
   }; // end Display
 
-  void AddVsyncDispatcher(mozilla::VsyncDispatcher* aVsyncDispatcher);
-  void RemoveVsyncDispatcher(mozilla::VsyncDispatcher* aVsyncDispatcher);
+//  void AddVsyncDispatcher(mozilla::VsyncDispatcher* aVsyncDispatcher);
+//  void RemoveVsyncDispatcher(mozilla::VsyncDispatcher* aVsyncDispatcher);
+
+  void AddChromeVsyncDispatcher(mozilla::ChromeVsyncDispatcher* aChromeVsyncDispatcher);
+  void RemoveChromeVsyncDispatcher(mozilla::ChromeVsyncDispatcher* aChromeVsyncDispatcher);
+
   // Called when the widget switches to a different monitor
-  virtual void SwitchDisplay(mozilla::VsyncDispatcher* aVsyncDispatcher);
+  //virtual void SwitchDisplay(mozilla::VsyncDispatcher* aVsyncDispatcher);
+  virtual void SwitchDisplay(mozilla::ChromeVsyncDispatcher* aChromeVsyncDispatcher);
   virtual ~VsyncSource() {}
 
 protected:
   virtual Display& GetGlobalDisplay() = 0; // Works across all displays
-  virtual Display& FindDisplay(mozilla::VsyncDispatcher* aVsyncDispatcher);
+  //virtual Display& FindDisplay(mozilla::VsyncDispatcher* aVsyncDispatcher);
+  virtual Display& FindDisplay(mozilla::ChromeVsyncDispatcher* aChromeVsyncDispatcher);
 }; // VsyncSource
 } // gfx
 } // mozilla
