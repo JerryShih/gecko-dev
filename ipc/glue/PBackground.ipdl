@@ -6,11 +6,15 @@ include protocol PBackgroundIDBFactory;
 include protocol PBackgroundTest;
 include protocol PBlob;
 include protocol PFileDescriptorSet;
+include protocol PVsyncEvent;
 
 include DOMTypes;
 
 using struct mozilla::void_t
   from "ipc/IPCMessageUtils.h";
+
+using mozilla::dom::TabId
+  from "mozilla/dom/ipc/IdType.h";
 
 namespace mozilla {
 namespace dom {
@@ -33,12 +37,15 @@ sync protocol PBackground
   manages PBackgroundTest;
   manages PBlob;
   manages PFileDescriptorSet;
+  manages PVsyncEvent;
 
 parent:
   // Only called at startup during mochitests to check the basic infrastructure.
   PBackgroundTest(nsCString testArg);
 
   PBackgroundIDBFactory(OptionalWindowId optionalWindowId);
+
+  PVsyncEvent(TabId aTabID);
 
 both:
   PBlob(BlobConstructorParams params);
