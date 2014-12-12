@@ -38,6 +38,7 @@ class   nsIScreen;
 namespace mozilla {
 //class VsyncDispatcher;
 
+class VsyncDispatcherBase;
 class ChromeVsyncDispatcher;
 class ContentVsyncDispatcher;
 
@@ -700,8 +701,9 @@ class nsIWidget : public nsISupports {
     typedef mozilla::widget::InputContextAction InputContextAction;
     typedef mozilla::widget::SizeConstraints SizeConstraints;
     //typedef mozilla::VsyncDispatcher VsyncDispatcher;
-    typedef mozilla::ChromeVsyncDispatcher ChromeVsyncDispatcher;
-    typedef mozilla::ContentVsyncDispatcher ContentVsyncDispatcher;
+    typedef mozilla::VsyncDispatcherBase VsyncDispatcherBase;
+    //typedef mozilla::ChromeVsyncDispatcher ChromeVsyncDispatcher;
+    //typedef mozilla::ContentVsyncDispatcher ContentVsyncDispatcher;
     // Used in UpdateThemeGeometries.
     struct ThemeGeometry {
       // The -moz-appearance value for the themed widget
@@ -887,8 +889,9 @@ class nsIWidget : public nsISupports {
     /**
      * Returns the VsyncDispatcher associated with this widget.
      */
-    virtual ChromeVsyncDispatcher* GetChromeVsyncDispatcher() = 0;
-    virtual ContentVsyncDispatcher* GetContentVsyncDispatcher() = 0;
+    virtual VsyncDispatcherBase* GetVsyncDispatcherBase() = 0;
+    //virtual ChromeVsyncDispatcher* GetChromeVsyncDispatcher() = 0;
+    //virtual ContentVsyncDispatcher* GetContentVsyncDispatcher() = 0;
 
     virtual void BindTabID(uint64_t aTabId) = 0;
     virtual void UnbindTabID(uint64_t aTabId) = 0;

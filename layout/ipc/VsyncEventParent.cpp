@@ -35,7 +35,7 @@ VsyncEventParent::VsyncEventParent(const dom::TabId& aTabID)
   AssertIsOnBackgroundThread();
 
   nsIWidget* widget = nsBaseWidget::GetWidget(aTabID);
-  mChromeVsyncDispatcher = widget->GetChromeVsyncDispatcher();
+  mChromeVsyncDispatcher = static_cast<ChromeVsyncDispatcher*>(widget->GetVsyncDispatcherBase());
   MOZ_ASSERT(mChromeVsyncDispatcher);
 
   printf_stderr("bignose create VsyncEventParent, id:%d, dispatcher:%p\n",(int32_t)aTabID, mChromeVsyncDispatcher.get());

@@ -101,6 +101,7 @@ VsyncEventChildCreateCallback::CreateVsyncDispatcherAndIPCActor(PuppetWidget* aP
   MOZ_ASSERT(actor);
 
   aPuppetWidget->mContentVsyncDispatcher = new ContentVsyncDispatcher(actor);
+  printf_stderr("bignose create content vsync dispatcher, widget:%p, dispatcher:%p\n", aPuppetWidget, aPuppetWidget->mContentVsyncDispatcher.get());
 }
 
 void
@@ -135,6 +136,12 @@ PuppetWidget::InitContentVsyncDispatcher()
       MOZ_CRASH("Failed!");
     }
   }
+}
+
+VsyncDispatcherBase*
+PuppetWidget::GetVsyncDispatcherBase()
+{
+  return mContentVsyncDispatcher;
 }
 
 static bool

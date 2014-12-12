@@ -60,6 +60,8 @@
 
 #include "mozilla/Telemetry.h"
 
+#include "mozilla/dom/TabChild.h"
+
 using namespace mozilla;
 using namespace mozilla::ipc;
 using namespace mozilla::layout;
@@ -883,6 +885,7 @@ GetFirstFrameDelay(imgIRequest* req)
 
 static RefreshDriverTimer* sRegularRateTimer = nullptr;
 static RefreshDriverTimer* sThrottledRateTimer = nullptr;
+static std::map<dom::TabId, RefreshDriverTimer*> sTimerMap;
 
 #ifdef XP_WIN
 static int32_t sHighPrecisionTimerRequests = 0;
@@ -973,9 +976,30 @@ nsRefreshDriver::GetRefreshTimerInterval() const
   return mThrottled ? GetThrottledTimerInterval() : GetRegularTimerInterval();
 }
 
+#include <sys/syscall.h>
+static pid_t gettid()
+{
+  return (pid_t) syscall(SYS_thread_selfid);
+}
+
 RefreshDriverTimer*
 nsRefreshDriver::ChooseTimer() const
 {
+  if (XRE_GetProcessType() == GeckoProcessType_Default) {
+
+  } else {
+
+  }
+
+  if (mPresContext->GetRootWidget()) {
+    printf_stderr("bignose b2g, rd:%p, tabid:%d, vd:%p, tid:%d, pid:%d\n",
+        this,
+        mPresContext->GetRootWidget()->GetOwningTabChild() ? (int32_t)(mPresContext->GetRootWidget()->GetOwningTabChild()->GetTabId()) : -1,
+        mPresContext->GetRootWidget()->GetVsyncDispatcherBase(),
+        gettid(),getpid());
+
+  }
+
 
   if (mThrottled) {
     if (!sThrottledRateTimer) {

@@ -38,6 +38,7 @@ class CompositorParent;
 
 //class VsyncDispatcher;
 
+class VsyncDispatcherBase;
 class ChromeVsyncDispatcher;
 class ContentVsyncDispatcher;
 }
@@ -146,9 +147,10 @@ public:
 
   //virtual VsyncDispatcher*        GetVsyncDispatcher() MOZ_OVERRIDE;
   //virtual void                    CreateVsyncDispatcher();
-  virtual void                    CreateChromeVsyncDispatcher();
-  virtual ChromeVsyncDispatcher*  GetChromeVsyncDispatcher() MOZ_OVERRIDE;
-  virtual ContentVsyncDispatcher* GetContentVsyncDispatcher() MOZ_OVERRIDE;
+  virtual void                      CreateChromeVsyncDispatcher();
+  virtual VsyncDispatcherBase*      GetVsyncDispatcherBase() MOZ_OVERRIDE;
+  //virtual ChromeVsyncDispatcher*  GetChromeVsyncDispatcher() MOZ_OVERRIDE;
+  //virtual ContentVsyncDispatcher* GetContentVsyncDispatcher() MOZ_OVERRIDE;
 
   virtual void                    BindTabID(uint64_t aTabId) MOZ_OVERRIDE;
   virtual void                    UnbindTabID(uint64_t aTabId) MOZ_OVERRIDE;
@@ -429,8 +431,8 @@ protected:
   nsRefPtr<CompositorChild> mCompositorChild;
   nsRefPtr<CompositorParent> mCompositorParent;
   //nsRefPtr<mozilla::VsyncDispatcher> mVsyncDispatcher;
+  //nsRefPtr<mozilla::VsyncDispatcherBase> mVsyncDispatcherBase;
   nsRefPtr<mozilla::ChromeVsyncDispatcher> mChromeVsyncDispatcher;
-  nsRefPtr<mozilla::ContentVsyncDispatcher> mContentVsyncDispatcher;
   nsRefPtr<WidgetShutdownObserver> mShutdownObserver;
   nsCursor          mCursor;
   bool              mUpdateCursor;

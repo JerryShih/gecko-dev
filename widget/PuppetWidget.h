@@ -197,6 +197,8 @@ public:
     mDefaultScale = -1;
   }
 
+  virtual VsyncDispatcherBase* GetVsyncDispatcherBase() MOZ_OVERRIDE;
+
 protected:
   bool mEnabled;
   bool mVisible;
@@ -258,6 +260,8 @@ private:
   InfallibleTArray<mozilla::CommandInt> mSingleLineCommands;
   InfallibleTArray<mozilla::CommandInt> mMultiLineCommands;
   InfallibleTArray<mozilla::CommandInt> mRichTextCommands;
+
+  nsRefPtr<mozilla::ContentVsyncDispatcher> mContentVsyncDispatcher;
 };
 
 struct AutoCacheNativeKeyCommands

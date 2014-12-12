@@ -964,17 +964,23 @@ void nsBaseWidget::CreateChromeVsyncDispatcher()
   }
 }
 
-ChromeVsyncDispatcher*
-nsBaseWidget::GetChromeVsyncDispatcher()
+VsyncDispatcherBase*
+nsBaseWidget::GetVsyncDispatcherBase()
 {
   return mChromeVsyncDispatcher;
 }
 
-ContentVsyncDispatcher*
-nsBaseWidget::GetContentVsyncDispatcher()
-{
-  return mContentVsyncDispatcher;
-}
+//ChromeVsyncDispatcher*
+//nsBaseWidget::GetChromeVsyncDispatcher()
+//{
+//  return mChromeVsyncDispatcher;
+//}
+//
+//ContentVsyncDispatcher*
+//nsBaseWidget::GetContentVsyncDispatcher()
+//{
+//  return mContentVsyncDispatcher;
+//}
 
 void
 nsBaseWidget::BindTabID(uint64_t aTabId)

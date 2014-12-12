@@ -291,7 +291,7 @@ CompositorVsyncObserver::ObserveVsync()
 {
   MOZ_ASSERT(CompositorParent::IsInCompositorThread());
   //mCompositorParent->mWidget->GetVsyncDispatcherParent()->AddCompositorVsyncObserver(this);
-  mCompositorParent->mWidget->GetChromeVsyncDispatcher()->AddCompositorVsyncObserver(this);
+  static_cast<ChromeVsyncDispatcher*>(mCompositorParent->mWidget->GetVsyncDispatcherBase())->AddCompositorVsyncObserver(this);
   mIsObservingVsync = true;
 }
 
@@ -300,7 +300,7 @@ CompositorVsyncObserver::UnobserveVsync()
 {
   MOZ_ASSERT(CompositorParent::IsInCompositorThread() || NS_IsMainThread());
   //mCompositorParent->mWidget->GetVsyncDispatcherParent()->RemoveCompositorVsyncObserver(this);
-  mCompositorParent->mWidget->GetChromeVsyncDispatcher()->RemoveCompositorVsyncObserver(this);
+  static_cast<ChromeVsyncDispatcher*>(mCompositorParent->mWidget->GetVsyncDispatcherBase())->RemoveCompositorVsyncObserver(this);
   mIsObservingVsync = false;
 }
 

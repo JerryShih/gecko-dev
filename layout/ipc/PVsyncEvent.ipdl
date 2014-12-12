@@ -20,15 +20,17 @@ sync protocol PVsyncEvent
   manager PBackground;
 
 child:
+  __delete__();
+
   // Send vsync event from chrome to content process.
   async NotifyVsyncEvent(TimeStamp aVsyncTimestamp);
 
 parent:
-  __delete__();
-
   // Observe vsync event notification or not for child side.
   async ObserveVsync();
   async UnobserveVsync();
+
+  sync Shutdown();
 };
 
 } // namespace layout
