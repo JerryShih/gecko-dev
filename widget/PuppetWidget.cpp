@@ -162,11 +162,13 @@ MightNeedIMEFocus(const nsWidgetInitData* aInitData)
 #endif
 }
 
+#ifndef MOZ_WIDGET_GONK
 #include <sys/syscall.h>
 static pid_t gettid()
 {
   return (pid_t) syscall(SYS_thread_selfid);
 }
+#endif
 
 // Arbitrary, fungible.
 const size_t PuppetWidget::kMaxDimension = 4000;

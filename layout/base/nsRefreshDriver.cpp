@@ -976,11 +976,13 @@ nsRefreshDriver::GetRefreshTimerInterval() const
   return mThrottled ? GetThrottledTimerInterval() : GetRegularTimerInterval();
 }
 
+#ifndef MOZ_WIDGET_GONK
 #include <sys/syscall.h>
 static pid_t gettid()
 {
   return (pid_t) syscall(SYS_thread_selfid);
 }
+#endif
 
 RefreshDriverTimer*
 nsRefreshDriver::ChooseTimer() const
