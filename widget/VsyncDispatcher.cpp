@@ -252,6 +252,8 @@ ChromeVsyncDispatcher::NotifyVsync(TimeStamp aVsyncTimestamp)
   }
 #endif
 
+  //printf_stderr("bignose ChromeVsyncDispatcher run\n");
+
   // Notify compositor.
   bool notifiedCompositor = false;
   {
@@ -329,6 +331,7 @@ ContentVsyncDispatcher::ContentVsyncDispatcher(VsyncEventChild* aVsyncEventChild
   : mVsyncEventChild(aVsyncEventChild)
 {
   mVsyncEventChild->SetContentVsyncDispatcher(this);
+  mVsyncEventChild->SendObserveVsync();
 }
 
 ContentVsyncDispatcher::~ContentVsyncDispatcher()
@@ -338,6 +341,8 @@ ContentVsyncDispatcher::~ContentVsyncDispatcher()
 void
 ContentVsyncDispatcher::NotifyVsync(TimeStamp aVsyncTimestamp)
 {
+  //printf_stderr("bignose ContentVsyncDispatcher run\n");
+
   // Notify all refresh drivers.
   {
     MutexAutoLock lock(mRefreshDriverTimerObserverLock);

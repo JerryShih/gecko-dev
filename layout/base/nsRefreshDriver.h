@@ -327,8 +327,9 @@ private:
 
   void FinishedWaitingForTransaction();
 
-  mozilla::RefreshDriverTimer* ChooseTimer() const;
-  mozilla::RefreshDriverTimer *mActiveTimer;
+  mozilla::RefreshDriverTimer* ChooseTimer();
+  mozilla::RefreshDriverTimer* mActiveTimer;
+  mozilla::RefreshDriverTimer* mVsyncTimer;
 
   ProfilerBacktrace* mReflowCause;
   ProfilerBacktrace* mStyleCause;
@@ -389,5 +390,54 @@ private:
   void ConfigureHighPrecision();
   void SetHighPrecisionTimersEnabled(bool aEnable);
 };
+
+namespace mozilla {
+/*
+ * The base class for all global refresh driver timers.  It takes care
+ * of managing the list of refresh drivers attached to them and actually
+ * running a timer 'Tick'. Subclasses must implement StartTimer(),
+ * StopTimer(), and ScheduleNextTick() -- the first two just start/stop
+ * whatever timer mechanism is in use, and ScheduleNextTick is called at
+ * the start of the Tick() implementation to set a time for the next tick.
+ */
+class RefreshDriverTimer {
+public:
+  RefreshDriverTimer();
+  virtual ~RefreshDriverTimer();
+
+  virtual void AddRefreshDriver(nsRefreshDriver* aDriver);
+  virtual void RemoveRefreshDriver(nsRefreshDriver* aDriver);
+
+  TimeStamp MostRecentRefresh() const { return mLastFireTime; }
+  int64_t MostRecentRefreshEpochTime() const { return mLastFireEpoch; }
+
+protected:
+  virtual void StartTimer() = 0;
+  virtual void StopTimer() = 0;
+  virtual void ScheduleNextTick(TimeStamp aNowTime) = 0;
+
+  /*
+   * Actually runs a tick, poking all the attached RefreshDrivers.
+   * Grabs the "now" time via JS_Now and TimeStamp::Now().
+   */
+  void Tick();
+  /*
+   * Another version of tick. Run a tick with the "aTimestamp" timestamp.
+   */
+  void Tick(TimeStamp aTimestampNow);
+
+  void TickDriver(nsRefreshDriver* driver, int64_t jsnow, TimeStamp now);
+
+private:
+  void TickInternal(int64_t aJSNow, TimeStamp aTimestampNow);
+
+protected:
+  int64_t mLastFireEpoch;
+  TimeStamp mLastFireTime;
+  TimeStamp mTargetTime;
+
+  nsTArray<nsRefPtr<nsRefreshDriver> > mRefreshDrivers;
+};
+} //namespace mozilla
 
 #endif /* !defined(nsRefreshDriver_h_) */

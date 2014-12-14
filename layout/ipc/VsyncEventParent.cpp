@@ -58,6 +58,7 @@ VsyncEventParent::Destroy()
 void
 VsyncEventParent::NotifyVsync(TimeStamp aVsyncTimestamp)
 {
+  //printf_stderr("bignose VsyncEventParent::NotifyVsync\n");
   // This function is called by vsync thread, so we need to post to PBackground
   // thread.
   nsRefPtr<nsIRunnable> notifyTask =
@@ -70,6 +71,7 @@ VsyncEventParent::NotifyVsync(TimeStamp aVsyncTimestamp)
 void
 VsyncEventParent::NotifyVsyncInternal(TimeStamp aVsyncTimestamp)
 {
+  printf_stderr("bignose VsyncEventParent::NotifyVsync\n");
   AssertIsOnBackgroundThread();
 
   // Send ipc to content process.

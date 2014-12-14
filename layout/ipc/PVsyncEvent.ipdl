@@ -30,7 +30,7 @@ parent:
   async ObserveVsync();
   async UnobserveVsync();
 
-  sync Shutdown();
+  //sync Shutdown();
 };
 
 } // namespace layout

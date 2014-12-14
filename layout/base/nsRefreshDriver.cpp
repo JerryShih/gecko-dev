@@ -81,120 +81,220 @@ static PRLogModuleInfo *gLog = nullptr;
 
 namespace mozilla {
 
-/*
- * The base class for all global refresh driver timers.  It takes care
- * of managing the list of refresh drivers attached to them and actually
- * running a timer 'Tick'. Subclasses must implement StartTimer(),
- * StopTimer(), and ScheduleNextTick() -- the first two just start/stop
- * whatever timer mechanism is in use, and ScheduleNextTick is called at
- * the start of the Tick() implementation to set a time for the next tick.
- */
-class RefreshDriverTimer {
-public:
-  RefreshDriverTimer()
-  {
+RefreshDriverTimer::RefreshDriverTimer()
+{
+}
+
+RefreshDriverTimer::~RefreshDriverTimer()
+{
+  NS_ASSERTION(mRefreshDrivers.Length() == 0, "Should have removed all refresh drivers from here by now!");
+}
+
+void
+RefreshDriverTimer::AddRefreshDriver(nsRefreshDriver* aDriver)
+{
+  LOG("[%p] AddRefreshDriver %p", this, aDriver);
+
+  NS_ASSERTION(!mRefreshDrivers.Contains(aDriver), "AddRefreshDriver for a refresh driver that's already in the list!");
+  mRefreshDrivers.AppendElement(aDriver);
+
+  if (mRefreshDrivers.Length() == 1) {
+    StartTimer();
   }
+}
 
-  virtual ~RefreshDriverTimer()
-  {
-    NS_ASSERTION(mRefreshDrivers.Length() == 0, "Should have removed all refresh drivers from here by now!");
+void
+RefreshDriverTimer::RemoveRefreshDriver(nsRefreshDriver* aDriver)
+{
+  LOG("[%p] RemoveRefreshDriver %p", this, aDriver);
+
+  NS_ASSERTION(mRefreshDrivers.Contains(aDriver), "RemoveRefreshDriver for a refresh driver that's not in the list!");
+  mRefreshDrivers.RemoveElement(aDriver);
+
+  if (mRefreshDrivers.Length() == 0) {
+    StopTimer();
   }
+}
 
-  virtual void AddRefreshDriver(nsRefreshDriver* aDriver)
-  {
-    LOG("[%p] AddRefreshDriver %p", this, aDriver);
+void
+RefreshDriverTimer::Tick()
+{
+  TickInternal(JS_Now(), TimeStamp::Now());
+}
 
-    NS_ASSERTION(!mRefreshDrivers.Contains(aDriver), "AddRefreshDriver for a refresh driver that's already in the list!");
-    mRefreshDrivers.AppendElement(aDriver);
+void
+RefreshDriverTimer::Tick(TimeStamp aTimestampNow)
+{
+  // Use aTimestamp to construct JS timestamp.
+  TimeStamp timeStampRefNow = TimeStamp::Now();
+  int64_t jsRefNow = JS_Now();
+  TimeDuration diff = timeStampRefNow - aTimestampNow;
 
-    if (mRefreshDrivers.Length() == 1) {
-      StartTimer();
+  int64_t jsnow = jsRefNow - diff.ToMicroseconds();
+
+  TickInternal(jsnow, aTimestampNow);
+}
+
+void
+RefreshDriverTimer::TickDriver(nsRefreshDriver* driver, int64_t jsnow, TimeStamp now)
+{
+  LOG(">> TickDriver: %p (jsnow: %lld)", driver, jsnow);
+
+  if (XRE_GetProcessType() == GeckoProcessType_Default) {
+    printf_stderr("bignose !!! b2g vsync tick, rd:%p\n",driver);
+  } else {
+    printf_stderr("bignose !!! content vsync tick, rd:%p\n",driver);
+  }
+  driver->Tick(jsnow, now);
+}
+
+void
+RefreshDriverTimer::TickInternal(int64_t aJSNow, TimeStamp aTimestampNow)
+{
+  MOZ_ASSERT(NS_IsMainThread());
+
+  ScheduleNextTick(aTimestampNow);
+
+  mLastFireEpoch = aJSNow;
+  mLastFireTime = aTimestampNow;
+
+  LOG("[%p] ticking drivers...", this);
+  nsTArray<nsRefPtr<nsRefreshDriver> > drivers(mRefreshDrivers);
+  // RD is short for RefreshDriver
+  profiler_tracing("Paint", "RD", TRACING_INTERVAL_START);
+  for (size_t i = 0; i < drivers.Length(); ++i) {
+    // don't poke this driver if it's in test mode
+    if (drivers[i]->IsTestControllingRefreshesEnabled()) {
+      continue;
     }
+
+    TickDriver(drivers[i], aJSNow, aTimestampNow);
   }
+  profiler_tracing("Paint", "RD", TRACING_INTERVAL_END);
+  LOG("[%p] done.", this);
+}
 
-  virtual void RemoveRefreshDriver(nsRefreshDriver* aDriver)
-  {
-    LOG("[%p] RemoveRefreshDriver %p", this, aDriver);
 
-    NS_ASSERTION(mRefreshDrivers.Contains(aDriver), "RemoveRefreshDriver for a refresh driver that's not in the list!");
-    mRefreshDrivers.RemoveElement(aDriver);
-
-    if (mRefreshDrivers.Length() == 0) {
-      StopTimer();
-    }
-  }
-
-  TimeStamp MostRecentRefresh() const { return mLastFireTime; }
-  int64_t MostRecentRefreshEpochTime() const { return mLastFireEpoch; }
-
-protected:
-  virtual void StartTimer() = 0;
-  virtual void StopTimer() = 0;
-  virtual void ScheduleNextTick(TimeStamp aNowTime) = 0;
-
-  /*
-   * Actually runs a tick, poking all the attached RefreshDrivers.
-   * Grabs the "now" time via JS_Now and TimeStamp::Now().
-   */
-  void Tick()
-  {
-    TickInternal(JS_Now(), TimeStamp::Now());
-  }
-
-  /*
-   * Run a tick with the "aTimestamp" timestamp.
-   */
-  void Tick(TimeStamp aTimestampNow)
-  {
-    // Use aTimestamp to construct JS timestamp.
-    TimeStamp timeStampRefNow = TimeStamp::Now();
-    int64_t jsRefNow = JS_Now();
-    TimeDuration diff = timeStampRefNow - aTimestampNow;
-
-    int64_t jsnow = jsRefNow - diff.ToMicroseconds();
-
-    TickInternal(jsnow, aTimestampNow);
-  }
-
-  void TickDriver(nsRefreshDriver* driver, int64_t jsnow, TimeStamp now)
-  {
-    LOG(">> TickDriver: %p (jsnow: %lld)", driver, jsnow);
-    driver->Tick(jsnow, now);
-  }
-
-private:
-  void TickInternal(int64_t aJSNow, TimeStamp aTimestampNow)
-  {
-    MOZ_ASSERT(NS_IsMainThread());
-
-    ScheduleNextTick(aTimestampNow);
-
-    mLastFireEpoch = aJSNow;
-    mLastFireTime = aTimestampNow;
-
-    LOG("[%p] ticking drivers...", this);
-    nsTArray<nsRefPtr<nsRefreshDriver> > drivers(mRefreshDrivers);
-    // RD is short for RefreshDriver
-    profiler_tracing("Paint", "RD", TRACING_INTERVAL_START);
-    for (size_t i = 0; i < drivers.Length(); ++i) {
-      // don't poke this driver if it's in test mode
-      if (drivers[i]->IsTestControllingRefreshesEnabled()) {
-        continue;
-      }
-
-      TickDriver(drivers[i], aJSNow, aTimestampNow);
-    }
-    profiler_tracing("Paint", "RD", TRACING_INTERVAL_END);
-    LOG("[%p] done.", this);
-  }
-
-protected:
-  int64_t mLastFireEpoch;
-  TimeStamp mLastFireTime;
-  TimeStamp mTargetTime;
-
-  nsTArray<nsRefPtr<nsRefreshDriver> > mRefreshDrivers;
-};
+///*
+// * The base class for all global refresh driver timers.  It takes care
+// * of managing the list of refresh drivers attached to them and actually
+// * running a timer 'Tick'. Subclasses must implement StartTimer(),
+// * StopTimer(), and ScheduleNextTick() -- the first two just start/stop
+// * whatever timer mechanism is in use, and ScheduleNextTick is called at
+// * the start of the Tick() implementation to set a time for the next tick.
+// */
+//class RefreshDriverTimer {
+//public:
+//  RefreshDriverTimer()
+//  {
+//  }
+//
+//  virtual ~RefreshDriverTimer()
+//  {
+//    NS_ASSERTION(mRefreshDrivers.Length() == 0, "Should have removed all refresh drivers from here by now!");
+//  }
+//
+//  virtual void AddRefreshDriver(nsRefreshDriver* aDriver)
+//  {
+//    LOG("[%p] AddRefreshDriver %p", this, aDriver);
+//
+//    NS_ASSERTION(!mRefreshDrivers.Contains(aDriver), "AddRefreshDriver for a refresh driver that's already in the list!");
+//    mRefreshDrivers.AppendElement(aDriver);
+//
+//    if (mRefreshDrivers.Length() == 1) {
+//      StartTimer();
+//    }
+//  }
+//
+//  virtual void RemoveRefreshDriver(nsRefreshDriver* aDriver)
+//  {
+//    LOG("[%p] RemoveRefreshDriver %p", this, aDriver);
+//
+//    NS_ASSERTION(mRefreshDrivers.Contains(aDriver), "RemoveRefreshDriver for a refresh driver that's not in the list!");
+//    mRefreshDrivers.RemoveElement(aDriver);
+//
+//    if (mRefreshDrivers.Length() == 0) {
+//      StopTimer();
+//    }
+//  }
+//
+//  TimeStamp MostRecentRefresh() const { return mLastFireTime; }
+//  int64_t MostRecentRefreshEpochTime() const { return mLastFireEpoch; }
+//
+//protected:
+//  virtual void StartTimer() = 0;
+//  virtual void StopTimer() = 0;
+//  virtual void ScheduleNextTick(TimeStamp aNowTime) = 0;
+//
+//  /*
+//   * Actually runs a tick, poking all the attached RefreshDrivers.
+//   * Grabs the "now" time via JS_Now and TimeStamp::Now().
+//   */
+//  void Tick()
+//  {
+//    TickInternal(JS_Now(), TimeStamp::Now());
+//  }
+//
+//  /*
+//   * Run a tick with the "aTimestamp" timestamp.
+//   */
+//  void Tick(TimeStamp aTimestampNow)
+//  {
+//    // Use aTimestamp to construct JS timestamp.
+//    TimeStamp timeStampRefNow = TimeStamp::Now();
+//    int64_t jsRefNow = JS_Now();
+//    TimeDuration diff = timeStampRefNow - aTimestampNow;
+//
+//    int64_t jsnow = jsRefNow - diff.ToMicroseconds();
+//
+//    TickInternal(jsnow, aTimestampNow);
+//  }
+//
+//  void TickDriver(nsRefreshDriver* driver, int64_t jsnow, TimeStamp now)
+//  {
+//    LOG(">> TickDriver: %p (jsnow: %lld)", driver, jsnow);
+//
+//    if (XRE_GetProcessType() == GeckoProcessType_Default) {
+//      printf_stderr("bignose !!! b2g vsync tick, rd:%p\n",driver);
+//    } else {
+//      printf_stderr("bignose !!! content vsync tick, rd:%p\n",driver);
+//    }
+//    driver->Tick(jsnow, now);
+//  }
+//
+//private:
+//  void TickInternal(int64_t aJSNow, TimeStamp aTimestampNow)
+//  {
+//    MOZ_ASSERT(NS_IsMainThread());
+//
+//    ScheduleNextTick(aTimestampNow);
+//
+//    mLastFireEpoch = aJSNow;
+//    mLastFireTime = aTimestampNow;
+//
+//    LOG("[%p] ticking drivers...", this);
+//    nsTArray<nsRefPtr<nsRefreshDriver> > drivers(mRefreshDrivers);
+//    // RD is short for RefreshDriver
+//    profiler_tracing("Paint", "RD", TRACING_INTERVAL_START);
+//    for (size_t i = 0; i < drivers.Length(); ++i) {
+//      // don't poke this driver if it's in test mode
+//      if (drivers[i]->IsTestControllingRefreshesEnabled()) {
+//        continue;
+//      }
+//
+//      TickDriver(drivers[i], aJSNow, aTimestampNow);
+//    }
+//    profiler_tracing("Paint", "RD", TRACING_INTERVAL_END);
+//    LOG("[%p] done.", this);
+//  }
+//
+//protected:
+//  int64_t mLastFireEpoch;
+//  TimeStamp mLastFireTime;
+//  TimeStamp mTargetTime;
+//
+//  nsTArray<nsRefPtr<nsRefreshDriver> > mRefreshDrivers;
+//};
 
 /*
  * This timer does not have any underlying timer. It uses VsyncObserver to
@@ -204,8 +304,9 @@ protected:
 class VsyncRefreshDriverTimer : public RefreshDriverTimer
 {
 public:
-  VsyncRefreshDriverTimer()
-    : mObservingVsync(false)
+  VsyncRefreshDriverTimer(VsyncDispatcherBase* aVsyncDispatcherBase)
+    : mVsyncDispatcher(aVsyncDispatcherBase)
+    , mObservingVsync(false)
   {
     MOZ_ASSERT(NS_IsMainThread());
   }
@@ -271,9 +372,26 @@ protected:
   };
 
 private:
-  virtual void ObserveVsync() = 0;
-  virtual void UnobserveVsync() = 0;
-  virtual void InitVsyncObserver() = 0;
+  void InitVsyncObserver()
+  {
+    MOZ_ASSERT(NS_IsMainThread());
+
+    mVsyncObserver = new VsyncObserverImpl(this);
+  }
+
+  void ObserveVsync()
+  {
+    MOZ_ASSERT(NS_IsMainThread());
+
+    mVsyncDispatcher->AddRefreshDriverTimerObserver(mVsyncObserver);
+  }
+
+  void UnobserveVsync()
+  {
+    MOZ_ASSERT(NS_IsMainThread());
+
+    mVsyncDispatcher->RemoveRefreshDriverTimerObserver(mVsyncObserver);
+  }
 
   void NotifyVsync(TimeStamp aVsyncTimestamp)
   {
@@ -285,6 +403,9 @@ private:
   virtual void StartTimer() MOZ_OVERRIDE
   {
     MOZ_ASSERT(NS_IsMainThread());
+
+    mLastFireEpoch = JS_Now();
+    mLastFireTime = TimeStamp::Now();
 
     if (!mVsyncObserver) {
       InitVsyncObserver();
@@ -306,7 +427,7 @@ private:
 
     if (mObservingVsync) {
       mObservingVsync = false;
-      UnobserveVsync();
+      //UnobserveVsync();
     }
   }
 
@@ -320,10 +441,140 @@ private:
 
 protected:
   nsRefPtr<VsyncObserverImpl> mVsyncObserver;
+  nsRefPtr<VsyncDispatcherBase> mVsyncDispatcher;
 
 private:
   bool mObservingVsync;
 };
+
+///*
+// * This timer does not have any underlying timer. It uses VsyncObserver to
+// * tick itself. When a vsync event comes, VsyncObserver::NotifyVsync() will be
+// * called and trigger the refresh driver's Tick().
+// */
+//class VsyncRefreshDriverTimer : public RefreshDriverTimer
+//{
+//public:
+//  VsyncRefreshDriverTimer()
+//    : mObservingVsync(false)
+//  {
+//    MOZ_ASSERT(NS_IsMainThread());
+//  }
+//
+//  virtual ~VsyncRefreshDriverTimer()
+//  {
+//    MOZ_ASSERT(NS_IsMainThread());
+//    // We should stop timer before delete the VsyncRefreshDriverTimer.
+//    MOZ_ASSERT(!mObservingVsync);
+//
+//    // Release the vsync observer.
+//    mVsyncObserver = nullptr;
+//  }
+//
+//protected:
+//  // VsyncObserver is refcounting. We use a separate object instead of making
+//  // VsyncRefreshDriverTimer inherit from VsyncObserver. Thus, we don't need
+//  // to change all other RefreshDriverTimer's creation and destroy.
+//  // Please check RefreshDriver::Shutdown(). We delete the timer at Shutdown().
+//  // We can't delete VsyncRefreshDriverTimer directly if it inherits from
+//  // VsyncObserver.
+//  class VsyncObserverImpl : public VsyncObserver
+//  {
+//    NS_INLINE_DECL_THREADSAFE_REFCOUNTING_WITH_MAIN_THREAD_DESTRUCTION(VsyncObserverImpl);
+//
+//  public:
+//    VsyncObserverImpl(VsyncRefreshDriverTimer* aTimer)
+//      : mTimer(aTimer)
+//    {
+//      MOZ_ASSERT(NS_IsMainThread());
+//      MOZ_ASSERT(mTimer);
+//    }
+//
+//    virtual bool NotifyVsync(TimeStamp aVsyncTimestamp) MOZ_OVERRIDE
+//    {
+//      // Refresh driver's tick should run at main thread.
+//      if (NS_IsMainThread()) {
+//        NotifyVsyncInternal(aVsyncTimestamp);
+//      } else {
+//        nsRefPtr<nsIRunnable> refreshDriverTask =
+//            NS_NewRunnableMethodWithArg<TimeStamp>(this,
+//                                                   &VsyncObserverImpl::NotifyVsyncInternal,
+//                                                   aVsyncTimestamp);
+//        NS_DispatchToMainThread(refreshDriverTask);
+//      }
+//      return true;
+//    }
+//
+//  private:
+//    ~VsyncObserverImpl()
+//    {
+//      MOZ_ASSERT(NS_IsMainThread());
+//    }
+//
+//    void NotifyVsyncInternal(TimeStamp aVsyncTimestamp)
+//    {
+//      MOZ_ASSERT(NS_IsMainThread());
+//
+//      mTimer->NotifyVsync(aVsyncTimestamp);
+//    }
+//
+//    VsyncRefreshDriverTimer* mTimer;
+//  };
+//
+//private:
+//  virtual void ObserveVsync() = 0;
+//  virtual void UnobserveVsync() = 0;
+//  virtual void InitVsyncObserver() = 0;
+//
+//  void NotifyVsync(TimeStamp aVsyncTimestamp)
+//  {
+//    MOZ_ASSERT(NS_IsMainThread());
+//
+//    Tick(aVsyncTimestamp);
+//  }
+//
+//  virtual void StartTimer() MOZ_OVERRIDE
+//  {
+//    MOZ_ASSERT(NS_IsMainThread());
+//
+//    if (!mVsyncObserver) {
+//      InitVsyncObserver();
+//    }
+//
+//    // Check mVsyncObserver after InitVsyncObserver().
+//    MOZ_ASSERT(mVsyncObserver);
+//
+//    if (!mObservingVsync) {
+//      mObservingVsync = true;
+//      ObserveVsync();
+//    }
+//  }
+//
+//  virtual void StopTimer() MOZ_OVERRIDE
+//  {
+//    MOZ_ASSERT(NS_IsMainThread());
+//    MOZ_ASSERT(mVsyncObserver);
+//
+//    if (mObservingVsync) {
+//      mObservingVsync = false;
+//      UnobserveVsync();
+//    }
+//  }
+//
+//  virtual void ScheduleNextTick(TimeStamp) MOZ_OVERRIDE
+//  {
+//    MOZ_ASSERT(NS_IsMainThread());
+//
+//    // After we call StartTimer(), we will receive every vsync tick until we
+//    // call StopTimer(). So we don't need to add vsync observer again.
+//  }
+//
+//protected:
+//  nsRefPtr<VsyncObserverImpl> mVsyncObserver;
+//
+//private:
+//  bool mObservingVsync;
+//};
 
 //// The vsync timer for chrome.
 //class ChromeVsyncRefreshDriverTimer MOZ_FINAL : public VsyncRefreshDriverTimer
@@ -985,22 +1236,29 @@ static pid_t gettid()
 #endif
 
 RefreshDriverTimer*
-nsRefreshDriver::ChooseTimer() const
+nsRefreshDriver::ChooseTimer()
 {
   if (XRE_GetProcessType() == GeckoProcessType_Default) {
+    if (mPresContext->GetRootWidget()) {
+      printf_stderr("bignose b2g, rd:%p, tabid:%d, vd:%p, tid:%d, pid:%d\n",
+          this,
+          mPresContext->GetRootWidget()->GetOwningTabChild() ? (int32_t)(mPresContext->GetRootWidget()->GetOwningTabChild()->GetTabId()) : -1,
+          mPresContext->GetRootWidget()->GetVsyncDispatcherBase(),
+          gettid(),getpid());
 
+    }
   } else {
+    if (mPresContext->GetRootWidget()) {
+      printf_stderr("bignose chrome, rd:%p, tabid:%d, vd:%p, tid:%d, pid:%d\n",
+          this,
+          mPresContext->GetRootWidget()->GetOwningTabChild() ? (int32_t)(mPresContext->GetRootWidget()->GetOwningTabChild()->GetTabId()) : -1,
+          mPresContext->GetRootWidget()->GetVsyncDispatcherBase(),
+          gettid(),getpid());
 
+    }
   }
 
-  if (mPresContext->GetRootWidget()) {
-    printf_stderr("bignose b2g, rd:%p, tabid:%d, vd:%p, tid:%d, pid:%d\n",
-        this,
-        mPresContext->GetRootWidget()->GetOwningTabChild() ? (int32_t)(mPresContext->GetRootWidget()->GetOwningTabChild()->GetTabId()) : -1,
-        mPresContext->GetRootWidget()->GetVsyncDispatcherBase(),
-        gettid(),getpid());
 
-  }
 
 
   if (mThrottled) {
@@ -1011,20 +1269,36 @@ nsRefreshDriver::ChooseTimer() const
     return sThrottledRateTimer;
   }
 
+  // We create timer before gfxPrefs initialize.
+  // Call GetSingleton to init gfxPres here.
+  gfxPrefs::GetSingleton();
+  if (gfxPrefs::VsyncAlignedRefreshDriver()) {
+    if (!mVsyncTimer) {
+      if (mPresContext->GetRootWidget() && mPresContext->GetRootWidget()->GetVsyncDispatcherBase()) {
+        printf_stderr("bignose create vsync timer, rd:%p\n",this);
+        mVsyncTimer = new VsyncRefreshDriverTimer(mPresContext->GetRootWidget()->GetVsyncDispatcherBase());
+      }
+    }
+    if (mVsyncTimer) {
+      printf_stderr("bignose use vsync timer, rd:%p\n",this);
+      return mVsyncTimer;
+    }
+  }
+
   if (!sRegularRateTimer) {
-    // We create timer before gfxPrefs initialize.
-    // Call GetSingleton to init gfxPres here.
-    gfxPrefs::GetSingleton();
+//    // We create timer before gfxPrefs initialize.
+//    // Call GetSingleton to init gfxPres here.
+//    gfxPrefs::GetSingleton();
 
     bool isDefault = true;
     double rate = GetRegularTimerInterval(&isDefault);
-    if (gfxPrefs::VsyncAlignedRefreshDriver()) {
-      if (XRE_GetProcessType() == GeckoProcessType_Default) {
-        //sRegularRateTimer = new ChromeVsyncRefreshDriverTimer();
-      } else {
-        //sRegularRateTimer = new ContentVsyncRefreshDriverTimer();
-      }
-    }
+//    if (gfxPrefs::VsyncAlignedRefreshDriver()) {
+//      if (XRE_GetProcessType() == GeckoProcessType_Default) {
+//        //sRegularRateTimer = new ChromeVsyncRefreshDriverTimer();
+//      } else {
+//        //sRegularRateTimer = new ContentVsyncRefreshDriverTimer();
+//      }
+//    }
 #ifdef XP_WIN
     if (PreciseRefreshDriverTimerWindowsDwmVsync::IsSupported()) {
       sRegularRateTimer = new PreciseRefreshDriverTimerWindowsDwmVsync(rate, isDefault);
@@ -1039,6 +1313,7 @@ nsRefreshDriver::ChooseTimer() const
 
 nsRefreshDriver::nsRefreshDriver(nsPresContext* aPresContext)
   : mActiveTimer(nullptr),
+    mVsyncTimer(nullptr),
     mReflowCause(nullptr),
     mStyleCause(nullptr),
     mPresContext(aPresContext),
