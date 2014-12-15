@@ -65,7 +65,7 @@ VsyncEventChild::RecvNotifyVsyncEvent(const TimeStamp& aVsyncTimestamp)
   MOZ_ASSERT(NS_IsMainThread());
   MOZ_ASSERT(mContentVsyncDispatcher);
 
-  printf_stderr("bignose VsyncEventChild::RecvNotifyVsyncEvent\n");
+  //printf_stderr("bignose VsyncEventChild::RecvNotifyVsyncEvent\n");
 
   // When we call UnobserveVsync(), there might have other RecvNotifyVsyncEvent()
   // messages in thread queue already. Check "mObservingVsync" flag to skip these

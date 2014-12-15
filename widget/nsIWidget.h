@@ -896,6 +896,9 @@ class nsIWidget : public nsISupports {
     virtual void BindTabID(uint64_t aTabId) = 0;
     virtual void UnbindTabID(uint64_t aTabId) = 0;
 
+    //out the screen id of this widget.
+    virtual bool GetScreenID(uint32_t *screenID) = 0;
+
     /**
      * Return the default scale factor for the window. This is the
      * default number of device pixels per CSS pixel to use. This should

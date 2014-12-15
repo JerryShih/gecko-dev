@@ -45,7 +45,8 @@ parent:
 
   PBackgroundIDBFactory(OptionalWindowId optionalWindowId);
 
-  PVsyncEvent(TabId aTabID);
+  //PVsyncEvent(TabId aTabID);
+  PVsyncEvent();
 
 both:
   PBlob(BlobConstructorParams params);

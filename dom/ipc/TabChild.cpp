@@ -1734,6 +1734,8 @@ TabChild::~TabChild()
     if (webBrowser) {
       webBrowser->SetContainerWindow(nullptr);
     }
+
+    printf_stderr("bignose destroy tabchild\n");
 }
 
 void

@@ -1238,6 +1238,8 @@ static pid_t gettid()
 RefreshDriverTimer*
 nsRefreshDriver::ChooseTimer()
 {
+  uint32_t screenid=0;
+
   if (XRE_GetProcessType() == GeckoProcessType_Default) {
     if (mPresContext->GetRootWidget()) {
       printf_stderr("bignose b2g, rd:%p, tabid:%d, vd:%p, tid:%d, pid:%d\n",
@@ -1246,6 +1248,15 @@ nsRefreshDriver::ChooseTimer()
           mPresContext->GetRootWidget()->GetVsyncDispatcherBase(),
           gettid(),getpid());
 
+      if(mPresContext->GetRootWidget()->GetScreenID(&screenid)){
+        printf_stderr("bignose b2g screen_id:%d, rd:%p\n",screenid,this);
+      }
+      else {
+         printf_stderr("bignose b2g no screen_id, rd:%p\n",this);
+       }
+    }
+    else {
+      printf_stderr("bignose b2g no widget, rd:%p\n",this);
     }
   } else {
     if (mPresContext->GetRootWidget()) {
@@ -1254,7 +1265,15 @@ nsRefreshDriver::ChooseTimer()
           mPresContext->GetRootWidget()->GetOwningTabChild() ? (int32_t)(mPresContext->GetRootWidget()->GetOwningTabChild()->GetTabId()) : -1,
           mPresContext->GetRootWidget()->GetVsyncDispatcherBase(),
           gettid(),getpid());
-
+      if(mPresContext->GetRootWidget()->GetScreenID(&screenid)){
+        printf_stderr("bignose chrome screen_id:%d, rd:%p\n",screenid,this);
+      }
+      else {
+        printf_stderr("bignose chrome no screen_id, rd:%p\n",this);
+      }
+    }
+    else {
+      printf_stderr("bignose chrome no widget, rd:%p\n",this);
     }
   }
 

@@ -71,7 +71,7 @@ VsyncEventParent::NotifyVsync(TimeStamp aVsyncTimestamp)
 void
 VsyncEventParent::NotifyVsyncInternal(TimeStamp aVsyncTimestamp)
 {
-  printf_stderr("bignose VsyncEventParent::NotifyVsync\n");
+  //printf_stderr("bignose VsyncEventParent::NotifyVsync\n");
   AssertIsOnBackgroundThread();
 
   // Send ipc to content process.

@@ -279,6 +279,9 @@ void nsBaseWidget::BaseCreate(nsIWidget *aParent,
   if (aParent) {
     aParent->AddChild(this);
   }
+
+  mScreenManager = do_GetService("@mozilla.org/gfx/screenmanager;1");
+  MOZ_ASSERT(mScreenManager,"no screen manager");
 }
 
 NS_IMETHODIMP nsBaseWidget::CaptureMouse(bool aCapture)
@@ -961,6 +964,48 @@ void nsBaseWidget::CreateChromeVsyncDispatcher()
 
       printf_stderr("bignose create chrome vsync dispatcher, widget:%p, dispatcher:%p\n", this, mChromeVsyncDispatcher.get());
     }
+
+
+    // Move to top-left corner of screen and size to the screen dimensions
+    nsCOMPtr<nsIScreenManager> screenManager;
+    screenManager = do_GetService("@mozilla.org/gfx/screenmanager;1");
+    NS_ASSERTION(screenManager, "Unable to grab screenManager.");
+    if (screenManager) {
+      uint32_t screenNum = 0;
+      uint32_t screenID = 0;
+      void* nativeData = GetNativeData(NS_NATIVE_WINDOW);
+      if(nativeData){
+        nsCOMPtr<nsIScreen> screen;
+        screenManager->ScreenForNativeWidget(nativeData,getter_AddRefs(screen));
+        screen->GetId(&screenID);
+        printf_stderr("bignose create chrome vsync dispatcher, widget:%p, dispatcher:%p, screen id:%d\n",
+            this, mChromeVsyncDispatcher.get(),screenID);
+      }
+//      screenManager->GetNumberOfScreens(&screenNum);
+//      screenManager->ScreenForNativeWidget(GetNative);
+//      printf_stderr("bignose create chrome vsync dispatcher, widget:%p, dispatcher:%p, screen number:%d\n",
+//          this, mChromeVsyncDispatcher.get(),screenNum);
+
+//      NS_DECLARE_STATIC_IID_ACCESSOR(NS_ISCREENMANAGER_IID)
+//
+//      /* nsIScreen screenForRect (in long left, in long top, in long width, in long height); */
+//      NS_IMETHOD ScreenForRect(int32_t left, int32_t top, int32_t width, int32_t height, nsIScreen * *_retval) = 0;
+//
+//      /* nsIScreen screenForId (in unsigned long id); */
+//      NS_IMETHOD ScreenForId(uint32_t id, nsIScreen * *_retval) = 0;
+//
+//      /* readonly attribute nsIScreen primaryScreen; */
+//      NS_IMETHOD GetPrimaryScreen(nsIScreen * *aPrimaryScreen) = 0;
+//
+//      /* readonly attribute unsigned long numberOfScreens; */
+//      NS_IMETHOD GetNumberOfScreens(uint32_t *aNumberOfScreens) = 0;
+//
+//      /* readonly attribute float systemDefaultScale; */
+//      NS_IMETHOD GetSystemDefaultScale(float *aSystemDefaultScale) = 0;
+//
+//      /* [noscript] nsIScreen screenForNativeWidget (in voidPtr nativeWidget); */
+//      NS_IMETHOD ScreenForNativeWidget(void *nativeWidget, nsIScreen * *_retval) = 0;
+    }
   }
 }
 
@@ -1010,6 +1055,37 @@ nsBaseWidget::GetWidget(uint64_t aTabId)
   }
 
   return nullptr;
+}
+
+bool
+nsBaseWidget::GetScreenID(uint32_t *screenID)
+{
+  void* nativeData = GetNativeData(NS_NATIVE_WINDOW);
+  uint32_t screenIDTmp = 0;
+  uint32_t screenNumber = 0;
+  mScreenManager->GetNumberOfScreens(&screenNumber);
+  printf_stderr("bignose widget:%p, screen number:%d\n",
+          this,screenNumber);
+
+  if(nativeData){
+    nsCOMPtr<nsIScreen> screen;
+    mScreenManager->ScreenForNativeWidget(nativeData,getter_AddRefs(screen));
+    if(screen){
+      screen->GetId(&screenIDTmp);
+
+      printf_stderr("bignose widget:%p, screen id:%d\n",
+        this,screenIDTmp);
+    }
+    else {
+      printf_stderr("bignose widget:%p, no screen id\n",
+              this);
+    }
+
+    *screenID = screenIDTmp;
+    return true;
+  }
+
+  return false;
 }
 
 void nsBaseWidget::CreateCompositor(int aWidth, int aHeight)

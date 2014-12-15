@@ -23,6 +23,8 @@ class nsIContent;
 class nsAutoRollup;
 class gfxContext;
 
+class nsIScreenManager;
+
 namespace mozilla {
 #ifdef ACCESSIBILITY
 namespace a11y {
@@ -155,6 +157,8 @@ public:
   virtual void                    BindTabID(uint64_t aTabId) MOZ_OVERRIDE;
   virtual void                    UnbindTabID(uint64_t aTabId) MOZ_OVERRIDE;
   static nsIWidget*               GetWidget(uint64_t aTabId);
+
+  virtual bool GetScreenID(uint32_t *screenID) MOZ_OVERRIDE;
 
 
   virtual CompositorParent* NewCompositorParent(int aSurfaceWidth, int aSurfaceHeight);
@@ -430,9 +434,13 @@ protected:
   nsRefPtr<LayerManager> mBasicLayerManager;
   nsRefPtr<CompositorChild> mCompositorChild;
   nsRefPtr<CompositorParent> mCompositorParent;
+
+
   //nsRefPtr<mozilla::VsyncDispatcher> mVsyncDispatcher;
   //nsRefPtr<mozilla::VsyncDispatcherBase> mVsyncDispatcherBase;
   nsRefPtr<mozilla::ChromeVsyncDispatcher> mChromeVsyncDispatcher;
+  nsCOMPtr<nsIScreenManager>     mScreenManager;
+
   nsRefPtr<WidgetShutdownObserver> mShutdownObserver;
   nsCursor          mCursor;
   bool              mUpdateCursor;
