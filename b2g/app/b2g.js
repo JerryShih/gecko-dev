@@ -40,6 +40,11 @@ pref("browser.viewport.scaleRatio", -1);
 /* disable text selection */
 pref("browser.ignoreNativeFrameTextSelection", true);
 
+// vsync
+//pref("gfx.vsync.hw-vsync.enabled", true);
+//pref("gfx.vsync.compositor", true);
+//pref("gfx.vsync.refreshdriver", true);
+
 /* cache prefs */
 #ifdef MOZ_WIDGET_GONK
 pref("browser.cache.disk.enable", true);
