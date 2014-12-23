@@ -35,6 +35,8 @@ private:
   VsyncParent();
   virtual ~VsyncParent();
 
+  IProtocol* CloneProtocol(Channel* aChannel, ProtocolCloneContext* aCtx) MOZ_OVERRIDE;
+
   virtual bool NotifyVsync(TimeStamp aTimeStamp) MOZ_OVERRIDE;
 
   virtual bool RecvObserve() MOZ_OVERRIDE;

@@ -57,6 +57,8 @@ class NeckoParent;
 
 namespace ipc {
 
+class BackgroundParentImpl;
+
 #ifdef XP_WIN
 const base::ProcessHandle kInvalidProcessHandle = INVALID_HANDLE_VALUE;
 #else
@@ -96,14 +98,17 @@ class ProtocolCloneContext
 {
   typedef mozilla::dom::ContentParent ContentParent;
   typedef mozilla::net::NeckoParent NeckoParent;
+  typedef mozilla::ipc::BackgroundParentImpl BackgroundParent;
 
   ContentParent* mContentParent;
   NeckoParent* mNeckoParent;
+  BackgroundParent* mBackgroundParent;
 
 public:
   ProtocolCloneContext()
     : mContentParent(nullptr)
     , mNeckoParent(nullptr)
+    , mBackgroundParent(nullptr)
   {}
 
   void SetContentParent(ContentParent* aContentParent)
@@ -119,6 +124,13 @@ public:
   }
 
   NeckoParent* GetNeckoParent() { return mNeckoParent; }
+
+  void SetBackgroundParent(BackgroundParent* aBackgroundParent)
+  {
+    mBackgroundParent = aBackgroundParent;
+  }
+
+  BackgroundParent* GetBackgroundParent() { return mBackgroundParent; }
 };
 
 template<class ListenerT>

@@ -81,6 +81,14 @@ BackgroundParentImpl::~BackgroundParentImpl()
 }
 
 void
+BackgroundParentImpl::CloneManagees(ProtocolBase* aSource,
+                                                     ProtocolCloneContext* aCtx)
+{
+  aCtx->SetBackgroundParent(this);
+  PBackgroundParent::CloneManagees(aSource, aCtx);
+}
+
+void
 BackgroundParentImpl::ActorDestroy(ActorDestroyReason aWhy)
 {
   AssertIsInMainProcess();

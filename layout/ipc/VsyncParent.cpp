@@ -108,5 +108,17 @@ VsyncParent::ActorDestroy(ActorDestroyReason aReason)
   mDestroyed = true;
 }
 
+IProtocol*
+VsyncParent::CloneProtocol(Channel* aChannel, ProtocolCloneContext* aCtx)
+{
+  BackgroundParentImpl* backgroundParent = aCtx->GetBackgroundParent();
+  nsAutoPtr<PVsyncParent> actor(backgroundParent->AllocPVsyncParent());
+
+  if (!actor || !backgroundParent->RecvPVsyncConstructor(actor)) {
+    return nullptr;
+  }
+  return actor.forget();
+}
+
 } // namespace layout
 } // namespace mozilla

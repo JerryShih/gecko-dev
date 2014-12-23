@@ -25,6 +25,9 @@ protected:
   virtual ~BackgroundParentImpl();
 
   virtual void
+  CloneManagees(ProtocolBase* aSource, ProtocolCloneContext* aCtx) MOZ_OVERRIDE;
+
+  virtual void
   ActorDestroy(ActorDestroyReason aWhy) MOZ_OVERRIDE;
 
   virtual PBackgroundTestParent*
