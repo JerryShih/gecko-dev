@@ -651,7 +651,7 @@ CompositorOGL::BeginFrame(const nsIntRegion& aInvalidRegion,
   // DrawWindowUnderlay. Make sure the bits used here match up with those used
   // in mobile/android/base/gfx/LayerRenderer.java
 #ifndef MOZ_WIDGET_ANDROID
-  mGLContext->fClearColor(0.0, 0.0, 0.0, 0.0);
+  mGLContext->fClearColor(1.0, 0.0, 0.0, 0.0);
   mGLContext->fClear(LOCAL_GL_COLOR_BUFFER_BIT | LOCAL_GL_DEPTH_BUFFER_BIT);
 #endif
 }

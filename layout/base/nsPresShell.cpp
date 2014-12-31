@@ -5415,6 +5415,34 @@ PresShell::AddCanvasBackgroundColorItem(nsDisplayListBuilder& aBuilder,
     return;
   }
 
+  if(aBackstopColor== NS_RGBA(255,255,255,255)){
+    printf_stderr("bignose get");
+  }
+  if(mCanvasBackgroundColor== NS_RGBA(255,255,255,255)){
+    printf_stderr("bignose get");
+  }
+
+  printf_stderr("bignose tid:%d, aBackstopColor(%d,%d,%d,%d), mCanvasBackgroundColor(%d,%d,%d,%d)",
+      gettid(),
+      NS_GET_R(aBackstopColor),NS_GET_G(aBackstopColor),NS_GET_B(aBackstopColor),NS_GET_A(aBackstopColor),
+      NS_GET_R(mCanvasBackgroundColor),NS_GET_G(mCanvasBackgroundColor),NS_GET_B(mCanvasBackgroundColor),NS_GET_A(mCanvasBackgroundColor));
+
+  char debug_prefix[36];
+  sprintf(debug_prefix,"bignose tid:%d",gettid());
+
+  nsIFrame* testFrame=FrameManager()->GetRootFrame();
+
+  printf_stderr("bignose begin:%s, rootframe:%p",debug_prefix,testFrame);
+
+  if(testFrame) {
+    testFrame->List(stderr, debug_prefix);
+  }
+  //mCanvasBackgroundColor = NS_RGBA(0,0,0,0);
+  //aBackstopColor = NS_RGBA(0,0,0,0);
+
+
+
+
   nscolor bgcolor = NS_ComposeColors(aBackstopColor, mCanvasBackgroundColor);
   if (NS_GET_A(bgcolor) == 0)
     return;
@@ -5456,9 +5484,16 @@ static bool IsTransparentContainerElement(nsPresContext* aPresContext)
 
 nscolor PresShell::GetDefaultBackgroundColorToDraw()
 {
+  //return NS_RGBA(0,0,0,0);
   if (!mPresContext || !mPresContext->GetBackgroundColorDraw()) {
+    printf_stderr("bignose GetDefaultBackgroundColorToDraw, (255,255,255,255)");
     return NS_RGB(255,255,255);
+    //return NS_RGBA(0,0,0,0);
   }
+  nscolor color=mPresContext->DefaultBackgroundColor();
+  printf_stderr("bignose mPresContext->DefaultBackgroundColor, (%d,%d,%d,%d)",
+      NS_GET_R(color),NS_GET_G(color),NS_GET_B(color),NS_GET_A(color));
+  //return NS_RGBA(0,0,0,0);
   return mPresContext->DefaultBackgroundColor();
 }
 
@@ -5482,11 +5517,20 @@ void PresShell::UpdateCanvasBackground()
                                                rootStyleFrame,
                                                drawBackgroundImage,
                                                drawBackgroundColor);
+
+    printf_stderr("bignose UpdateCanvasBackground::nsCSSRendering::DetermineBackgroundColor (%d,%d,%d,%d)",
+        NS_GET_R(mCanvasBackgroundColor),NS_GET_G(mCanvasBackgroundColor),NS_GET_B(mCanvasBackgroundColor),NS_GET_A(mCanvasBackgroundColor));
+
     mHasCSSBackgroundColor = drawBackgroundColor;
     if (GetPresContext()->IsCrossProcessRootContentDocument() &&
         !IsTransparentContainerElement(mPresContext)) {
-      mCanvasBackgroundColor =
-        NS_ComposeColors(GetDefaultBackgroundColorToDraw(), mCanvasBackgroundColor);
+      //bignose test mark
+      //mCanvasBackgroundColor =
+      //  NS_ComposeColors(GetDefaultBackgroundColorToDraw(), mCanvasBackgroundColor);
+
+      printf_stderr("bignose UpdateCanvasBackground change 1 (%d,%d,%d,%d)",
+             NS_GET_R(mCanvasBackgroundColor),NS_GET_G(mCanvasBackgroundColor),NS_GET_B(mCanvasBackgroundColor),NS_GET_A(mCanvasBackgroundColor));
+
     }
   }
 
@@ -5495,6 +5539,10 @@ void PresShell::UpdateCanvasBackground()
   // color we actually draw.
   if (!FrameConstructor()->GetRootElementFrame()) {
     mCanvasBackgroundColor = GetDefaultBackgroundColorToDraw();
+
+    printf_stderr("bignose UpdateCanvasBackground change 2 (%d,%d,%d,%d)",
+           NS_GET_R(mCanvasBackgroundColor),NS_GET_G(mCanvasBackgroundColor),NS_GET_B(mCanvasBackgroundColor),NS_GET_A(mCanvasBackgroundColor));
+
   }
   if (XRE_GetProcessType() == GeckoProcessType_Content) {
     if (TabChild* tabChild = TabChild::GetFrom(this)) {
@@ -5510,12 +5558,18 @@ nscolor PresShell::ComputeBackstopColor(nsView* aDisplayRoot)
                  widget->WidgetPaintsBackground())) {
     // Within a transparent widget, so the backstop color must be
     // totally transparent.
+    printf_stderr("bignose PresShell::ComputeBackstopColor, Transparency widget (0,0,0,0)");
     return NS_RGBA(0,0,0,0);
   }
   // Within an opaque widget (or no widget at all), so the backstop
   // color must be totally opaque. The user's default background
   // as reported by the prescontext is guaranteed to be opaque.
-  return GetDefaultBackgroundColorToDraw();
+  //return GetDefaultBackgroundColorToDraw();
+
+  nscolor temp=GetDefaultBackgroundColorToDraw();
+  printf_stderr("bignose PresShell::ComputeBackstopColor, GetDefaultBackgroundColorToDraw, (%d,%d,%d,%d)",
+      NS_GET_R(temp),NS_GET_G(temp),NS_GET_B(temp),NS_GET_A(temp));
+  return temp;
 }
 
 struct PaintParams {

@@ -207,6 +207,7 @@ nsPresContext::nsPresContext(nsIDocument* aDocument, nsPresContextType aType)
   SetBackgroundColorDraw(true);
 
   mBackgroundColor = NS_RGB(0xFF, 0xFF, 0xFF);
+  //mBackgroundColor = NS_RGBA(0, 0, 0, 0);
 
   mUseDocumentColors = true;
   mUseDocumentFonts = true;
@@ -685,6 +686,7 @@ nsPresContext::GetDocumentColorPreferences()
   mBackgroundColor = NS_ComposeColors(NS_RGB(0xFF, 0xFF, 0xFF),
                                       mBackgroundColor);
 
+  //mBackgroundColor = NS_RGBA(0,0,0,0);
 
   // Now deal with the pref:
   // 0 = default: always, except in high contrast mode

@@ -173,11 +173,27 @@ nsWindow::nsWindow()
     }
     // Update sUsingHwc whenever layers.composer2d.enabled changes
     Preferences::AddBoolVarCache(&sUsingHwc, "layers.composer2d.enabled");
+
+    mIsTransparent = true;
 }
 
 nsWindow::~nsWindow()
 {
     HwcComposer2D::GetInstance()->SetCompositorParent(nullptr);
+}
+
+void
+nsWindow::SetTransparencyMode(nsTransparencyMode aMode)
+{
+    MOZ_ASSERT(aMode==eTransparencyTransparent || aMode==eTransparencyOpaque);
+
+    mIsTransparent = (aMode==eTransparencyTransparent) ? true : false;
+}
+
+nsTransparencyMode
+nsWindow::GetTransparencyMode()
+{
+    return mIsTransparent ? eTransparencyTransparent : eTransparencyOpaque;
 }
 
 void

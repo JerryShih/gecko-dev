@@ -430,6 +430,12 @@ nsCanvasFrame::BuildDisplayList(nsDisplayListBuilder*   aBuilder,
     DisplayOverflowContainers(aBuilder, aDirtyRect, aLists);
   }
 
+
+  //char debug_prefix[12];
+  //sprintf(debug_prefix,"tid:%d",gettid());
+  //printf_stderr("bignose begin:%s",debug_prefix);
+  //RootFrameList(PresContext(),stderr,debug_prefix);
+
   // Force a background to be shown. We may have a background propagated to us,
   // in which case StyleBackground wouldn't have the right background
   // and the code in nsFrame::DisplayBorderBackgroundOutline might not give us
@@ -506,6 +512,8 @@ nsCanvasFrame::BuildDisplayList(nsDisplayListBuilder*   aBuilder,
   printf("%p - Focus: %s   c: %p  DoPaint:%s\n", docShell.get(), hasFocus?"Y":"N", 
          focusContent.get(), mDoPaintFocus?"Y":"N");
 #endif
+
+  //printf_stderr("bignose end:%s",debug_prefix);
 
   if (!mDoPaintFocus)
     return;

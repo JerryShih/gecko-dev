@@ -104,6 +104,7 @@
 #include "nsTransitionManager.h"
 #include "RestyleManager.h"
 
+#include "cutils/properties.h"
 
 using namespace mozilla;
 using namespace mozilla::dom;
@@ -2930,6 +2931,16 @@ nsLayoutUtils::PaintFrame(nsRenderingContext* aRenderingContext, nsIFrame* aFram
   nsRootPresContext* rootPresContext = presContext->GetRootPresContext();
   if (!rootPresContext) {
     return NS_OK;
+  }
+
+  nsIPresShell* testRootpresShell = rootPresContext->PresShell();
+  nsIFrame* testRootFrame = testRootpresShell->GetRootFrame();
+
+  char propValue[PROPERTY_VALUE_MAX];
+  property_get("test.background", propValue, "0");
+  if(atoi(propValue)) {
+    testRootFrame->DumpFrameTree();
+    property_set("test.background", "0");
   }
 
   TimeStamp startBuildDisplayList = TimeStamp::Now();

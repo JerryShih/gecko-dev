@@ -2365,7 +2365,10 @@ public:
     : nsDisplayItem(aBuilder, aFrame)
     , mBackgroundStyle(aBackgroundStyle)
     , mColor(gfxRGBA(aColor))
-  { }
+  {
+    //printf_stderr("bignose nsDisplayBackgroundColor(r:%f,g:%f,b:%f,a:%f)\n",
+    //    mColor.r,mColor.g,mColor.b,mColor.a);
+  }
 
   virtual void Paint(nsDisplayListBuilder* aBuilder, nsRenderingContext* aCtx) MOZ_OVERRIDE;
 
