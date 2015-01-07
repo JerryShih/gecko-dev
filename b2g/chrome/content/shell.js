@@ -291,8 +291,8 @@ var shell = {
     systemAppFrame.setAttribute('mozbrowser', 'true');
     systemAppFrame.setAttribute('mozapp', manifestURL);
     systemAppFrame.setAttribute('allowfullscreen', 'true');
-    systemAppFrame.setAttribute('style', "overflow: hidden; height: 100%; width: 100%; border: none;");
-    systemAppFrame.setAttribute('src', "data:text/html;charset=utf-8,%3C!DOCTYPE html>%3Cbody style='background:black;");
+    systemAppFrame.setAttribute('style', "background:transparent; overflow: hidden; height: 100%; width: 100%; border: none;");
+    systemAppFrame.setAttribute('src', "data:text/html;charset=utf-8,%3C!DOCTYPE html>%3Cbody style='background:transparent;");
     let container = document.getElementById('container');
 #ifdef MOZ_WIDGET_COCOA
     // See shell.html

@@ -125,6 +125,7 @@ displayEnabledCallback(bool enabled)
 } // anonymous namespace
 
 nsWindow::nsWindow()
+ : mIsTransparent(true)
 {
     if (sScreenInitialized)
         return;
@@ -603,6 +604,20 @@ nsWindow::GetComposer2D()
     }
 
     return nullptr;
+}
+
+void
+nsWindow::SetTransparencyMode(nsTransparencyMode aMode)
+{
+    MOZ_ASSERT(aMode==eTransparencyTransparent || aMode==eTransparencyOpaque);
+
+    mIsTransparent = (aMode==eTransparencyTransparent) ? true : false;
+}
+
+nsTransparencyMode
+nsWindow::GetTransparencyMode()
+{
+    return mIsTransparent ? eTransparencyTransparent : eTransparencyOpaque;
 }
 
 // nsScreenGonk.cpp

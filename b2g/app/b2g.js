@@ -37,6 +37,9 @@ pref("browser.viewport.scaleRatio", -1);
 /* disable text selection */
 pref("browser.ignoreNativeFrameTextSelection", true);
 
+pref("gfx.layerscope.enabled", true);
+pref("network.gonk.manage-offline-status", false);
+
 /* cache prefs */
 #ifdef MOZ_WIDGET_GONK
 pref("browser.cache.disk.enable", true);
