@@ -2784,7 +2784,7 @@ nsPresContext::IsCrossProcessRootContentDocument()
   }
 
   if (XRE_GetProcessType() == GeckoProcessType_Default) {
-    return true;
+    return false;
   }
 
   TabChild* tabChild = TabChild::GetFrom(mShell);
