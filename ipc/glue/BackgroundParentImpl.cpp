@@ -82,7 +82,7 @@ BackgroundParentImpl::~BackgroundParentImpl()
 
 void
 BackgroundParentImpl::CloneManagees(ProtocolBase* aSource,
-                                                     ProtocolCloneContext* aCtx)
+                                    ProtocolCloneContext* aCtx)
 {
   aCtx->SetBackgroundParent(this);
   PBackgroundParent::CloneManagees(aSource, aCtx);

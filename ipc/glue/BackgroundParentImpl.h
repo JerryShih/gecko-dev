@@ -20,6 +20,8 @@ namespace ipc {
 // to be inherited in BackgroundImpl.
 class BackgroundParentImpl : public PBackgroundParent
 {
+ friend class mozilla::layout::VsyncParent;
+
 protected:
   BackgroundParentImpl();
   virtual ~BackgroundParentImpl();
