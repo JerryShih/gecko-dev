@@ -5435,7 +5435,7 @@ PresShell::AddCanvasBackgroundColorItem(nsDisplayListBuilder& aBuilder,
   printf_stderr("bignose begin:%s, rootframe:%p",debug_prefix,testFrame);
 
   if(testFrame) {
-    testFrame->List(stderr, debug_prefix);
+    //testFrame->List(stderr, debug_prefix);
   }
   //mCanvasBackgroundColor = NS_RGBA(0,0,0,0);
   //aBackstopColor = NS_RGBA(0,0,0,0);
@@ -5518,18 +5518,27 @@ void PresShell::UpdateCanvasBackground()
                                                drawBackgroundImage,
                                                drawBackgroundColor);
 
-    printf_stderr("bignose UpdateCanvasBackground::nsCSSRendering::DetermineBackgroundColor (%d,%d,%d,%d)",
-        NS_GET_R(mCanvasBackgroundColor),NS_GET_G(mCanvasBackgroundColor),NS_GET_B(mCanvasBackgroundColor),NS_GET_A(mCanvasBackgroundColor));
+    printf_stderr("bignose UpdateCanvasBackground::nsCSSRendering::DetermineBackgroundColor (%d,%d,%d,%d) tid:%d",
+        NS_GET_R(mCanvasBackgroundColor),
+        NS_GET_G(mCanvasBackgroundColor),
+        NS_GET_B(mCanvasBackgroundColor),
+        NS_GET_A(mCanvasBackgroundColor),
+        gettid());
 
     mHasCSSBackgroundColor = drawBackgroundColor;
     if (GetPresContext()->IsCrossProcessRootContentDocument() &&
+    //if (GetPresContext()->IsRootContentDocument() &&
         !IsTransparentContainerElement(mPresContext)) {
       //bignose test mark
-      //mCanvasBackgroundColor =
-      //  NS_ComposeColors(GetDefaultBackgroundColorToDraw(), mCanvasBackgroundColor);
+      mCanvasBackgroundColor =
+        NS_ComposeColors(GetDefaultBackgroundColorToDraw(), mCanvasBackgroundColor);
 
-      printf_stderr("bignose UpdateCanvasBackground change 1 (%d,%d,%d,%d)",
-             NS_GET_R(mCanvasBackgroundColor),NS_GET_G(mCanvasBackgroundColor),NS_GET_B(mCanvasBackgroundColor),NS_GET_A(mCanvasBackgroundColor));
+      printf_stderr("bignose UpdateCanvasBackground change 1 (%d,%d,%d,%d), tid:%d",
+             NS_GET_R(mCanvasBackgroundColor),
+             NS_GET_G(mCanvasBackgroundColor),
+             NS_GET_B(mCanvasBackgroundColor),
+             NS_GET_A(mCanvasBackgroundColor),
+             gettid());
 
     }
   }
@@ -5540,8 +5549,12 @@ void PresShell::UpdateCanvasBackground()
   if (!FrameConstructor()->GetRootElementFrame()) {
     mCanvasBackgroundColor = GetDefaultBackgroundColorToDraw();
 
-    printf_stderr("bignose UpdateCanvasBackground change 2 (%d,%d,%d,%d)",
-           NS_GET_R(mCanvasBackgroundColor),NS_GET_G(mCanvasBackgroundColor),NS_GET_B(mCanvasBackgroundColor),NS_GET_A(mCanvasBackgroundColor));
+    printf_stderr("bignose UpdateCanvasBackground change 2 (%d,%d,%d,%d), tid:%d",
+           NS_GET_R(mCanvasBackgroundColor),
+           NS_GET_G(mCanvasBackgroundColor),
+           NS_GET_B(mCanvasBackgroundColor),
+           NS_GET_A(mCanvasBackgroundColor),
+           gettid());
 
   }
   if (XRE_GetProcessType() == GeckoProcessType_Content) {

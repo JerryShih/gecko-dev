@@ -1741,7 +1741,13 @@ TabChild::IsRootContentDocument()
     // IsRootContentDocument(), and making vanilla remote frames transparent
     // breaks our remote reftests.
 
-    return !HasAppOwnerApp();
+    //return !HasAppOwnerApp();
+
+    bool result = !HasAppOwnerApp();
+
+    printf_stderr("bignose TabChild::IsRootContentDocument:%d, tid:%d\n",(int)result,gettid());
+
+    return result;
 }
 
 bool
