@@ -4,6 +4,10 @@
 
 #filter substitution
 
+pref("gfx.vsync.hw-vsync.enabled", true);
+//pref("gfx.vsync.compositor", true);
+pref("gfx.vsync.refreshdriver", true);
+
 #ifndef MOZ_MULET
 pref("toolkit.defaultChromeURI", "chrome://b2g/content/shell.html");
 pref("browser.chromeURL", "chrome://b2g/content/");
