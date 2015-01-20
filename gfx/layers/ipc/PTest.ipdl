@@ -1,0 +1,28 @@
+namespace mozilla {
+namespace layers {
+
+struct Pos
+{
+  int x;
+  int y;
+};
+
+intr protocol PTest
+{
+child:
+  async ParentToChild();
+
+  async ArrayData(int32_t[] array);
+  async StructData(Pos pos);
+  sync SyncParentToChild();
+
+parent:
+  sync ChildToParent(int32_t num) returns (bool result);
+
+both:
+  async BothDirection();
+};
+
+} // layers
+} // mozilla
+

@@ -364,6 +364,7 @@ IPDL_SOURCES = [
     'ipc/PLayer.ipdl',
     'ipc/PLayerTransaction.ipdl',
     'ipc/PSharedBufferManager.ipdl',
+    'ipc/PTest.ipdl',
     'ipc/PTexture.ipdl',
 ]
 
