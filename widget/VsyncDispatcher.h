@@ -26,6 +26,10 @@ public:
   // thread model before handling the real task.
   virtual bool NotifyVsync(TimeStamp aVsyncTimestamp) = 0;
 
+  // Cleanup VsyncObserver for shutdown phase. Subclass can implement this
+  // function if needs.
+  virtual void Shutdown() {};
+
 protected:
   VsyncObserver() {}
   virtual ~VsyncObserver() {}

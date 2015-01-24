@@ -283,24 +283,17 @@ class VsyncRefreshDriverTimer : public RefreshDriverTimer
 {
 public:
   VsyncRefreshDriverTimer()
-    : mVsyncChild(nullptr)
   {
     MOZ_ASSERT(XRE_IsParentProcess());
     MOZ_ASSERT(NS_IsMainThread());
     mVsyncObserver = new RefreshDriverVsyncObserver(this);
-    nsRefPtr<mozilla::gfx::VsyncSource> vsyncSource = gfxPlatform::GetPlatform()->GetHardwareVsync();
-    MOZ_ALWAYS_TRUE(mVsyncDispatcher = vsyncSource->GetRefreshTimerVsyncDispatcher());
-    mVsyncDispatcher->SetParentRefreshTimer(mVsyncObserver);
   }
 
   explicit VsyncRefreshDriverTimer(VsyncChild* aVsyncChild)
-    : mVsyncChild(aVsyncChild)
   {
     MOZ_ASSERT(!XRE_IsParentProcess());
     MOZ_ASSERT(NS_IsMainThread());
-    MOZ_ASSERT(mVsyncChild);
-    mVsyncObserver = new RefreshDriverVsyncObserver(this);
-    mVsyncChild->SetVsyncObserver(mVsyncObserver);
+    mVsyncObserver = new RefreshDriverVsyncObserver(this, aVsyncChild);
   }
 
 private:
@@ -314,8 +307,34 @@ private:
   public:
     explicit RefreshDriverVsyncObserver(VsyncRefreshDriverTimer* aVsyncRefreshDriverTimer)
       : mVsyncRefreshDriverTimer(aVsyncRefreshDriverTimer)
+      , mVsyncChild(nullptr)
     {
+      // parent process
+      MOZ_ASSERT(XRE_IsParentProcess());
       MOZ_ASSERT(NS_IsMainThread());
+
+      nsRefPtr<mozilla::gfx::VsyncSource> vsyncSource = gfxPlatform::GetPlatform()->GetHardwareVsync();
+      mVsyncDispatcher = vsyncSource->GetRefreshTimerVsyncDispatcher();
+
+      MOZ_ASSERT(mVsyncRefreshDriverTimer);
+      MOZ_ASSERT(mVsyncDispatcher);
+      MOZ_ASSERT(!mVsyncChild);
+    }
+
+    RefreshDriverVsyncObserver(VsyncRefreshDriverTimer* aVsyncRefreshDriverTimer,
+                               VsyncChild* aVsyncChild)
+      : mVsyncRefreshDriverTimer(aVsyncRefreshDriverTimer)
+      , mVsyncChild(aVsyncChild)
+    {
+      // child process
+      MOZ_ASSERT(!XRE_IsParentProcess());
+      MOZ_ASSERT(NS_IsMainThread());
+
+      MOZ_ASSERT(mVsyncRefreshDriverTimer);
+      MOZ_ASSERT(!mVsyncDispatcher);
+      MOZ_ASSERT(mVsyncChild);
+
+      mVsyncChild->SetVsyncObserver(this);
     }
 
     virtual bool NotifyVsync(TimeStamp aVsyncTimestamp) MOZ_OVERRIDE
@@ -333,10 +352,44 @@ private:
       return true;
     }
 
-    void Shutdown()
+    // When PVsyncChild receives ActorDestroy() or refresh driver timer
+    // shutdowns, we call this shutdown() to detach current observer from
+    // PVsyncChild. Then the PVsyncChild will no longer be used by this observer.
+    virtual void Shutdown() MOZ_OVERRIDE
     {
       MOZ_ASSERT(NS_IsMainThread());
       mVsyncRefreshDriverTimer = nullptr;
+
+      if (mVsyncDispatcher && XRE_IsParentProcess()) {
+        // parent process
+        mVsyncDispatcher->SetParentRefreshTimer(nullptr);
+        mVsyncDispatcher = nullptr;
+      } else if (mVsyncChild) {
+        // child process
+        mVsyncChild = nullptr;
+      }
+    }
+
+    void StartTimer()
+    {
+      if (mVsyncDispatcher && XRE_IsParentProcess()) {
+        // parent process
+        mVsyncDispatcher->SetParentRefreshTimer(this);
+      } else if (mVsyncChild) {
+        // child process
+        unused << mVsyncChild->SendObserve();
+      }
+    }
+
+    void StopTimer()
+    {
+      if (mVsyncDispatcher && XRE_IsParentProcess()) {
+        // parent process
+        mVsyncDispatcher->SetParentRefreshTimer(nullptr);
+      } else if (mVsyncChild) {
+        // child process
+        unused << mVsyncChild->SendUnobserve();
+      }
     }
 
   private:
@@ -358,25 +411,19 @@ private:
     // be always available before Shutdown(). We can just use the raw pointer
     // here.
     VsyncRefreshDriverTimer* mVsyncRefreshDriverTimer;
+    // Used for parent process.
+    nsRefPtr<RefreshTimerVsyncDispatcher> mVsyncDispatcher;
+    // Used for child process.
+    // mVsyncChild will be always available before PVsncChild actor dies.
+    // When it dies, it will stop all vsync notification and call
+    // RefreshDriverVsyncObserver::Shutdown(). We cleanup mVsyncChild in that
+    // function.
+    VsyncChild* mVsyncChild;
   }; // RefreshDriverVsyncObserver
 
   virtual ~VsyncRefreshDriverTimer()
   {
-    if (XRE_IsParentProcess()) {
-      mVsyncDispatcher->SetParentRefreshTimer(nullptr);
-      mVsyncDispatcher = nullptr;
-    } else {
-      // Since the PVsyncChild actors live through the life of the process, just
-      // send the unobserveVsync message to disable vsync event. We don't need
-      // to handle the cleanup stuff of this actor. PVsyncChild::ActorDestroy()
-      // will be called and clean up this actor.
-      unused << mVsyncChild->SendUnobserve();
-      mVsyncChild->SetVsyncObserver(nullptr);
-      mVsyncChild = nullptr;
-    }
-
-    // Detach current vsync timer from this VsyncObserver. The observer will no
-    // longer tick this timer.
+    MOZ_ASSERT(mVsyncObserver);
     mVsyncObserver->Shutdown();
     mVsyncObserver = nullptr;
   }
@@ -386,20 +433,12 @@ private:
     mLastFireEpoch = JS_Now();
     mLastFireTime = TimeStamp::Now();
 
-    if (XRE_IsParentProcess()) {
-      mVsyncDispatcher->SetParentRefreshTimer(mVsyncObserver);
-    } else {
-      unused << mVsyncChild->SendObserve();
-    }
+    mVsyncObserver->StartTimer();
   }
 
   virtual void StopTimer() MOZ_OVERRIDE
   {
-    if (XRE_IsParentProcess()) {
-      mVsyncDispatcher->SetParentRefreshTimer(nullptr);
-    } else {
-      unused << mVsyncChild->SendUnobserve();
-    }
+    mVsyncObserver->StopTimer();
   }
 
   virtual void ScheduleNextTick(TimeStamp aNowTime) MOZ_OVERRIDE
@@ -416,9 +455,7 @@ private:
     Tick(vsyncJsNow, aTimeStamp);
   }
 
-  nsRefPtr<RefreshTimerVsyncDispatcher> mVsyncDispatcher;
   nsRefPtr<RefreshDriverVsyncObserver> mVsyncObserver;
-  VsyncChild* mVsyncChild;
 }; // VsyncRefreshDriverTimer
 
 /*
