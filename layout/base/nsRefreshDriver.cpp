@@ -867,7 +867,7 @@ CreateVsyncRefreshTimer()
     gfxPlatform::GetPlatform();
     // In parent process, we don't need to use ipc. We can create the
     // VsyncRefreshDriverTimer directly.
-    sRegularRateTimer = new VsyncRefreshDriverTimer();
+    //sRegularRateTimer = new VsyncRefreshDriverTimer();
     return;
   }
 
@@ -1972,6 +1972,7 @@ nsRefreshDriver::PVsyncActorCreated(VsyncChild* aVsyncChild)
 {
   MOZ_ASSERT(NS_IsMainThread());
   MOZ_ASSERT(!XRE_IsParentProcess());
+  /*
   VsyncRefreshDriverTimer* vsyncRefreshDriverTimer =
                            new VsyncRefreshDriverTimer(aVsyncChild);
 
@@ -1982,6 +1983,7 @@ nsRefreshDriver::PVsyncActorCreated(VsyncChild* aVsyncChild)
     delete sRegularRateTimer;
   }
   sRegularRateTimer = vsyncRefreshDriverTimer;
+  */
 }
 
 void
