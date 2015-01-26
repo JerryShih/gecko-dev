@@ -536,8 +536,11 @@ static CVReturn VsyncCallback(CVDisplayLinkRef aDisplayLink,
 already_AddRefed<mozilla::gfx::VsyncSource>
 gfxPlatformMac::CreateHardwareVsyncSource()
 {
-  nsRefPtr<VsyncSource> osxVsyncSource = new OSXVsyncSource();
-  return osxVsyncSource.forget();
+  // test use sw timer
+  return gfxPlatform::CreateHardwareVsyncSource();
+
+  //nsRefPtr<VsyncSource> osxVsyncSource = new OSXVsyncSource();
+  //return osxVsyncSource.forget();
 }
 
 void

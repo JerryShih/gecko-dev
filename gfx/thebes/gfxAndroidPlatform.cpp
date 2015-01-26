@@ -488,18 +488,20 @@ private:
 already_AddRefed<mozilla::gfx::VsyncSource>
 gfxAndroidPlatform::CreateHardwareVsyncSource()
 {
-#ifdef MOZ_WIDGET_GONK
-    nsRefPtr<GonkVsyncSource> vsyncSource = new GonkVsyncSource();
-    VsyncSource::Display& display = vsyncSource->GetGlobalDisplay();
-    display.EnableVsync();
-    if (!display.IsVsyncEnabled()) {
-        NS_WARNING("Error enabling gonk vsync. Falling back to software vsync\n");
-        return gfxPlatform::CreateHardwareVsyncSource();
-    }
-    display.DisableVsync();
-    return vsyncSource.forget();
-#else
-    NS_WARNING("Hardware vsync not supported on android yet");
-    return nullptr;
-#endif
+  return gfxPlatform::CreateHardwareVsyncSource();
+
+//#ifdef MOZ_WIDGET_GONK
+//    nsRefPtr<GonkVsyncSource> vsyncSource = new GonkVsyncSource();
+//    VsyncSource::Display& display = vsyncSource->GetGlobalDisplay();
+//    display.EnableVsync();
+//    if (!display.IsVsyncEnabled()) {
+//        NS_WARNING("Error enabling gonk vsync. Falling back to software vsync\n");
+//        return gfxPlatform::CreateHardwareVsyncSource();
+//    }
+//    display.DisableVsync();
+//    return vsyncSource.forget();
+//#else
+//    NS_WARNING("Hardware vsync not supported on android yet");
+//    return nullptr;
+//#endif
 }

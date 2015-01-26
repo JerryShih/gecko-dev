@@ -2293,6 +2293,7 @@ gfxPlatform::UsesOffMainThreadCompositing()
 already_AddRefed<mozilla::gfx::VsyncSource>
 gfxPlatform::CreateHardwareVsyncSource()
 {
+  printf_stderr("bignose use software vsync source\n");
   NS_WARNING("Hardware Vsync support not yet implemented. Falling back to software timers\n");
   nsRefPtr<mozilla::gfx::VsyncSource> softwareVsync = new SoftwareVsyncSource();
   return softwareVsync.forget();

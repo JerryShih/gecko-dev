@@ -19,6 +19,10 @@
  *  - Computed values (e.g. 50 * 1024) don't work.
  */
 
+pref("gfx.vsync.hw-vsync.enabled", true);
+//pref("gfx.vsync.compositor", true);
+pref("gfx.vsync.refreshdriver", true);
+
 pref("keyword.enabled", false);
 pref("general.useragent.locale", "chrome://global/locale/intl.properties");
 pref("general.useragent.compatMode.firefox", false);

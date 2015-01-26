@@ -41,6 +41,7 @@ VsyncChild::SendUnobserve()
   if (mObservingVsync && !mIsShutdown) {
     mObservingVsync = false;
     PVsyncChild::SendUnobserve();
+    printf_stderr("bignose VsyncChild::SendUnobserve\n");
   }
   return true;
 }

@@ -266,6 +266,7 @@ protected:
 
   virtual void StopTimer()
   {
+    printf_stderr("bignose SimpleTimerBasedRefreshDriverTimer stop timer\n");
     mTimer->Cancel();
   }
 
@@ -867,7 +868,7 @@ CreateVsyncRefreshTimer()
     gfxPlatform::GetPlatform();
     // In parent process, we don't need to use ipc. We can create the
     // VsyncRefreshDriverTimer directly.
-    //sRegularRateTimer = new VsyncRefreshDriverTimer();
+    sRegularRateTimer = new VsyncRefreshDriverTimer();
     return;
   }
 
@@ -998,7 +999,7 @@ nsRefreshDriver::ChooseTimer() const
     double rate = GetRegularTimerInterval(&isDefault);
 
     // Try to use vsync-base refresh timer first for sRegularRateTimer.
-    CreateVsyncRefreshTimer();
+    //CreateVsyncRefreshTimer();
 
 #ifdef XP_WIN
     if (!sRegularRateTimer && PreciseRefreshDriverTimerWindowsDwmVsync::IsSupported()) {
@@ -1972,7 +1973,7 @@ nsRefreshDriver::PVsyncActorCreated(VsyncChild* aVsyncChild)
 {
   MOZ_ASSERT(NS_IsMainThread());
   MOZ_ASSERT(!XRE_IsParentProcess());
-  /*
+
   VsyncRefreshDriverTimer* vsyncRefreshDriverTimer =
                            new VsyncRefreshDriverTimer(aVsyncChild);
 
@@ -1983,7 +1984,7 @@ nsRefreshDriver::PVsyncActorCreated(VsyncChild* aVsyncChild)
     delete sRegularRateTimer;
   }
   sRegularRateTimer = vsyncRefreshDriverTimer;
-  */
+
 }
 
 void

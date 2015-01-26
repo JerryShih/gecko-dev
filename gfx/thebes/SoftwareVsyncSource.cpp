@@ -35,6 +35,8 @@ SoftwareDisplay::SoftwareDisplay()
 void
 SoftwareDisplay::EnableVsync()
 {
+  printf_stderr("bignose SoftwareDisplay::EnableVsync\n");
+
   MOZ_ASSERT(NS_IsMainThread());
   if (IsVsyncEnabled()) {
     return;
@@ -49,12 +51,16 @@ SoftwareDisplay::EnableVsync()
         &SoftwareDisplay::NotifyVsync,
         mozilla::TimeStamp::Now());
     mVsyncThread->message_loop()->PostTask(FROM_HERE, mCurrentVsyncTask);
+
+    printf_stderr("bignose SoftwareDisplay::EnableVsync start post task\n");
   }
 }
 
 void
 SoftwareDisplay::DisableVsync()
 {
+  printf_stderr("bignose SoftwareDisplay::DisableVsync\n");
+
   MOZ_ASSERT(NS_IsMainThread());
   if (!IsVsyncEnabled()) {
     return;
@@ -68,7 +74,12 @@ SoftwareDisplay::DisableVsync()
       mCurrentVsyncTask->Cancel();
       mCurrentVsyncTask = nullptr;
     }
+
+    printf_stderr("bignose SoftwareDisplay::DisableVsync cancel task\n");
   }
+
+  printf_stderr("bignose SoftwareDisplay::DisableVsync stop thread, current id:%d\n",mVsyncThread->thread_id());
+  printf_stderr("bignose SoftwareDisplay::DisableVsync stop thread\n");
   mVsyncThread->Stop();
 }
 
