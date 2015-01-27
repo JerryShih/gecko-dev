@@ -29,6 +29,8 @@ public:
   virtual void NotifyVsync(mozilla::TimeStamp aVsyncTimestamp) MOZ_OVERRIDE;
   void ScheduleNextVsync(mozilla::TimeStamp aVsyncTimestamp);
 
+  void Shutdown();
+
 protected:
   ~SoftwareDisplay();
 
