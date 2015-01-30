@@ -13,6 +13,7 @@ namespace layout {
 
 VsyncChild::VsyncChild()
   : mObservingVsync(false)
+  , mDidShutdown(false)
 {
   MOZ_ASSERT(NS_IsMainThread());
 }
@@ -20,13 +21,16 @@ VsyncChild::VsyncChild()
 VsyncChild::~VsyncChild()
 {
   MOZ_ASSERT(NS_IsMainThread());
+  printf_stderr("VsyncChild::Destructor\n");
 }
 
 bool
 VsyncChild::SendObserve()
 {
   MOZ_ASSERT(NS_IsMainThread());
+  //if (!mObservingVsync && !mDidShutdown) {
   if (!mObservingVsync) {
+    printf_stderr("VsyncChild Observe vsync\n");
     PVsyncChild::SendObserve();
     mObservingVsync = true;
   }
@@ -37,7 +41,9 @@ bool
 VsyncChild::SendUnobserve()
 {
   MOZ_ASSERT(NS_IsMainThread());
-  if (mObservingVsync) {
+  //if (mObservingVsync && !mDidShutdown) {
+  if (!mObservingVsync) {
+    printf_stderr("VsyncChild unobserve vsync\n");
     PVsyncChild::SendUnobserve();
     mObservingVsync = false;
   }
@@ -49,13 +55,19 @@ VsyncChild::ActorDestroy(ActorDestroyReason aActorDestroyReason)
 {
   MOZ_ASSERT(NS_IsMainThread());
   mObserver = nullptr;
+  //mObservingVsync = false;
+  mDidShutdown = true;
+  printf_stderr("vsync child actor destroy\n");
 }
 
 bool
 VsyncChild::RecvNotify(const TimeStamp& aVsyncTimestamp)
 {
   MOZ_ASSERT(NS_IsMainThread());
+  //if (mObservingVsync && mObserver && !mDidShutdown) {
   if (mObservingVsync && mObserver) {
+    printf_stderr("VsyncChild::RecvNotify\n");
+    mObservingVsync = false;
     mObserver->NotifyVsync(aVsyncTimestamp);
   }
   return true;

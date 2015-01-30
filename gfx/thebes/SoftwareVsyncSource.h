@@ -49,7 +49,7 @@ class SoftwareVsyncSource : public mozilla::gfx::VsyncSource
 {
 public:
   SoftwareVsyncSource();
-  ~SoftwareVsyncSource();
+  virtual ~SoftwareVsyncSource();
 
   virtual Display& GetGlobalDisplay() MOZ_OVERRIDE
   {

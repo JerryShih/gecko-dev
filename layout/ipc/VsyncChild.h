@@ -44,6 +44,7 @@ private:
   virtual void ActorDestroy(ActorDestroyReason aActorDestroyReason) MOZ_OVERRIDE;
 
   bool mObservingVsync;
+  bool mDidShutdown;
 
   // The content side vsync observer.
   nsRefPtr<VsyncObserver> mObserver;

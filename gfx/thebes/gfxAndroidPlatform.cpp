@@ -479,6 +479,7 @@ public:
 private:
   virtual ~GonkVsyncSource()
   {
+    printf_stderr("Gonk Vsync source destructor\n");
   }
 
   GonkDisplay mGlobalDisplay;
@@ -493,10 +494,12 @@ gfxAndroidPlatform::CreateHardwareVsyncSource()
     VsyncSource::Display& display = vsyncSource->GetGlobalDisplay();
     display.EnableVsync();
     if (!display.IsVsyncEnabled()) {
+        printf_stderr("Error creating gonk vsync\n");
         NS_WARNING("Error enabling gonk vsync. Falling back to software vsync\n");
         return gfxPlatform::CreateHardwareVsyncSource();
     }
     display.DisableVsync();
+    printf_stderr("Success Created hardware gonk creating gonk vsync\n");
     return vsyncSource.forget();
 #else
     NS_WARNING("Hardware vsync not supported on android yet");

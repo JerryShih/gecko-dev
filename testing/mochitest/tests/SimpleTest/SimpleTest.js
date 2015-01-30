@@ -960,6 +960,7 @@ SimpleTest.registerCleanupFunction = function(aFunc) {
 **/
 SimpleTest.finish = function() {
     if (SimpleTest._alreadyFinished) {
+        dump("Simple test already finished\n");
         var err = "[SimpleTest.finish()] this test already called finish!";
         if (parentRunner) {
             parentRunner.structuredLogger.error(err);
@@ -969,6 +970,8 @@ SimpleTest.finish = function() {
     }
 
     if (SimpleTest.expected == 'fail' && SimpleTest.num_failed <= 0) {
+        dump("expected a fail \n");
+
         msg = 'We expected at least one failure';
         var test = {'result': false, 'name': 'fail-if condition in manifest', 'diag': msg};
         var successInfo = {status:"FAIL", expected:"FAIL", message:"TEST-KNOWN-FAIL"};
@@ -983,14 +986,18 @@ SimpleTest.finish = function() {
     SimpleTest._alreadyFinished = true;
 
     var afterCleanup = function() {
+        dump("after clean up\n");
         if (SpecialPowers.DOMWindowUtils.isTestControllingRefreshes) {
+            dump("special powers is controlling refreshes\n");
             SimpleTest.ok(false, "test left refresh driver under test control");
             SpecialPowers.DOMWindowUtils.restoreNormalRefresh();
         }
         if (SimpleTest._expectingUncaughtException) {
+            dump("expecting uncaught exception\n");
             SimpleTest.ok(false, "expectUncaughtException was called but no uncaught exception was detected!");
         }
         if (SimpleTest._pendingWaitForFocusCount != 0) {
+            dump("pending wait for focus count");
             SimpleTest.is(SimpleTest._pendingWaitForFocusCount, 0,
                           "[SimpleTest.finish()] waitForFocus() was called a "
                           + "different number of times from the number of "
@@ -999,6 +1006,7 @@ SimpleTest.finish = function() {
                           + "SimpleTest.waitForExplicitFinish().");
         }
         if (SimpleTest._tests.length == 0) {
+            dump("test length is zero");
             SimpleTest.ok(false, "[SimpleTest.finish()] No checks actually run. "
                                + "(You need to call ok(), is(), or similar "
                                + "functions at least once.  Make sure you use "
@@ -1008,13 +1016,18 @@ SimpleTest.finish = function() {
 
         if (parentRunner) {
             /* We're running in an iframe, and the parent has a TestRunner */
+            dump("parent runner test finished length:" + SimpleTest._tests.length + "\n");
             parentRunner.testFinished(SimpleTest._tests);
         }
 
         if (!parentRunner || parentRunner.showTestReport) {
+            dump("No parent runner, hmph\n");
             SpecialPowers.flushAllAppsLaunchable();
+            dump("SimpleTest::flushAllAppsLaunchable\n");
             SpecialPowers.flushPermissions(function () {
+                dump("SimpleTest::flushPermissions\n");
               SpecialPowers.flushPrefEnv(function() {
+                dump("SimpleTest::ShowReport\n");
                 SimpleTest.showReport();
               });
             });
@@ -1023,8 +1036,10 @@ SimpleTest.finish = function() {
 
     var executeCleanupFunction = function() {
         var func = SimpleTest._cleanupFunctions.pop();
+        dump("execute cleanup function\n");
 
         if (!func) {
+            dump("no function, after cleanup function\n");
             afterCleanup();
             return;
         }
@@ -1032,14 +1047,18 @@ SimpleTest.finish = function() {
         var ret;
         try {
             ret = func();
+            dump("calling func function: " + func + "\n");
         } catch (ex) {
+            dump("calling func exception");
             SimpleTest.ok(false, "Cleanup function threw exception: " + ex);
         }
 
         if (ret && ret.constructor.name == "Promise") {
+            dump("doing some promise stuff\n");
             ret.then(executeCleanupFunction,
                      (ex) => SimpleTest.ok(false, "Cleanup promise rejected: " + ex));
         } else {
+            dump("execute cleanup function again\n");
             executeCleanupFunction();
         }
     };

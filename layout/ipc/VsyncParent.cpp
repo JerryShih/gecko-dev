@@ -42,6 +42,7 @@ VsyncParent::~VsyncParent()
 {
   // Since we use NS_INLINE_DECL_THREADSAFE_REFCOUNTING, we can't make sure
   // VsyncParent is always released on the background thread.
+  printf_stderr("VsyncParent::Destructor\n");
 }
 
 bool
@@ -69,6 +70,9 @@ VsyncParent::DispatchVsyncEvent(TimeStamp aTimeStamp)
   // notification.
   if (mObservingVsync && !mDestroyed) {
     unused << SendNotify(aTimeStamp);
+    printf_stderr("Send notify\n");
+    //mVsyncDispatcher->RemoveChildRefreshTimer(this);
+    //mObservingVsync = false;
   }
 }
 
@@ -79,9 +83,11 @@ VsyncParent::RecvObserve()
   if (!mObservingVsync) {
     mVsyncDispatcher->AddChildRefreshTimer(this);
     mObservingVsync = true;
+    printf_stderr("Recv observe\n");
     return true;
   }
-  return false;
+  printf_stderr("Recv observe but not listening\n");
+  return true;
 }
 
 bool
@@ -91,9 +97,11 @@ VsyncParent::RecvUnobserve()
   if (mObservingVsync) {
     mVsyncDispatcher->RemoveChildRefreshTimer(this);
     mObservingVsync = false;
+    printf_stderr("Recv unobserve\n");
     return true;
   }
-  return false;
+  printf_stderr("Recv unobserve but not listening\n");
+  return true;
 }
 
 void
@@ -106,6 +114,8 @@ VsyncParent::ActorDestroy(ActorDestroyReason aReason)
   }
   mVsyncDispatcher = nullptr;
   mDestroyed = true;
+  //mObservingVsync = false;
+  printf_stderr("vsync parent actor destroy reasno %d\n", aReason);
 }
 
 } // namespace layout

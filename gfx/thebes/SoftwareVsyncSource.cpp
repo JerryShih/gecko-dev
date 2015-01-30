@@ -136,5 +136,6 @@ SoftwareDisplay::ScheduleNextVsync(mozilla::TimeStamp aVsyncTimestamp)
 SoftwareDisplay::~SoftwareDisplay()
 {
   MOZ_ASSERT(NS_IsMainThread());
+  printf_stderr("SoftwareDisplay::Destructor\n");
   delete mVsyncThread;
 }

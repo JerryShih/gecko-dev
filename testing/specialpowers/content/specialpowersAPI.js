@@ -720,11 +720,14 @@ SpecialPowersAPI.prototype = {
 
   _setTimeout: function(callback) {
     // for mochitest-browser
-    if (typeof window != 'undefined')
+    if (typeof window != 'undefined') {
       setTimeout(callback, 0);
+      dump("Typeofwindow undefined\n");
     // for mochitest-plain
-    else
+    } else { 
+      dump("content mochitest-plain undefined\n");
       content.window.setTimeout(callback, 0);
+    }
   },
 
   _delayCallbackTwice: function(callback) {
@@ -834,20 +837,25 @@ SpecialPowersAPI.prototype = {
 
   popPermissions: function(callback) {
     if (this._permissionsUndoStack.length > 0) {
+      dump("Permissions stack is greater than 0");
       // See pushPermissions comment regarding delay.
       let cb = callback ? this._delayCallbackTwice(callback) : null;
       /* Each pop from the stack will yield an object {op/type/permission/value/url/appid/isInBrowserElement} or null */
       this._pendingPermissions.push([this._permissionsUndoStack.pop(), cb]);
       this._applyPermissions();
+      dump("applied permissions\n");
     } else {
+      dump("timeout permissions\n");
        this._setTimeout(callback);
     }
   },
 
   flushPermissions: function(callback) {
+    dump("Permissions undo stack is: " + this._permissionsUndoStack.length);
     while (this._permissionsUndoStack.length > 1)
       this.popPermissions(null);
 
+    dump("Popping permissions with callback\n");
     this.popPermissions(callback);
   },
 

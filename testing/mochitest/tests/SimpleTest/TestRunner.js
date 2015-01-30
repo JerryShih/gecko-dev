@@ -673,8 +673,11 @@ TestRunner.expectChildProcessCrash = function() {
 TestRunner.testFinished = function(tests) {
     // Prevent a test from calling finish() multiple times before we
     // have a chance to unload it.
+    dump("test finished in TestRunner\n");
+    console.log("test finished in test runner\n");
     if (TestRunner._currentTest == TestRunner._lastTestFinished &&
         !TestRunner._loopIsRestarting) {
+        dump("Test finished since its not restarting\n");
         TestRunner.structuredLogger.testEnd(TestRunner.currentTestURL,
                                             "ERROR",
                                             "OK",
@@ -682,6 +685,7 @@ TestRunner.testFinished = function(tests) {
         TestRunner.updateUI([{ result: false }]);
         return;
     }
+    dump("test finished but too bad!\n");
     TestRunner._lastTestFinished = TestRunner._currentTest;
     TestRunner._loopIsRestarting = false;
 
@@ -695,6 +699,7 @@ TestRunner.testFinished = function(tests) {
 
     function cleanUpCrashDumpFiles() {
         if (!SpecialPowers.removeExpectedCrashDumpFiles(TestRunner._expectingProcessCrash)) {
+            dump("Found some crash dump files, ending\n");
             TestRunner.structuredLogger.testEnd(TestRunner.currentTestURL,
                                                 "ERROR",
                                                 "OK",
@@ -733,6 +738,7 @@ TestRunner.testFinished = function(tests) {
 
         var runtime = new Date().valueOf() - TestRunner._currentTestStartTime;
 
+        dump("Finished test end, running next test\n");
         TestRunner.structuredLogger.testEnd(TestRunner.currentTestURL,
                                             "OK",
                                             undefined,

@@ -335,7 +335,10 @@ function run()
          " from " + test.from + " to " + test.to);
   }
 
+  dump("dump SimpleTest finish\n");
+  console.log("log SimpleTest finish\n");
   SimpleTest.finish();
+  dump("finished Simple test finish\n");
 }
 
 window.addEventListener("load", run, false);

@@ -125,6 +125,7 @@ RefreshTimerVsyncDispatcher::~RefreshTimerVsyncDispatcher()
 {
   MOZ_ASSERT(XRE_IsParentProcess());
   MOZ_ASSERT(NS_IsMainThread());
+  printf_stderr("refreshTimerVsyncdispatcher destructor\n");
 }
 
 void
@@ -148,6 +149,7 @@ RefreshTimerVsyncDispatcher::SetParentRefreshTimer(VsyncObserver* aVsyncObserver
   { // lock scope because UpdateVsyncStatus runs on main thread and will deadlock
     MutexAutoLock lock(mRefreshTimersLock);
     mParentRefreshTimer = aVsyncObserver;
+    printf_stderr("setParentrefresh to: %p\n", aVsyncObserver);
   }
 
   UpdateVsyncStatus();
@@ -161,6 +163,7 @@ RefreshTimerVsyncDispatcher::AddChildRefreshTimer(VsyncObserver* aVsyncObserver)
     MOZ_ASSERT(aVsyncObserver);
     if (!mChildRefreshTimers.Contains(aVsyncObserver)) {
       mChildRefreshTimers.AppendElement(aVsyncObserver);
+      printf_stderr("Add child refresh to: %p\n", aVsyncObserver);
     }
   }
 
@@ -174,6 +177,7 @@ RefreshTimerVsyncDispatcher::RemoveChildRefreshTimer(VsyncObserver* aVsyncObserv
     MutexAutoLock lock(mRefreshTimersLock);
     MOZ_ASSERT(aVsyncObserver);
     mChildRefreshTimers.RemoveElement(aVsyncObserver);
+    printf_stderr("Remove child refresh to: %p\n", aVsyncObserver);
   }
 
   UpdateVsyncStatus();

@@ -45,12 +45,14 @@ VsyncSource::Display::Display()
 {
   MOZ_ASSERT(NS_IsMainThread());
   mRefreshTimerVsyncDispatcher = new RefreshTimerVsyncDispatcher();
+  printf_stderr("VsyncSource::Dispay create\n");
 }
 
 VsyncSource::Display::~Display()
 {
   MOZ_ASSERT(NS_IsMainThread());
   MutexAutoLock lock(mDispatcherLock);
+  printf_stderr("VsyncSource::Dispay destructor\n");
   mRefreshTimerVsyncDispatcher = nullptr;
   mCompositorVsyncDispatchers.Clear();
 }
