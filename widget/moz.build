@@ -109,6 +109,7 @@ EXPORTS += [
     'nsWidgetsCID.h',
     'PluginWidgetProxy.h',
     'PuppetWidget.h',
+    'VsyncDispatcherTrace.h',
 ]
 
 EXPORTS.mozilla += [
@@ -128,6 +129,10 @@ EXPORTS.mozilla += [
     'TouchEvents.h',
     'VsyncDispatcher.h',
     'WidgetUtils.h',
+]
+
+SOURCES += [
+    'VsyncDispatcherTrace.cpp',
 ]
 
 UNIFIED_SOURCES += [
