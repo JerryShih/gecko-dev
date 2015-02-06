@@ -64,6 +64,7 @@
 #include "nsThreadUtils.h"
 #include "mozilla/unused.h"
 
+#include "cutils/properties.h"
 #ifdef MOZ_NUWA_PROCESS
 #include "ipc/Nuwa.h"
 #endif
@@ -848,6 +849,12 @@ CreateVsyncRefreshTimer()
   // Sometimes, gfxPrefs is not initialized here. Make sure the gfxPrefs is
   // ready.
   gfxPrefs::GetSingleton();
+
+  char propValue[PROPERTY_VALUE_MAX];
+  property_get("vsync.rd", propValue, "0");
+  if(atoi(propValue)!=1){
+    return;
+  }
 
   if (!gfxPrefs::VsyncAlignedRefreshDriver()) {
     return;
