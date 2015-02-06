@@ -129,7 +129,7 @@ GonkDisplayJB::GonkDisplayJB()
 #endif
 
     mSTClient = stc;
-    mSTClient->perform(mSTClient.get(), NATIVE_WINDOW_SET_BUFFER_COUNT, 2);
+    mSTClient->perform(mSTClient.get(), NATIVE_WINDOW_SET_BUFFER_COUNT, 3);
     mSTClient->perform(mSTClient.get(), NATIVE_WINDOW_SET_USAGE,
                                         GRALLOC_USAGE_HW_FB |
                                         GRALLOC_USAGE_HW_RENDER |
