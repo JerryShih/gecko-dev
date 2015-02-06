@@ -59,6 +59,8 @@
 #include <ui/Fence.h>
 #endif
 
+#include "VsyncDispatcherTrace.h"
+
 namespace mozilla {
 
 using namespace std;
@@ -586,6 +588,8 @@ CompositorOGL::BeginFrame(const nsIntRegion& aInvalidRegion,
 {
   PROFILER_LABEL("CompositorOGL", "BeginFrame",
     js::ProfileEntry::Category::GRAPHICS);
+
+  VSYNC_SCOPED_SYSTRACE_LABEL("CompositorOGL::BeginFrame");
 
   MOZ_ASSERT(!mFrameInProgress, "frame still in progress (should have called EndFrame");
 
@@ -1217,6 +1221,8 @@ CompositorOGL::EndFrame()
 {
   PROFILER_LABEL("CompositorOGL", "EndFrame",
     js::ProfileEntry::Category::GRAPHICS);
+
+  VSYNC_SCOPED_SYSTRACE_LABEL("CompositorOGL::EndFrame");
 
   MOZ_ASSERT(mCurrentRenderTarget == mWindowRenderTarget, "Rendering target not properly restored");
 

@@ -10,6 +10,8 @@
 #include "mozilla/layers/Compositor.h"
 #include "mozilla/layers/CompositorParent.h"
 
+#include "GeckoProfiler.h"
+
 #ifdef MOZ_ENABLE_PROFILER_SPS
 #include "GeckoProfiler.h"
 #include "ProfilerMarkers.h"
@@ -43,6 +45,9 @@ CompositorVsyncDispatcher::~CompositorVsyncDispatcher()
 void
 CompositorVsyncDispatcher::NotifyVsync(TimeStamp aVsyncTimestamp)
 {
+  PROFILER_LABEL("CompositorVsyncDispatcher", "NotifyVsync",
+    js::ProfileEntry::Category::GRAPHICS);
+
   // In vsync thread
 #ifdef MOZ_ENABLE_PROFILER_SPS
     if (profiler_is_active()) {
@@ -130,6 +135,9 @@ RefreshTimerVsyncDispatcher::~RefreshTimerVsyncDispatcher()
 void
 RefreshTimerVsyncDispatcher::NotifyVsync(TimeStamp aVsyncTimestamp)
 {
+  PROFILER_LABEL("RefreshTimerVsyncDispatcher", "NotifyVsync",
+    js::ProfileEntry::Category::GRAPHICS);
+
   MutexAutoLock lock(mRefreshTimersLock);
 
   for (size_t i = 0; i < mChildRefreshTimers.Length(); i++) {

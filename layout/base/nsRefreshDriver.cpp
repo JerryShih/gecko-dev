@@ -65,9 +65,14 @@
 #include "mozilla/unused.h"
 
 #include "cutils/properties.h"
+
+#include "GeckoProfiler.h"
+
 #ifdef MOZ_NUWA_PROCESS
 #include "ipc/Nuwa.h"
 #endif
+
+#include "VsyncDispatcherTrace.h"
 
 using namespace mozilla;
 using namespace mozilla::widget;
@@ -172,6 +177,11 @@ protected:
    */
   void Tick(int64_t jsnow, TimeStamp now)
   {
+    VSYNC_SCOPED_SYSTRACE_LABEL("RefreshDriverTimer::Tick");
+
+    PROFILER_LABEL("RefreshDriverTimer", "Tick",
+      js::ProfileEntry::Category::GRAPHICS);
+
     ScheduleNextTick(now);
 
     mLastFireEpoch = jsnow;
@@ -753,6 +763,8 @@ protected:
 
   static void TimerTickOne(nsITimer* aTimer, void* aClosure)
   {
+    VSYNC_SCOPED_SYSTRACE_LABEL("InactiveRefreshDriverTimer::TimerTickOne");
+
     InactiveRefreshDriverTimer *timer = static_cast<InactiveRefreshDriverTimer*>(aClosure);
     timer->TickOne();
   }

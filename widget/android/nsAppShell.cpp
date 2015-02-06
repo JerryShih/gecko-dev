@@ -60,6 +60,8 @@
 #define EVLOG(args...) do { } while (0)
 #endif
 
+#include "VsyncDispatcherTrace.h"
+
 using namespace mozilla;
 
 #ifdef PR_LOGGING
@@ -235,6 +237,8 @@ nsAppShell::ProcessNextNativeEvent(bool mayWait)
 
     PROFILER_LABEL("nsAppShell", "ProcessNextNativeEvent",
         js::ProfileEntry::Category::EVENTS);
+
+    VSYNC_SCOPED_SYSTRACE_LABEL("nsAppShell::ProcessNextNativeEvent");
 
     nsAutoPtr<AndroidGeckoEvent> curEvent;
     {

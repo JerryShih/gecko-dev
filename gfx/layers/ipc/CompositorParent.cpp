@@ -65,11 +65,14 @@
 #ifdef MOZ_ENABLE_PROFILER_SPS
 #include "ProfilerMarkers.h"
 #endif
+
 #include "mozilla/VsyncDispatcher.h"
 
 #ifdef MOZ_WIDGET_GONK
 #include "GeckoTouchDispatcher.h"
 #endif
+
+#include "VsyncDispatcherTrace.h"
 
 namespace mozilla {
 namespace layers {
@@ -929,6 +932,8 @@ CompositorParent::CompositeToTarget(DrawTarget* aTarget, const nsIntRect* aRect)
   profiler_tracing("Paint", "Composite", TRACING_INTERVAL_START);
   PROFILER_LABEL("CompositorParent", "Composite",
     js::ProfileEntry::Category::GRAPHICS);
+
+  VSYNC_SCOPED_SYSTRACE_LABEL("CompositorParent::Composite");
 
   MOZ_ASSERT(IsInCompositorThread(),
              "Composite can only be called on the compositor thread");

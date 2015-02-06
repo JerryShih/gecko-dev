@@ -9,6 +9,8 @@
 #include "mozilla/VsyncDispatcher.h"
 #include "MainThreadUtils.h"
 
+#include "VsyncDispatcherTrace.h"
+
 namespace mozilla {
 namespace gfx {
 
@@ -58,6 +60,8 @@ VsyncSource::Display::~Display()
 void
 VsyncSource::Display::NotifyVsync(TimeStamp aVsyncTimestamp)
 {
+  VSYNC_SCOPED_SYSTRACE_LABEL("VsyncSource::Display::NotifyVsync");
+
   // Called on the vsync thread
   MutexAutoLock lock(mDispatcherLock);
 
