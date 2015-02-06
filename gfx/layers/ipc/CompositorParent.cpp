@@ -325,10 +325,10 @@ void
 CompositorVsyncObserver::Composite(TimeStamp aVsyncTimestamp)
 {
   MOZ_ASSERT(CompositorParent::IsInCompositorThread());
-  {
-    MonitorAutoLock lock(mCurrentCompositeTaskMonitor);
-    mCurrentCompositeTask = nullptr;
-  }
+//  {
+//    MonitorAutoLock lock(mCurrentCompositeTaskMonitor);
+//    mCurrentCompositeTask = nullptr;
+//  }
 
   if (mNeedsComposite && mCompositorParent) {
     mNeedsComposite = false;
@@ -336,6 +336,11 @@ CompositorVsyncObserver::Composite(TimeStamp aVsyncTimestamp)
     mVsyncNotificationsSkipped = 0;
   } else if (mVsyncNotificationsSkipped++ > gfxPrefs::CompositorUnobserveCount()) {
     UnobserveVsync();
+  }
+
+  {
+    MonitorAutoLock lock(mCurrentCompositeTaskMonitor);
+    mCurrentCompositeTask = nullptr;
   }
 
   DispatchTouchEvents(aVsyncTimestamp);
