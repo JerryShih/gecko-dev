@@ -210,7 +210,8 @@ Layer::Layer(LayerManager* aManager, void* aImplData) :
   mScrollbarDirection(ScrollDirection::NONE),
   mIsScrollbarContainer(false),
   mDebugColorIndex(0),
-  mAnimationGeneration(0)
+  mAnimationGeneration(0),
+  mDumpPos(false)
 {}
 
 Layer::~Layer()

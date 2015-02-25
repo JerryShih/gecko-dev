@@ -1011,6 +1011,7 @@ public:
 #ifdef MOZ_DUMP_PAINTING
     , mPainted(false)
 #endif
+    , mDumpLayerPos(false)
   {
   }
   virtual ~nsDisplayItem() {}
@@ -1500,6 +1501,11 @@ public:
     }
   }
 
+  bool DumpLayerPos() const
+  {
+    return mDumpLayerPos;
+  }
+
 protected:
   friend class nsDisplayList;
 
@@ -1522,6 +1528,7 @@ protected:
   // True if this frame has been painted.
   bool      mPainted;
 #endif
+  bool      mDumpLayerPos;
 };
 
 /**

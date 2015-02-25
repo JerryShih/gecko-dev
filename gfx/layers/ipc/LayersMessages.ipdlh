@@ -221,6 +221,7 @@ struct CommonLayerAttributes {
   Animation[] animations;
   nsIntRegion invalidRegion;
   FrameMetrics[] metrics;
+  bool dumpLayerPos;
 };
 
 struct PaintedLayerAttributes {

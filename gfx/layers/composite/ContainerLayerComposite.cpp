@@ -100,6 +100,17 @@ static gfx::IntRect ContainerVisibleRect(ContainerT* aContainer)
   return surfaceRect;
 }
 
+static void DumpLayerPos(Layer* aLayer)
+{
+  if (aLayer->GetDumpPos()) {
+    Matrix4x4 transform = aLayer->AsLayerComposite()->GetShadowTransform();
+    Point3D pos = transform.GetTranslation();
+    // dump to adb logcat or gecko profiler
+    printf_stderr("layer pos dump: addr:(%p) pos:(%d,%d)",
+        aLayer, (int)pos.x, (int)pos.y);
+  }
+}
+
 static void PrintUniformityInfo(Layer* aLayer)
 {
 #ifdef MOZ_ENABLE_PROFILER_SPS
@@ -373,6 +384,10 @@ RenderLayers(ContainerT* aContainer,
       }
     } else {
       layerToRender->RenderLayer(RenderTargetPixel::ToUntyped(clipRect));
+    }
+
+    if (gfxPrefs::DumpTouchAndLayerUniformity()) {
+      DumpLayerPos(layer);
     }
 
     if (gfxPrefs::UniformityInfo()) {

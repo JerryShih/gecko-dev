@@ -1569,6 +1569,20 @@ public:
   AsyncPanZoomController* GetAsyncPanZoomController(uint32_t aIndex) const;
   // The FrameMetricsChanged function is used internally to ensure the APZC array length
   // matches the frame metrics array length.
+
+  // Pass layer position dump flag to compositor to print the layer position.
+  void SetDumpPos(bool aDumpPos)
+  {
+    if (mDumpPos != aDumpPos){
+      mDumpPos = aDumpPos;
+      Mutated();
+    }
+  }
+  bool GetDumpPos() const
+  {
+    return mDumpPos;
+  }
+
 private:
   void FrameMetricsChanged();
 public:
@@ -1719,6 +1733,7 @@ protected:
 #ifdef MOZ_DUMP_PAINTING
   nsTArray<nsCString> mExtraDumpInfo;
 #endif
+  bool mDumpPos;
 };
 
 /**

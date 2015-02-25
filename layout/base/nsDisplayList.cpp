@@ -2024,6 +2024,7 @@ nsDisplayItem::nsDisplayItem(nsDisplayListBuilder* aBuilder, nsIFrame* aFrame)
 #ifdef MOZ_DUMP_PAINTING
   , mPainted(false)
 #endif
+  , mDumpLayerPos(false)
 {
   mReferenceFrame = aBuilder->FindReferenceFrameFor(aFrame, &mToReferenceFrame);
   NS_ASSERTION(aBuilder->GetDirtyRect().width >= 0 ||
@@ -2032,6 +2033,17 @@ nsDisplayItem::nsDisplayItem(nsDisplayListBuilder* aBuilder, nsIFrame* aFrame)
   // mCurrentOffsetToReferenceFrame
   mVisibleRect = aBuilder->GetDirtyRect() +
       aBuilder->GetCurrentFrameOffsetToReferenceFrame();
+
+  if (gfxPrefs::DumpTouchAndLayerUniformity()){
+    nsAutoString classID;
+    if (mFrame->GetContent()) {
+      // We want to dump the element's position with class_id "silk".
+      mFrame->GetContent()->GetAttr(kNameSpaceID_None, nsGkAtoms::classid, classID);
+      if (!classID.IsEmpty() && classID.Find("silk") != kNotFound) {
+        mDumpLayerPos = true;
+      }
+    }
+  }
 }
 
 /* static */ bool
@@ -4994,6 +5006,11 @@ nsDisplayTransform::Init(nsDisplayListBuilder* aBuilder)
   const nsStyleDisplay* disp = mFrame->StyleDisplay();
   if ((disp->mWillChangeBitField & NS_STYLE_WILL_CHANGE_TRANSFORM)) {
     // We will only pre-render if this will-change is on budget.
+    mMaybePrerender = true;
+  }
+
+  // If we want to dump this frame's position, make it as an individual layer.
+  if (DumpLayerPos()) {
     mMaybePrerender = true;
   }
 
