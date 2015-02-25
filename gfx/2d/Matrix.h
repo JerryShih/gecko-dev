@@ -496,6 +496,11 @@ public:
     return Is2D() && As2D().IsIntegerTranslation();
   }
 
+  Point3D GetTranslation() const
+  {
+    return Point3D(_41, _42, _43);
+  }
+
   Point4D TransposeTransform4D(const Point4D& aPoint) const
   {
       Float x = aPoint.x * _11 + aPoint.y * _12 + aPoint.z * _13 + aPoint.w * _14;
