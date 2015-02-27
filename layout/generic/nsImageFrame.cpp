@@ -76,6 +76,8 @@
 
 #include "mozilla/dom/Link.h"
 
+#include "nsPresShell.h"
+
 using namespace mozilla;
 using namespace mozilla::dom;
 using namespace mozilla::gfx;
@@ -883,6 +885,12 @@ nsImageFrame::Reflow(nsPresContext*          aPresContext,
   mComputedSize = 
     nsSize(aReflowState.ComputedWidth(), aReflowState.ComputedHeight());
 
+  printf_stderr("bignose nsImageFrame::Reflow addr:%p, mComputedSize(%d,%d)\n", this,  mComputedSize.width, mComputedSize.height);
+
+  if (mComputedSize.width==0 && mComputedSize.height==0) {
+    printf_stderr("bignose size zero, reflow length:%d",((PresShell*)(aPresContext->GetPresShell()))->ReflowLength());
+  }
+
   aMetrics.Width() = mComputedSize.width;
   aMetrics.Height() = mComputedSize.height;
 
@@ -1381,10 +1389,20 @@ nsDisplayImage::ComputeInvalidationRegion(nsDisplayListBuilder* aBuilder,
   auto geometry =
     static_cast<const nsDisplayItemGenericImageGeometry*>(aGeometry);
 
+/*
+  printf_stderr("Abuilder should sync decode images: %d, invalidate sync: %d\n",
+    aBuilder->ShouldSyncDecodeImages(), geometry->ShouldInvalidateToSyncDecodeImages());
+    */
+  nsRect bounds;
   if (aBuilder->ShouldSyncDecodeImages() &&
       geometry->ShouldInvalidateToSyncDecodeImages()) {
     bool snap;
     aInvalidRegion->Or(*aInvalidRegion, GetBounds(aBuilder, &snap));
+    bounds = aInvalidRegion->GetBounds();
+    printf_stderr("bignose ComputeInvalidationRegion addr:%p, sync, bound(%d,%d)\n",this,bounds.x,bounds.y);
+  } else {
+    bounds = aInvalidRegion->GetBounds();
+    printf_stderr("bignose ComputeInvalidationRegion addr:%p bound(%d,%d)\n",this,bounds.x,bounds.y);
   }
 
   nsDisplayImageContainer::ComputeInvalidationRegion(aBuilder, aGeometry, aInvalidRegion);
@@ -1544,6 +1562,34 @@ nsDisplayImage::ConfigureLayer(ImageLayer *aLayer, const nsIntPoint& aOffset)
   aLayer->SetBaseTransform(gfx::Matrix4x4::From2D(transform));
 }
 
+static void
+PrintDrawResult(DrawResult aResult) {
+  switch (aResult) {
+  case DrawResult::SUCCESS:
+    printf_stderr("bignose nsImageFrame::PaintImage DrawResult success\n");
+    break;
+  case DrawResult::INCOMPLETE:
+    printf_stderr("bignose nsImageFrame::PaintImage DrawResult INCOMPLETE\n");
+    break;
+  case DrawResult::WRONG_SIZE:
+    printf_stderr("bignose nsImageFrame::PaintImage DrawResult WRONG_SIZE\n");
+    break;
+  case DrawResult::NOT_READY:
+    printf_stderr("bignose nsImageFrame::PaintImage DrawResult NOT_READY\n");
+    break;
+  case DrawResult::TEMPORARY_ERROR:
+    printf_stderr("bignose nsImageFrame::PaintImage DrawResult TEMPORARY_ERROR\n");
+    break;
+  case DrawResult::BAD_IMAGE:
+    printf_stderr("bignose nsImageFrame::PaintImage DrawResult BAD_IMAGE\n");
+    break;
+  case DrawResult::BAD_ARGS:
+    printf_stderr("bignose nsImageFrame::PaintImage DrawResult BAD_ARGS\n");
+    break;
+
+  }
+}
+
 DrawResult
 nsImageFrame::PaintImage(nsRenderingContext& aRenderingContext, nsPoint aPt,
                          const nsRect& aDirtyRect, imgIContainer* aImage,
@@ -1574,6 +1620,7 @@ nsImageFrame::PaintImage(nsRenderingContext& aRenderingContext, nsPoint aPt,
       PresContext(), aImage,
       nsLayoutUtils::GetGraphicsFilterForFrame(this), dest, aDirtyRect,
       nullptr, aFlags, &anchorPoint);
+  PrintDrawResult(result);
 
   nsImageMap* map = GetImageMap();
   if (map) {
@@ -1603,8 +1650,10 @@ nsImageFrame::BuildDisplayList(nsDisplayListBuilder*   aBuilder,
                                const nsRect&           aDirtyRect,
                                const nsDisplayListSet& aLists)
 {
-  if (!IsVisibleForPainting(aBuilder))
+  if (!IsVisibleForPainting(aBuilder)) {
+    printf_stderr("bignose NsImageFrame::BuildDisplayList addr:%p : Not visible for painting\n",this);
     return;
+  }
 
   DisplayBorderBackgroundOutline(aBuilder, aLists);
 
@@ -1634,9 +1683,11 @@ nsImageFrame::BuildDisplayList(nsDisplayListBuilder*   aBuilder,
     if (!imageOK || !mImage || !SizeIsAvailable(currentRequest)) {
       // No image yet, or image load failed. Draw the alt-text and an icon
       // indicating the status
+      printf_stderr("bignose nsImageFrame::We don't have an image or something, putting nsDisplayAltFeedback addr:%p\n",this);
       aLists.Content()->AppendNewToTop(new (aBuilder)
         nsDisplayAltFeedback(aBuilder, this));
     } else {
+      printf_stderr("bignose nsImageFrame::Successfully have an image, adding nsDisplayImage addr:%p\n",this);
       aLists.Content()->AppendNewToTop(new (aBuilder)
         nsDisplayImage(aBuilder, this, mImage));
 
@@ -1654,11 +1705,15 @@ nsImageFrame::BuildDisplayList(nsDisplayListBuilder*   aBuilder,
       }
 #endif
     }
+  } else {
+    printf_stderr("bignose nsImageFrame::BuildDisplayList, addr:%p mComputedSize size is (0,0)\n",this);
   }
 
   if (ShouldDisplaySelection()) {
     DisplaySelectionOverlay(aBuilder, aLists.Content(),
                             nsISelectionDisplay::DISPLAY_IMAGES);
+  } else {
+    printf_stderr("bignose nsImageFrame::Should Not!!! DisplaySection addr:%p\n",this);
   }
 }
 

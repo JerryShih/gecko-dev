@@ -71,7 +71,7 @@ public:
     bool UseAcceleratedCanvas();
 
     virtual bool UseProgressivePaint() MOZ_OVERRIDE;
-    virtual already_AddRefed<mozilla::gfx::VsyncSource> CreateHardwareVsyncSource() MOZ_OVERRIDE;
+    //virtual already_AddRefed<mozilla::gfx::VsyncSource> CreateHardwareVsyncSource() MOZ_OVERRIDE;
 
     // lower threshold on font anti-aliasing
     uint32_t GetAntiAliasingThreshold() { return mFontAntiAliasingThreshold; }

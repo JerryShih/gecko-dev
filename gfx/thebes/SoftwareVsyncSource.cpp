@@ -131,6 +131,14 @@ SoftwareDisplay::ScheduleNextVsync(mozilla::TimeStamp aVsyncTimestamp)
   if (!mVsyncEnabled) {
     return;
   }
+
+
+  // bignose
+  //printf_stderr("bignose sf tick\n");
+  //PR_Sleep(PR_MillisecondsToInterval(100*(rand()%11)));
+
+
+
   mCurrentVsyncTask = NewRunnableMethod(this,
       &SoftwareDisplay::NotifyVsync,
       nextVsync);

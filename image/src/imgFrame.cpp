@@ -404,6 +404,7 @@ nsresult imgFrame::Optimize()
   MOZ_ASSERT(mLockCount == 1,
              "Should only optimize when holding the lock exclusively");
 
+  printf_stderr("bignose imgFrame::Optimize\n");
   // Don't optimize during shutdown because gfxPlatform may not be available.
   if (ShutdownTracker::ShutdownHasStarted())
     return NS_OK;
@@ -602,6 +603,7 @@ bool imgFrame::Draw(gfxContext* aContext, const ImageRegion& aRegion,
   PROFILER_LABEL("imgFrame", "Draw",
     js::ProfileEntry::Category::GRAPHICS);
 
+  printf_stderr("bignose imgFrame::Draw\n");
   MOZ_ASSERT(NS_IsMainThread());
   NS_ASSERTION(!aRegion.Rect().IsEmpty(), "Drawing empty region!");
   NS_ASSERTION(!aRegion.IsRestricted() ||
@@ -633,6 +635,7 @@ bool imgFrame::Draw(gfxContext* aContext, const ImageRegion& aRegion,
 
   RefPtr<SourceSurface> surf = GetSurfaceInternal();
   if (!surf && !mSinglePixel) {
+    printf_stderr("bignose ImgFrame::Draw failure, returning false\n");
     return false;
   }
 
@@ -656,6 +659,7 @@ bool imgFrame::Draw(gfxContext* aContext, const ImageRegion& aRegion,
                                imageRect.Size(), region, surfaceResult.mFormat,
                                aFilter, aImageFlags);
   }
+  printf_stderr("bignose ImgFrame::Draw success, returning true\n");
   return true;
 }
 
@@ -952,6 +956,7 @@ imgFrame::UnlockImageData()
     if (!NS_IsMainThread()) {
       nsCOMPtr<nsIRunnable> runnable = new UnlockImageDataRunnable(this);
       NS_DispatchToMainThread(runnable);
+      printf_stderr("bignose mLockCount success but not on main thread, deferring to main thread\n");
       return NS_OK;
     }
 
@@ -965,10 +970,13 @@ imgFrame::UnlockImageData()
 
     // Convert the data surface to a GPU surface or a single color if possible.
     // This will also release mImageSurface if possible.
+    printf_stderr("bignose imgFrame::Optimizing now\n");
     Optimize();
-    
+
     // Allow the OS to release our data surface.
     mVBufPtr = nullptr;
+  } else {
+    printf_stderr("bignose mLock count not 1, is: %d, mPaleteImageData: %p\n", mLockCount, mPalettedImageData);
   }
 
   mLockCount--;

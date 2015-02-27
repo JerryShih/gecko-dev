@@ -545,12 +545,12 @@ static CVReturn VsyncCallback(CVDisplayLinkRef aDisplayLink,
   return kCVReturnSuccess;
 }
 
-already_AddRefed<mozilla::gfx::VsyncSource>
-gfxPlatformMac::CreateHardwareVsyncSource()
-{
-  nsRefPtr<VsyncSource> osxVsyncSource = new OSXVsyncSource();
-  return osxVsyncSource.forget();
-}
+//already_AddRefed<mozilla::gfx::VsyncSource>
+//gfxPlatformMac::CreateHardwareVsyncSource()
+//{
+//  nsRefPtr<VsyncSource> osxVsyncSource = new OSXVsyncSource();
+//  return osxVsyncSource.forget();
+//}
 
 void
 gfxPlatformMac::GetPlatformCMSOutputProfile(void* &mem, size_t &size)

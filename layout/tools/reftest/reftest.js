@@ -1406,6 +1406,7 @@ function UpdateCanvasCache(url, canvas)
 // Fortunately this is pretty cheap.
 function DoDrawWindow(ctx, x, y, w, h)
 {
+    dump("bignose Reftest Calling DoDrawWindow\n");
     var flags = ctx.DRAWWINDOW_DRAW_CARET | ctx.DRAWWINDOW_DRAW_VIEW;
     var testRect = gBrowser.getBoundingClientRect();
     if (gIgnoreWindowSize ||

@@ -4555,6 +4555,7 @@ CanvasRenderingContext2D::DrawWindow(nsGlobalWindow& window, double x,
                                      const nsAString& bgColor,
                                      uint32_t flags, ErrorResult& error)
 {
+  printf_stderr("bignose CanvasRenderingContext2D::DrawWindow\n");
   // protect against too-large surfaces that will cause allocation
   // or overflow issues
   if (!gfxASurface::CheckSurfaceSize(gfxIntSize(int32_t(w), int32_t(h)),

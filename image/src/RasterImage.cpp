@@ -294,12 +294,23 @@ RasterImage::Init(const char* aMimeType,
                   uint32_t aFlags)
 {
   // We don't support re-initialization
-  if (mInitialized)
+  if (mInitialized) {
+    printf_stderr("bignose RasteRImage::Init Returning because I was already initialized\n");
     return NS_ERROR_ILLEGAL_VALUE;
+  }
 
   // Not sure an error can happen before init, but be safe
-  if (mError)
+  if (mError) {
+    printf_stderr("bignose RasteRImage::Init Returning because of an error\n");
     return NS_ERROR_FAILURE;
+  }
+
+  ImageURL* url(GetURI());
+  if (url) {
+    nsAutoCString spec;
+    url->GetSpec(spec);
+    printf("bignose %p RasterImage::Init: [%s]\n", this, spec.get());
+  }
 
   NS_ENSURE_ARG_POINTER(aMimeType);
 
@@ -1701,6 +1712,7 @@ RasterImage::DrawWithPreDownscaleIfNeeded(DrawableFrameRef&& aFrameRef,
                                           uint32_t aFlags)
 {
   DrawableFrameRef frameRef;
+  //printf_stderr("RasterImage::DrawWithPreDownscaleIfNeeded start\n");
 
   if (CanScale(aFilter, aSize, aFlags)) {
     frameRef =
@@ -1753,6 +1765,8 @@ RasterImage::DrawWithPreDownscaleIfNeeded(DrawableFrameRef&& aFrameRef,
   if (couldRedecodeForBetterFrame) {
     return DrawResult::WRONG_SIZE;
   }
+
+  //printf_stderr("RasterImage::DrawWithPreDownscaleIfNeeded success\n");
   return DrawResult::SUCCESS;
 }
 
@@ -1780,6 +1794,10 @@ RasterImage::Draw(gfxContext* aContext,
 
   if (mError)
     return DrawResult::BAD_IMAGE;
+
+  if (aFlags & FLAG_SYNC_DECODE) {
+    printf_stderr("bignose Flag sync decode not happening for some reason\n");
+  }
 
   // Illegal -- you can't draw with non-default decode flags.
   // (Disabling colorspace conversion might make sense to allow, but
@@ -1981,6 +1999,38 @@ RasterImage::GetFramesNotified(uint32_t *aFramesNotified)
 }
 #endif
 
+static void
+PrintProgress(Progress aProgress)
+{
+  if (aProgress & FLAG_SIZE_AVAILABLE) {
+    printf_stderr("bignose RasterImage::Progress FLAG_SIZE_AVAILABLE\n");
+  }
+  if (aProgress & FLAG_DECODE_STARTED) {
+    printf_stderr("bignose RasterImage::Progress FLAG_DECODE_STARTED\n");
+  }
+  if (aProgress & FLAG_DECODE_COMPLETE) {
+    printf_stderr("bignose RasterImage::FLAG_DECODE_COMPLETE\n");
+  }
+  if (aProgress & FLAG_ONLOAD_BLOCKED) {
+    printf_stderr("bignose RasterImage::FLAG_ONLOAD_BLOCKED)\n");
+  }
+  if (aProgress & FLAG_ONLOAD_UNBLOCKED) {
+    printf_stderr("bignose RasterImage::FLAG_ONLOAD_UNBLOCKED\n");
+  }
+  if (aProgress & FLAG_IS_ANIMATED) {
+    printf_stderr("bignose RasterImage::FLAG_IS_ANIMATED\n");
+  }
+  if (aProgress & FLAG_HAS_TRANSPARENCY) {
+    printf_stderr("bignose RasterImage::FLAG_HAS_TRANSPARENCY\n");
+  }
+  if (aProgress & FLAG_LAST_PART_COMPLETE) {
+    printf_stderr("bignose RasterImage::FLAG_LAST_PART_COMPLETE\n");
+  }
+  if (aProgress & FLAG_HAS_ERROR) {
+    printf_stderr("bignose RasterImage::FLAG_HAS_ERROR\n");
+  }
+}
+
 void
 RasterImage::NotifyProgress(Progress aProgress,
                             const nsIntRect& aInvalidRect /* = nsIntRect() */,
@@ -2000,6 +2050,7 @@ RasterImage::NotifyProgress(Progress aProgress,
 
   // Tell the observers what happened.
   image->mProgressTracker->SyncNotifyProgress(aProgress, aInvalidRect);
+  PrintProgress(aProgress);
 }
 
 void

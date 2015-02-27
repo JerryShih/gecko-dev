@@ -434,6 +434,15 @@ private:
 
   void RunRefreshDrivers(TimeStamp aTimeStamp)
   {
+    // bignose test
+//    if (rand()%2==0) {
+//      PR_Sleep(PR_MillisecondsToInterval(200*(rand()%6)));
+//    }
+
+//    if (XRE_IsParentProcess()) {
+//      PR_Sleep(PR_MillisecondsToInterval(100*(rand()%11)));
+//    }
+
     int64_t jsnow = JS_Now();
     TimeDuration diff = TimeStamp::Now() - aTimeStamp;
     int64_t vsyncJsNow = jsnow - diff.ToMicroseconds();

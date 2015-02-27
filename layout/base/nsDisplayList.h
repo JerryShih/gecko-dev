@@ -453,6 +453,7 @@ public:
    * whatever has already been decoded.
    */
   void SetSyncDecodeImages(bool aSyncDecodeImages) {
+    printf_stderr("bignose Set Sync Decode images to: %d\n", aSyncDecodeImages);
     mSyncDecodeImages = aSyncDecodeImages;
   }
 

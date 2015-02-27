@@ -571,6 +571,7 @@ function WaitForTestEnd(contentRootElement, inPrintMode, spellCheckedElements) {
 function OnDocumentLoad(event)
 {
     var currentDoc = content.document;
+    dump("bignose Reftest content::OnDocumentLoad for URL " + gCurrentURL + "\n");
     if (event.target != currentDoc)
         // Ignore load events for subframes.
         return;

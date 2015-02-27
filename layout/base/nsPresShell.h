@@ -63,6 +63,11 @@ class PresShell MOZ_FINAL : public nsIPresShell,
                             public nsSupportsWeakReference
 {
 public:
+  int ReflowLength()
+  {
+    return mDirtyRoots.Length();
+  }
+
   PresShell();
 
   NS_DECL_AND_IMPL_ZEROING_OPERATOR_NEW
