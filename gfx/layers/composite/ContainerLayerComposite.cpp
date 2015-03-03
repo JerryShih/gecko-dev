@@ -102,37 +102,24 @@ static gfx::IntRect ContainerVisibleRect(ContainerT* aContainer)
 
 static void DumpLayerPos(Layer* aLayer)
 {
+  //if (!profiler_is_active()) {
+  //  return;
+  //}
+
   if (aLayer->GetDumpPos()) {
     Matrix4x4 transform = aLayer->AsLayerComposite()->GetShadowTransform();
     Point3D pos = transform.GetTranslation();
     // dump to adb logcat or gecko profiler
-    printf_stderr("layer pos dump: addr:(%p) pos:(%d,%d)",
+    printf_stderr("bignose layer pos dump: addr:(%p) pos:(%d,%d)",
         aLayer, (int)pos.x, (int)pos.y);
-  }
-}
 
-static void PrintUniformityInfo(Layer* aLayer)
-{
-#ifdef MOZ_ENABLE_PROFILER_SPS
-  if (!profiler_is_active()) {
-    return;
-  }
+    if(profiler_is_active()){
 
-  // Don't want to print a log for smaller layers
-  if (aLayer->GetEffectiveVisibleRegion().GetBounds().width < 300 ||
-      aLayer->GetEffectiveVisibleRegion().GetBounds().height < 300) {
-    return;
-  }
+    PROFILER_MARKER_PAYLOAD("LayerTranslation",
+        new LayerTranslationPayload(aLayer, Point(pos.x, pos.y)));
 
-  Matrix4x4 transform = aLayer->AsLayerComposite()->GetShadowTransform();
-  if (!transform.Is2D()) {
-    return;
+    }
   }
-
-  Point translation = transform.As2D().GetTranslation();
-  LayerTranslationPayload* payload = new LayerTranslationPayload(aLayer, translation);
-  PROFILER_MARKER_PAYLOAD("LayerTranslation", payload);
-#endif
 }
 
 /* all of the per-layer prepared data we need to maintain */
@@ -386,12 +373,8 @@ RenderLayers(ContainerT* aContainer,
       layerToRender->RenderLayer(RenderTargetPixel::ToUntyped(clipRect));
     }
 
-    if (gfxPrefs::DumpTouchAndLayerUniformity()) {
-      DumpLayerPos(layer);
-    }
-
     if (gfxPrefs::UniformityInfo()) {
-      PrintUniformityInfo(layer);
+      DumpLayerPos(layer);
     }
 
     if (gfxPrefs::DrawLayerInfo()) {

@@ -1126,3 +1126,5 @@ pref("gfx.vsync.hw-vsync.enabled", false);
 pref("gfx.vsync.compositor", false);
 pref("gfx.touch.resample", false);
 #endif
+
+pref("layers.uniformity-info", true);
