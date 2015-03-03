@@ -306,6 +306,9 @@ nsHTMLReflowState::SetComputedWidth(nscoord aComputedWidth)
 
   NS_PRECONDITION(aComputedWidth >= 0, "Invalid computed width");
   if (ComputedWidth() != aComputedWidth) {
+
+    printf_stderr("bignose nsHTMLReflowState::SetComputedWidth, addr:%p, width:%d",this,aComputedWidth);
+
     ComputedWidth() = aComputedWidth;
     nsIAtom* frameType = frame->GetType();
     if (frameType != nsGkAtoms::viewportFrame) { // Or check GetParent()?
@@ -1964,14 +1967,24 @@ nsHTMLReflowState::InitConstraints(nsPresContext* aPresContext,
     ComputedPhysicalOffsets().SizeTo(0, 0, 0, 0);
 
     ComputedWidth() = AvailableWidth() - ComputedPhysicalBorderPadding().LeftRight();
-    if (ComputedWidth() < 0)
+
+    printf_stderr("bignose nsHTMLReflowState::InitConstraints 1, addr:%p, width:%d",this,ComputedWidth());
+
+    if (ComputedWidth() < 0){
       ComputedWidth() = 0;
+    }
     if (AvailableHeight() != NS_UNCONSTRAINEDSIZE) {
       ComputedHeight() = AvailableHeight() - ComputedPhysicalBorderPadding().TopBottom();
-      if (ComputedHeight() < 0)
+
+      printf_stderr("bignose nsHTMLReflowState::InitConstraints 2, addr:%p, width:%d",this,ComputedWidth());
+
+      if (ComputedHeight() < 0) {
         ComputedHeight() = 0;
+      }
     } else {
       ComputedHeight() = NS_UNCONSTRAINEDSIZE;
+
+      printf_stderr("bignose nsHTMLReflowState::InitConstraints 3, addr:%p, width:%d",this,ComputedWidth());
     }
 
     ComputedMinWidth() = ComputedMinHeight() = 0;
@@ -2102,11 +2115,16 @@ nsHTMLReflowState::InitConstraints(nsPresContext* aPresContext,
           (width.IsCalcUnit() && width.CalcHasPercent())) {
         ComputedWidth() = AvailableWidth();
 
+        printf_stderr("bignose nsHTMLReflowState::InitConstraints 4, addr:%p, width:%d",this,ComputedWidth());
+
         if ((ComputedWidth() != NS_UNCONSTRAINEDSIZE) && !rowOrRowGroup){
           // Internal table elements don't have margins. Only tables and
           // cells have border and padding
           ComputedWidth() -= ComputedPhysicalBorderPadding().left +
             ComputedPhysicalBorderPadding().right;
+
+          printf_stderr("bignose nsHTMLReflowState::InitConstraints 5, addr:%p, width:%d",this,ComputedWidth());
+
           if (ComputedWidth() < 0)
             ComputedWidth() = 0;
         }
@@ -2118,6 +2136,9 @@ nsHTMLReflowState::InitConstraints(nsPresContext* aPresContext,
         ComputedWidth() = ComputeWidthValue(aContainingBlockWidth,
                                            mStylePosition->mBoxSizing,
                                            mStylePosition->mWidth);
+
+        printf_stderr("bignose nsHTMLReflowState::InitConstraints 6, addr:%p, width:%d",this,ComputedWidth());
+
       }
 
       // Calculate the computed height

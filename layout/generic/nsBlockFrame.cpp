@@ -3104,6 +3104,8 @@ nsBlockFrame::ReflowBlockFrame(nsBlockReflowState& aState,
 {
   NS_PRECONDITION(*aKeepReflowGoing, "bad caller");
 
+  printf_stderr("bignose ReflowBlockFrame start, addr:%p",this);
+
   nsIFrame* frame = aLine->mFirstChild;
   if (!frame) {
     NS_ASSERTION(false, "program error - unexpected empty line"); 
