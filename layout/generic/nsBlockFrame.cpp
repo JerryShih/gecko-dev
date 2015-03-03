@@ -1155,6 +1155,8 @@ nsBlockFrame::Reflow(nsPresContext*           aPresContext,
 
   mState &= ~NS_FRAME_FIRST_REFLOW;
 
+  printf_stderr("bignose %s addr:%p reflow(%d,%d)\n",__PRETTY_FUNCTION__,this,  state.mReflowState.ComputedWidth(), state.mReflowState.ComputedHeight());
+
   // Now reflow...
   ReflowDirtyLines(state);
 
@@ -2247,6 +2249,8 @@ nsBlockFrame::ReflowDirtyLines(nsBlockReflowState& aState)
       NS_ASSERTION(!willReflowAgain || !line->IsBlock(),
                    "Don't reflow blocks while willReflowAgain is true, reflow of block abs-pos children depends on this");
 
+      printf_stderr("bignose %s addr:%p reflow(%d,%d)\n",__PRETTY_FUNCTION__,this,  aState.mReflowState.ComputedWidth(), aState.mReflowState.ComputedHeight());
+
       // Reflow the dirty line. If it's an incremental reflow, then force
       // it to invalidate the dirty area if necessary
       ReflowLine(aState, line, &keepGoing);
@@ -2711,6 +2715,8 @@ nsBlockFrame::ReflowLine(nsBlockReflowState& aState,
 
   // Now that we know what kind of line we have, reflow it
   if (aLine->IsBlock()) {
+    printf_stderr("bignose %s addr:%p reflow(%d,%d)\n",__PRETTY_FUNCTION__,this,  aState.mReflowState.ComputedWidth(), aState.mReflowState.ComputedHeight());
+
     ReflowBlockFrame(aState, aLine, aKeepReflowGoing);
   } else {
     aLine->SetLineWrapped(false);
@@ -3353,6 +3359,8 @@ nsBlockFrame::ReflowBlockFrame(nsBlockReflowState& aState,
     } else if (!applyBStartMargin) {
       blockHtmlRS.mDiscoveredClearance = aState.mReflowState.mDiscoveredClearance;
     }
+
+    printf_stderr("bignose %s addr:%p reflow(%d,%d)\n",__PRETTY_FUNCTION__,this,  blockHtmlRS.ComputedWidth(), blockHtmlRS.ComputedHeight());
 
     nsReflowStatus frameReflowStatus = NS_FRAME_COMPLETE;
     brc.ReflowBlock(availSpace, applyBStartMargin, aState.mPrevBEndMargin,

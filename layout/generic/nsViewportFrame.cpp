@@ -213,6 +213,9 @@ ViewportFrame::Reflow(nsPresContext*           aPresContext,
 
       // Reflow the frame
       kidReflowState.SetComputedBSize(aReflowState.ComputedBSize());
+
+      printf_stderr("bignose %s addr:%p reflow(%d,%d)\n",__PRETTY_FUNCTION__,this,  kidReflowState.ComputedWidth(), kidReflowState.ComputedHeight());
+
       ReflowChild(kidFrame, aPresContext, kidDesiredSize, kidReflowState,
                   0, 0, 0, aStatus);
       kidBSize = kidDesiredSize.BSize(wm);

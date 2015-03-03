@@ -973,6 +973,8 @@ nsContainerFrame::ReflowChild(nsIFrame*                aKidFrame,
     PositionFrameView(aKidFrame);
   }
 
+  printf_stderr("bignose %s addr:%p reflow(%d,%d)\n",__PRETTY_FUNCTION__,this,  aReflowState.ComputedWidth(), aReflowState.ComputedHeight());
+
   // Reflow the child frame
   aKidFrame->Reflow(aPresContext, aDesiredSize, aReflowState, aStatus);
 
@@ -1017,6 +1019,8 @@ nsContainerFrame::ReflowChild(nsIFrame*                aKidFrame,
   if (0 == (aFlags & NS_FRAME_NO_MOVE_VIEW)) {
     PositionFrameView(aKidFrame);
   }
+
+  printf_stderr("bignose %s addr:%p reflow(%d,%d)\n",__PRETTY_FUNCTION__,this,  aReflowState.ComputedWidth(), aReflowState.ComputedHeight());
 
   // Reflow the child frame
   aKidFrame->Reflow(aPresContext, aDesiredSize, aReflowState, aStatus);

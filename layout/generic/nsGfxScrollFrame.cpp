@@ -506,6 +506,9 @@ nsHTMLScrollFrame::ReflowScrolledFrame(ScrollReflowState* aState,
   // No need to pass a container-width to ReflowChild or
   // FinishReflowChild, because it's only used there when positioning
   // the frame (i.e. if NS_FRAME_NO_MOVE_FRAME isn't set)
+
+  printf_stderr("bignose %s addr:%p reflow(%d,%d)\n",__PRETTY_FUNCTION__,this,  kidReflowState.ComputedWidth(), kidReflowState.ComputedHeight());
+
   ReflowChild(mHelper.mScrolledFrame, presContext, *aMetrics,
               kidReflowState, wm, LogicalPoint(wm), 0,
               NS_FRAME_NO_MOVE_FRAME, status);
@@ -650,6 +653,9 @@ nsHTMLScrollFrame::ReflowContents(ScrollReflowState* aState,
                                      insideBorderSize);
     if (nsRect(nsPoint(0, 0), insideBorderSize).Contains(scrolledRect)) {
       // Let's pretend we had no scrollbars coming in here
+
+      printf_stderr("bignose %s addr:%p reflow(%d,%d)\n",__PRETTY_FUNCTION__,this,  aState->mReflowState.ComputedWidth(), aState->mReflowState.ComputedHeight());
+
       ReflowScrolledFrame(aState, false, false, &kidDesiredSize, false);
     }
   }
@@ -850,6 +856,8 @@ nsHTMLScrollFrame::Reflow(nsPresContext*           aPresContext,
 
   state.mComputedBorder = aReflowState.ComputedPhysicalBorderPadding() -
     aReflowState.ComputedPhysicalPadding();
+
+  printf_stderr("bignose %s addr:%p reflow(%d,%d)\n",__PRETTY_FUNCTION__,this,  aReflowState.ComputedWidth(), aReflowState.ComputedHeight());
 
   ReflowContents(&state, aDesiredSize);
 

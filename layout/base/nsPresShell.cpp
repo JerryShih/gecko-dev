@@ -9361,6 +9361,9 @@ PresShell::DoReflow(nsIFrame* target, bool aInterruptible)
 
   nsReflowStatus status;
   nsHTMLReflowMetrics desiredSize(reflowState);
+
+  printf_stderr("bignose %s addr:%p reflow(%d,%d)\n",__PRETTY_FUNCTION__,this,  reflowState.ComputedWidth(), reflowState.ComputedHeight());
+
   target->Reflow(mPresContext, desiredSize, reflowState, status);
 
   // If an incremental reflow is initiated at a frame other than the

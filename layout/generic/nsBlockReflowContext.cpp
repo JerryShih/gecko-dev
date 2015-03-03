@@ -286,6 +286,9 @@ nsBlockReflowContext::ReflowBlock(const LogicalRect&  aSpace,
 
   WritingMode oldWM = mOuterReflowState.mFloatManager->Translate(mWritingMode,
                                                                  tPt);
+
+  printf_stderr("bignose %s addr:%p reflow(%d,%d)\n",__PRETTY_FUNCTION__,this,  aFrameRS.ComputedWidth(), aFrameRS.ComputedHeight());
+
   mFrame->Reflow(mPresContext, mMetrics, aFrameRS, aFrameReflowStatus);
   mOuterReflowState.mFloatManager->Untranslate(oldWM, tPt);
 
