@@ -57,6 +57,13 @@ public:
   NS_IMETHOD Run() MOZ_OVERRIDE
   {
     MOZ_ASSERT(NS_IsMainThread());
+    // bignose test
+//    if (rand()%2==0) {
+//      PR_Sleep(PR_MillisecondsToInterval(500*(rand()%5)));
+//    }
+
+    printf_stderr("bignose NotifyProgressWorker::run addr:%p, tid:%d",this, gettid());
+
     mImage->NotifyProgress(mProgress, mInvalidRect, mFlags);
     return NS_OK;
   }
@@ -94,6 +101,13 @@ public:
   NS_IMETHOD Run() MOZ_OVERRIDE
   {
     MOZ_ASSERT(NS_IsMainThread());
+    // bignose test
+//    if (rand()%2==0) {
+//      PR_Sleep(PR_MillisecondsToInterval(500*(rand()%5)));
+//    }
+
+    printf_stderr("bignose NotifyDecodeCompleteWorker::run addr:%p, tid:%d",this, gettid());
+
     mDecoder->Finish();
     mDecoder->GetImage()->FinalizeDecoder(mDecoder);
     return NS_OK;
@@ -119,6 +133,9 @@ public:
   NS_IMETHOD Run() MOZ_OVERRIDE
   {
     MOZ_ASSERT(!NS_IsMainThread());
+
+    printf_stderr("bignose DecodeWorker::run addr:%p, tid:%d",this, gettid());
+
     DecodePool::Singleton()->Decode(mDecoder);
     return NS_OK;
   }

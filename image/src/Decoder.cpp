@@ -573,6 +573,8 @@ Decoder::PostSize(int32_t aWidth,
   MOZ_ASSERT(aWidth >= 0, "Width can't be negative!");
   MOZ_ASSERT(aHeight >= 0, "Height can't be negative!");
 
+  printf_stderr("bignose Decoder::PostSize(%d,%d), addr:%p, tid:%d",aWidth,aHeight,this, gettid());
+
   // Tell the image
   mImageMetadata.SetSize(aWidth, aHeight, aOrientation);
 

@@ -226,6 +226,8 @@ nsThreadPool::Run()
     }
   } while (!exitThread);
 
+  printf_stderr("bignose thread pool, thread:%d exit",gettid());
+
   if (listener) {
     listener->OnThreadShuttingDown();
   }

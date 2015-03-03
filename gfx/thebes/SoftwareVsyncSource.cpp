@@ -101,6 +101,13 @@ SoftwareDisplay::NotifyVsync(mozilla::TimeStamp aVsyncTimestamp)
     displayVsyncTime = now;
   }
 
+  static int previous_tid=0;
+  int current_tid=gettid();
+  if(current_tid!=previous_tid) {
+    previous_tid = current_tid;
+    printf_stderr("bignose SoftwareDisplay::NotifyVsync thread change, tid:%d",current_tid);
+  }
+
   Display::NotifyVsync(displayVsyncTime);
 
   // Prevent skew by still scheduling based on the original
