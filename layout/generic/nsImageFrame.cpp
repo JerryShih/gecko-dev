@@ -735,6 +735,26 @@ nsImageFrame::EnsureIntrinsicSizeAndRatio()
   }
 }
 
+void
+nsImageFrame::printImageURI()
+{
+  nsCOMPtr<nsIImageLoadingContent> imageLoader = do_QueryInterface(mContent);
+  if (imageLoader) {
+    nsCOMPtr<imgIRequest> currentRequest;
+    imageLoader->GetRequest(nsIImageLoadingContent::CURRENT_REQUEST,
+                            getter_AddRefs(currentRequest));
+    if (currentRequest) {
+      nsCString str;
+      nsCOMPtr<nsIURI> uri;
+      currentRequest->GetURI(getter_AddRefs(uri));
+      nsAutoCString uristr;
+      uri->GetAsciiSpec(uristr);
+      str += nsPrintfCString(" [src=%s]", uristr.get());
+      printf_stderr("bignose image uri:%s\n", str.get());
+    }
+  }
+}
+
 /* virtual */
 LogicalSize
 nsImageFrame::ComputeSize(nsRenderingContext *aRenderingContext,
@@ -746,11 +766,19 @@ nsImageFrame::ComputeSize(nsRenderingContext *aRenderingContext,
                           const LogicalSize& aPadding,
                           ComputeSizeFlags aFlags)
 {
+  printf_stderr("bignose start compute size,addr:%p",this);
+  printImageURI();
+
   EnsureIntrinsicSizeAndRatio();
 
   nsCOMPtr<nsIImageLoadingContent> imageLoader = do_QueryInterface(mContent);
   NS_ASSERTION(imageLoader, "No content node??");
   mozilla::IntrinsicSize intrinsicSize(mIntrinsicSize);
+
+  printf_stderr("bignose nsImageFrame::ComputeSize %p imageLoader %p mImage %p intrinsicSize.width.GetUnit() %s intrinsicSize.height.GetUnit() %s\n",
+    this, imageLoader.get(), mImage.get(),
+    intrinsicSize.width.GetUnit() == eStyleUnit_Coord ? "coord" : "not coord",
+    intrinsicSize.height.GetUnit() == eStyleUnit_Coord ? "coord" : "not coord");
 
   // Content may override our default dimensions. This is termed as overriding
   // the intrinsic size by the spec, but all other consumers of mIntrinsic*
@@ -758,6 +786,7 @@ nsImageFrame::ComputeSize(nsRenderingContext *aRenderingContext,
   if (imageLoader && mImage &&
       intrinsicSize.width.GetUnit() == eStyleUnit_Coord &&
       intrinsicSize.height.GetUnit() == eStyleUnit_Coord) {
+    printf_stderr("basic check 1 %p\n", this);
     uint32_t width;
     uint32_t height;
     if (NS_SUCCEEDED(imageLoader->GetNaturalWidth(&width)) &&
@@ -772,18 +801,27 @@ nsImageFrame::ComputeSize(nsRenderingContext *aRenderingContext,
       } else {
         coordFlip = StyleVisibility()->mImageOrientation.SwapsWidthAndHeight();
       }
+      printf_stderr("using these value %p %d %d\n", this, appWidth, appHeight);
       intrinsicSize.width.SetCoordValue(coordFlip ? appHeight : appWidth);
       intrinsicSize.height.SetCoordValue(coordFlip ? appWidth : appHeight);
     }
   }
 
-  return nsLayoutUtils::ComputeSizeWithIntrinsicDimensions(aWM,
+  if (intrinsicSize.width.GetUnit() != eStyleUnit_Coord || intrinsicSize.height.GetUnit() == eStyleUnit_Coord)
+  {
+    printf_stderr("bignose %p insize passed non coord\n", this);
+  } else {
+    printf_stderr("bignose %p insize passed %d %d\n", this, intrinsicSize.width.GetCoordValue(), intrinsicSize.height.GetCoordValue());
+  }
+  LogicalSize lsize = nsLayoutUtils::ComputeSizeWithIntrinsicDimensions(aWM,
                             aRenderingContext, this,
                             intrinsicSize, mIntrinsicRatio,
                             aCBSize,
                             aMargin,
                             aBorder,
                             aPadding);
+  printf_stderr("bignose %p returning %d %d\n", this, lsize.Width(aWM), lsize.Height(aWM));
+  return lsize;
 }
 
 // XXXdholbert This function's clients should probably just be calling

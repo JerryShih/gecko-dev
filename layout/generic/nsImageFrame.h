@@ -233,6 +233,8 @@ protected:
   void NotifyNewCurrentRequest(imgIRequest *aRequest, nsresult aStatus);
 
 private:
+  void printImageURI(void);
+
   // random helpers
   inline void SpecToURI(const nsAString& aSpec, nsIIOService *aIOService,
                         nsIURI **aURI);
