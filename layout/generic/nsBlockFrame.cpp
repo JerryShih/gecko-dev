@@ -3121,6 +3121,8 @@ nsBlockFrame::ReflowBlockFrame(nsBlockReflowState& aState,
     breakType = nsLayoutUtils::CombineBreakType(breakType,
                                                 aState.mFloatBreakType);
     aState.mFloatBreakType = NS_STYLE_CLEAR_NONE;
+
+    printf_stderr("bignose ReflowBlockFrame 1, addr:%p",this);
   }
 
   // Clear past floats before the block if the clear style is not none
@@ -3134,12 +3136,15 @@ nsBlockFrame::ReflowBlockFrame(nsBlockReflowState& aState,
                               NS_STYLE_BOX_DECORATION_BREAK_CLONE ||
                             !frame->GetPrevInFlow()) &&
                            ShouldApplyBStartMargin(aState, aLine, frame);
+
   if (applyBStartMargin) {
     // The HasClearance setting is only valid if ShouldApplyBStartMargin
     // returned false (in which case the block-start margin-root set our
     // clearance flag). Otherwise clear it now. We'll set it later on
     // ourselves if necessary.
     aLine->ClearHasClearance();
+
+    printf_stderr("bignose ReflowBlockFrame 2, addr:%p",this);
   }
   bool treatWithClearance = aLine->HasClearance();
 
@@ -3148,6 +3153,8 @@ nsBlockFrame::ReflowBlockFrame(nsBlockReflowState& aState,
   if (!nsBlockFrame::BlockCanIntersectFloats(frame)) {
     mightClearFloats = true;
     replacedBlock = frame;
+
+    printf_stderr("bignose ReflowBlockFrame 3, addr:%p",this);
   }
 
   // If our block-start margin was counted as part of some parent's block-start
@@ -3158,6 +3165,7 @@ nsBlockFrame::ReflowBlockFrame(nsBlockReflowState& aState,
       aState.mReflowState.mDiscoveredClearance) {
     nscoord curBCoord = aState.mBCoord + aState.mPrevBEndMargin.get();
     nscoord clearBCoord = aState.ClearFloats(curBCoord, breakType, replacedBlock);
+
     if (clearBCoord != curBCoord) {
       // Looks like that assumption was invalid, we do need
       // clearance. Tell our ancestor so it can reflow again. It is
@@ -3176,6 +3184,7 @@ nsBlockFrame::ReflowBlockFrame(nsBlockReflowState& aState,
   }
   if (treatWithClearance) {
     applyBStartMargin = true;
+    printf_stderr("bignose ReflowBlockFrame 4 addr:%p",this);
   }
 
   nsIFrame* clearanceFrame = nullptr;
@@ -3185,12 +3194,18 @@ nsBlockFrame::ReflowBlockFrame(nsBlockReflowState& aState,
   // Save the original position of the frame so that we can reposition
   // its view as needed.
   nsPoint originalPosition = frame->GetPosition();
+  int pass_count=0;
   while (true) {
+    pass_count++;
+    printf_stderr("bignose reflow block frame pass count:%d",pass_count);
+
     clearance = 0;
     nscoord bStartMargin = 0;
     bool mayNeedRetry = false;
     bool clearedFloats = false;
     if (applyBStartMargin) {
+      printf_stderr("bignose ReflowBlockFrame 5 addr:%p",this);
+
       // Precompute the blocks block-start margin value so that we can get the
       // correct available space (there might be a float that's
       // already been placed below the aState.mPrevBEndMargin
@@ -3208,6 +3223,8 @@ nsBlockFrame::ReflowBlockFrame(nsBlockReflowState& aState,
       LogicalSize availSpace = aState.ContentSize(wm);
       nsHTMLReflowState reflowState(aState.mPresContext, aState.mReflowState,
                                     frame, availSpace);
+
+      printf_stderr("bignose ReflowBlockFrame 6 (%d,%d) addr:%p",reflowState.ComputedWidth(),reflowState.ComputedHeight(),this);
 
       if (treatWithClearance) {
         aState.mBCoord += aState.mPrevBEndMargin.get();
@@ -3295,6 +3312,8 @@ nsBlockFrame::ReflowBlockFrame(nsBlockReflowState& aState,
       }
     }
 
+    printf_stderr("bignose ReflowBlockFrame, before ComputeBlockAvailSpace addr:%p reflow(%d,%d)\n",this,  aState.mReflowState.ComputedWidth(), aState.mReflowState.ComputedHeight());
+
     // Here aState.mBCoord is the block-start border-edge of the block.
     // Compute the available space for the block
     nsFlowAreaRect floatAvailableSpace = aState.GetFloatAvailableSpace();
@@ -3307,6 +3326,9 @@ nsBlockFrame::ReflowBlockFrame(nsBlockReflowState& aState,
     LogicalRect availSpace(wm);
     aState.ComputeBlockAvailSpace(frame, display, floatAvailableSpace,
                                   replacedBlock != nullptr, availSpace);
+
+    printf_stderr("bignose ReflowBlockFrame, call ComputeBlockAvailSpace addr:%p reflow(%d,%d)\n",this,  aState.mReflowState.ComputedWidth(), aState.mReflowState.ComputedHeight());
+
 
     // The check for
     //   (!aState.mReflowState.mFlags.mIsTopOfPage || clearedFloats)
@@ -3362,7 +3384,7 @@ nsBlockFrame::ReflowBlockFrame(nsBlockReflowState& aState,
       blockHtmlRS.mDiscoveredClearance = aState.mReflowState.mDiscoveredClearance;
     }
 
-    printf_stderr("bignose %s addr:%p reflow(%d,%d)\n",__PRETTY_FUNCTION__,this,  blockHtmlRS.ComputedWidth(), blockHtmlRS.ComputedHeight());
+    printf_stderr("bignose ReflowBlockFrame, call brc.ReflowBlock addr:%p reflow(%d,%d)\n",this,  blockHtmlRS.ComputedWidth(), blockHtmlRS.ComputedHeight());
 
     nsReflowStatus frameReflowStatus = NS_FRAME_COMPLETE;
     brc.ReflowBlock(availSpace, applyBStartMargin, aState.mPrevBEndMargin,

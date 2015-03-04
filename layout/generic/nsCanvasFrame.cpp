@@ -667,7 +667,7 @@ nsCanvasFrame::Reflow(nsPresContext*           aPresContext,
 
     kidReflowState.ApplyRelativePositioning(&kidPt, containerWidth);
 
-    printf_stderr("bignose %s addr:%p reflow(%d,%d)\n",__PRETTY_FUNCTION__,this,  kidReflowState.ComputedWidth(), kidReflowState.ComputedHeight());
+    //printf_stderr("bignose %s addr:%p reflow(%d,%d)\n",__PRETTY_FUNCTION__,this,  kidReflowState.ComputedWidth(), kidReflowState.ComputedHeight());
 
     // Reflow the frame
     ReflowChild(kidFrame, aPresContext, kidDesiredSize, kidReflowState,
