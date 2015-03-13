@@ -63,6 +63,21 @@ public:
      */
     virtual int GetPrevFBAcquireFd() = 0;
 
+    /**
+     * If start to request vsync, then cpu and gpu load are expected soon. Use
+     * this hint to raise the speeds of cpu, gpu, etc. This hint is not always
+     * work. It depends on device hal implementation.
+     */
+    virtual void SetVsyncHint(bool aUseVsyncHint) = 0;
+
+    /**
+     * This hint is used when the use interacting with device(e.g. touch event
+     * is fired), then cpu and gpu load are expected soon. Use this hint to
+     * raise the speeds of cpu, gpu, etc. This hint is not always work. It
+     * depends on device hal implementation.
+     */
+    virtual void SetInteractionHint() = 0;
+
     float xdpi;
     int32_t surfaceformat;
 };

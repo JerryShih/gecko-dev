@@ -43,6 +43,9 @@ GonkDisplayJB::GonkDisplayJB()
     , mHwc(nullptr)
     , mFBDevice(nullptr)
     , mPowerModule(nullptr)
+    , mHasPowerHint(false)
+    , mIsInteractive(false)
+    , mVsyncHint(false)
     , mList(nullptr)
     , mEnabledCallback(nullptr)
 {
@@ -99,8 +102,14 @@ GonkDisplayJB::GonkDisplayJB()
 
     err = hw_get_module(POWER_HARDWARE_MODULE_ID,
                                            (hw_module_t const**)&mPowerModule);
-    if (!err)
+    if (!err) {
         mPowerModule->init(mPowerModule);
+        if (mPowerModule->common.module_api_version >= POWER_MODULE_API_VERSION_0_2 && mPowerModule->powerHint) {
+            mHasPowerHint = true;
+        } else {
+            ALOGE("No power hint function");
+        }
+    }
     ALOGW_IF(err, "Couldn't load %s module (%s)", POWER_HARDWARE_MODULE_ID, strerror(-err));
 
     mAlloc = new GraphicBufferAlloc();
@@ -172,6 +181,8 @@ GonkDisplayJB::GetNativeWindow()
 void
 GonkDisplayJB::SetEnabled(bool enabled)
 {
+    mIsInteractive = enabled;
+
     if (enabled) {
         autosuspend_disable();
         mPowerModule->setInteractive(mPowerModule, true);
@@ -205,6 +216,7 @@ GonkDisplayJB::SetEnabled(bool enabled)
     }
 
     if (!enabled) {
+        SetVsyncHint(false);
         autosuspend_enable();
         mPowerModule->setInteractive(mPowerModule, false);
     }
@@ -341,6 +353,33 @@ int
 GonkDisplayJB::GetPrevFBAcquireFd()
 {
     return mFBSurface->GetPrevFBAcquireFd();
+}
+
+void
+GonkDisplayJB::SetVsyncHint(bool aUseVsyncHint)
+{
+    if (mHasPowerHint) {
+        return;
+    }
+
+    if (!mIsInteractive) {
+        aUseVsyncHint = false;
+    }
+
+    if (mVsyncHint != aUseVsyncHint) {
+        mVsyncHint = aUseVsyncHint;
+        mPowerModule->powerHint(mPowerModule, POWER_HINT_VSYNC, (void*)aUseVsyncHint);
+    }
+}
+
+void
+GonkDisplayJB::SetInteractionHint()
+{
+    if (mHasPowerHint && !mIsInteractive) {
+        return;
+    }
+
+    mPowerModule->powerHint(mPowerModule, POWER_HINT_INTERACTION, nullptr);
 }
 
 __attribute__ ((visibility ("default")))

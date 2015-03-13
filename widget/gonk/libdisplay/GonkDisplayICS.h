@@ -55,6 +55,16 @@ public:
         return -1;
     }
 
+    virtual void SetVsyncHint(bool aUseVsyncHint)
+    {
+        //no op for ics device
+    }
+
+    virtual void SetInteractionHint()
+    {
+        //no op for ics device
+    }
+
 private:
     hw_module_t const*        mModule;
     hwc_composer_device_t*    mHwc;

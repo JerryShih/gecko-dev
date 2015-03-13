@@ -52,6 +52,10 @@ public:
 
     virtual int GetPrevFBAcquireFd();
 
+    virtual void SetVsyncHint(bool aUseVsyncHint);
+
+    virtual void SetInteractionHint();
+
     bool Post(buffer_handle_t buf, int fence);
 
 private:
@@ -60,6 +64,9 @@ private:
     hwc_composer_device_1_t*  mHwc;
     framebuffer_device_t*     mFBDevice;
     power_module_t*           mPowerModule;
+    bool mHasPowerHint;
+    bool mIsInteractive;
+    bool mVsyncHint;
     android::sp<android::FramebufferSurface> mFBSurface;
     android::sp<ANativeWindow> mSTClient;
     android::sp<android::IGraphicBufferAlloc> mAlloc;
