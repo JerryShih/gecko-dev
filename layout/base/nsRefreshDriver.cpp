@@ -814,7 +814,7 @@ static nsITimer *sDisableHighPrecisionTimersTimer = nullptr;
 #endif
 
 static void
-CreateContentVsyncRefreshTimer(void*)
+CreateContentVsyncRefreshTimer()
 {
   MOZ_ASSERT(NS_IsMainThread());
   MOZ_ASSERT(!XRE_IsParentProcess());
@@ -839,6 +839,28 @@ CreateContentVsyncRefreshTimer(void*)
     MOZ_CRASH("PVsync actor create failed!");
   }
 }
+
+#ifdef MOZ_NUWA_PROCESS
+class VsyncRefreshTimerCreationRunnable : public nsRunnable
+{
+public:
+  NS_IMETHOD Run()
+  {
+    CreateContentVsyncRefreshTimer();
+    return NS_OK;
+  }
+};
+
+static void
+CreateNuwaContentVsyncRefreshTimer(void*)
+{
+  // The ipc system is not ready during the NuwaAddFinalConstructor callback. So
+  // we don't call CreateContentVsyncRefreshTimer() directly here. Instead, we
+  // post a task to do that at next scheduled time.
+  nsCOMPtr<nsIRunnable> runnable(new VsyncRefreshTimerCreationRunnable);
+  NS_DispatchToMainThread(runnable);
+}
+#endif //MOZ_NUWA_PROCESS
 
 static void
 CreateVsyncRefreshTimer()
@@ -871,12 +893,12 @@ CreateVsyncRefreshTimer()
   // to register a callback to create the vsync-base refresh timer after a
   // process is created.
   if (IsNuwaProcess()) {
-    NuwaAddFinalConstructor(&CreateContentVsyncRefreshTimer, nullptr);
+    NuwaAddFinalConstructor(&CreateNuwaContentVsyncRefreshTimer, nullptr);
     return;
   }
 #endif
   // If this process is not created by NUWA, just create the vsync timer here.
-  CreateContentVsyncRefreshTimer(nullptr);
+  CreateContentVsyncRefreshTimer();
 }
 
 static uint32_t
