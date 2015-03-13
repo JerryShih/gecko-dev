@@ -16,6 +16,8 @@
 
 #include "mozilla/Move.h"
 
+#include "nsXULAppAPI.h"
+
 #ifdef MOZ_TASK_TRACER
 using namespace mozilla::tasktracer;
 #endif
@@ -25,6 +27,9 @@ namespace IPC {
 //------------------------------------------------------------------------------
 
 Message::~Message() {
+//  if (!XRE_IsParentProcess()) {
+//    printf_stderr("bignose ~Message,addr:%p\n",this);
+//  }
 }
 
 Message::Message()

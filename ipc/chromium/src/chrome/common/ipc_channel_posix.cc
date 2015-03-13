@@ -30,6 +30,8 @@
 #include "mozilla/ipc/ProtocolUtils.h"
 #include "mozilla/UniquePtr.h"
 
+#include "nsXULAppAPI.h"
+
 #ifdef MOZ_TASK_TRACER
 #include "GeckoTaskTracerImpl.h"
 using namespace mozilla::tasktracer;
@@ -673,6 +675,13 @@ bool Channel::ChannelImpl::ProcessOutgoingMessages() {
   while (!output_queue_.empty()) {
     Message* msg = output_queue_.front();
 
+    if (!XRE_IsParentProcess()) {
+      if ((unsigned long)msg==0x5a5a5a5a) {
+        printf_stderr("bignose Message addr 0x5a5a5a5a\n");
+        MOZ_ReportCrash("queue front data error", __FILE__, __LINE__); MOZ_REALLY_CRASH();
+      }
+    }
+
     struct msghdr msgh = {0};
 
     static const int tmp = CMSG_SPACE(sizeof(
@@ -883,8 +892,47 @@ void Channel::ChannelImpl::OutputQueuePush(Message* msg)
                   &msg->header()->parent_task_id,
                   &msg->header()->source_event_type);
 #endif
-  output_queue_.push(msg);
+
   output_queue_length_++;
+
+  int orig_size=output_queue_.size();
+  output_queue_.push(msg);
+  int current_size=output_queue_.size();
+
+  if(!XRE_IsParentProcess()) {
+    if(orig_size+1!=current_size) {
+      printf_stderr("bignose message queue size error, orig:%d, cur:%d, queue_length:%d, front data:%p, back data:%p\n",orig_size,current_size,output_queue_length_,output_queue_.front(),output_queue_.back());
+      printf_stderr("bignose last push message name:%s\n",msg->name());
+      //just crash
+      //MOZ_ReportCrash("queue size error 1", __FILE__, __LINE__); MOZ_REALLY_CRASH();
+    }
+    if(current_size<=0) {
+      printf_stderr("bignose message queue size error 2\n");
+      printf_stderr("bignose last push message name:%s\n",msg->name());
+      //just crash
+      //MOZ_ReportCrash("queue size error 2", __FILE__, __LINE__); MOZ_REALLY_CRASH();
+    }
+    else {
+      Message *m=output_queue_.back();
+      if((unsigned long)m==0x5a5a5a5a) {
+          printf_stderr("bignose queue back addr error\n");
+          printf_stderr("bignose last push message name:%s\n",msg->name());
+          //just crash
+          //MOZ_ReportCrash("queue data error", __FILE__, __LINE__); MOZ_REALLY_CRASH();
+      }
+    }
+
+//    if (strcmp(msg->name(),"PBackground::Msg_PVsyncConstructor")==0) {
+//      if(!NS_IsMainThread()){
+//        printf_stderr("bignose wrong thread for pbackground,tid:%d\n",gettid());
+//      }
+//    }
+//    if (strncmp(msg->name(),"PVsync::",8)==0) {
+//      if(!NS_IsMainThread()){
+//        printf_stderr("bignose wrong thread for pvsync,tid:%d\n",gettid());
+//      }
+//    }
+  }
 }
 
 void Channel::ChannelImpl::OutputQueuePop()
