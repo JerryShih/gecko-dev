@@ -335,12 +335,15 @@ HwcComposer2D::PrepareLayerList(Layer* aLayer,
 #if ANDROID_VERSION < 18
     if (opacity < 0xFF) {
         LOGD("%s Layer has planar semitransparency which is unsupported by hwcomposer", aLayer->Name());
+
+        printf_stderr("bignose hwc failed, line:%d",__LINE__);
         return false;
     }
 #endif
 
     if (aLayer->GetMaskLayer()) {
       LOGD("%s Layer has MaskLayer which is unsupported by hwcomposer", aLayer->Name());
+      printf_stderr("bignose hwc failed, line:%d",__LINE__);
       return false;
     }
 
@@ -367,6 +370,7 @@ HwcComposer2D::PrepareLayerList(Layer* aLayer,
     if (!aLayer->GetEffectiveTransform().Is2D(&layerTransform) ||
         !layerTransform.PreservesAxisAlignedRectangles()) {
         LOGD("Layer EffectiveTransform has a 3D transform or a non-square angle rotation");
+        printf_stderr("bignose hwc failed, line:%d",__LINE__);
         return false;
     }
 
@@ -374,12 +378,14 @@ HwcComposer2D::PrepareLayerList(Layer* aLayer,
     if (!aLayer->GetEffectiveTransformForBuffer().Is2D(&layerBufferTransform) ||
         !layerBufferTransform.PreservesAxisAlignedRectangles()) {
         LOGD("Layer EffectiveTransformForBuffer has a 3D transform or a non-square angle rotation");
+        printf_stderr("bignose hwc failed, line:%d",__LINE__);
       return false;
     }
 
     if (ContainerLayer* container = aLayer->AsContainerLayer()) {
         if (container->UseIntermediateSurface()) {
             LOGD("Container layer needs intermediate surface");
+            printf_stderr("bignose hwc failed, line:%d",__LINE__);
             return false;
         }
         nsAutoTArray<Layer*, 12> children;
@@ -387,6 +393,7 @@ HwcComposer2D::PrepareLayerList(Layer* aLayer,
 
         for (uint32_t i = 0; i < children.Length(); i++) {
             if (!PrepareLayerList(children[i], clip, layerTransform)) {
+              printf_stderr("bignose hwc failed, line:%d",__LINE__);
                 return false;
             }
         }
@@ -396,10 +403,12 @@ HwcComposer2D::PrepareLayerList(Layer* aLayer,
     LayerRenderState state = aLayer->GetRenderState();
 
     if (!state.mSurface.get()) {
-      if (aLayer->AsColorLayer() && mColorFill) {
+      if (aLayer->AsColorLayer()) {
+      //if (aLayer->AsColorLayer() && mColorFill) {
         fillColor = true;
       } else {
           LOGD("%s Layer doesn't have a gralloc buffer", aLayer->Name());
+          printf_stderr("bignose hwc failed, mColorFill:%d, line:%d, %s Layer doesn't have a gralloc buffer",(int)mColorFill,__LINE__, aLayer->Name());
           return false;
       }
     }
@@ -437,6 +446,7 @@ HwcComposer2D::PrepareLayerList(Layer* aLayer,
     // It's a fancy PaintedLayer feature used for scrolling
     if (state.BufferRotated()) {
         LOGD("%s Layer has a rotated buffer", aLayer->Name());
+        printf_stderr("bignose hwc failed, line:%d",__LINE__);
         return false;
     }
 
@@ -480,6 +490,7 @@ HwcComposer2D::PrepareLayerList(Layer* aLayer,
     if (!mList || current >= mMaxLayerCount) {
         if (!ReallocLayerList() || current >= mMaxLayerCount) {
             LOGE("PrepareLayerList failed! Could not increase the maximum layer count");
+            printf_stderr("bignose hwc failed, line:%d",__LINE__);
             return false;
         }
     }
@@ -507,11 +518,9 @@ HwcComposer2D::PrepareLayerList(Layer* aLayer,
 
     if (!fillColor) {
         if (state.FormatRBSwapped()) {
-            if (!mRBSwapSupport) {
-                LOGD("No R/B swap support in H/W Composer");
-                return false;
+            if (mRBSwapSupport) {
+              hwcLayer.flags |= HwcUtils::HWC_FORMAT_RB_SWAP;
             }
-            hwcLayer.flags |= HwcUtils::HWC_FORMAT_RB_SWAP;
         }
 
         // Translation and scaling have been addressed in PrepareLayerRects().
@@ -653,13 +662,40 @@ HwcComposer2D::PrepareLayerList(Layer* aLayer,
         }
         hwcLayer.visibleRegionScreen = region;
     } else {
-        hwcLayer.flags |= HwcUtils::HWC_COLOR_FILL;
         ColorLayer* colorLayer = aLayer->AsColorLayer();
         if (colorLayer->GetColor().a < 1.0) {
             LOGD("Color layer has semitransparency which is unsupported");
+            printf_stderr("bignose hwc failed, line:%d",__LINE__);
             return false;
         }
-        hwcLayer.transform = colorLayer->GetColor().Packed();
+        if(mColorFill){
+          hwcLayer.flags |= HwcUtils::HWC_COLOR_FILL;
+          hwcLayer.transform = colorLayer->GetColor().Packed();
+        } else {
+          uint32_t buffer_width = hwcLayer.displayFrame.right - hwcLayer.displayFrame.left;
+          uint32_t buffer_height = hwcLayer.displayFrame.bottom - hwcLayer.displayFrame.top;
+
+          GraphicBuffer *color_buffer =
+              ColorBufferFactory::GetSingleton()->GetColorBuffer(buffer_width,
+                                                                 buffer_height,
+                                                                 colorLayer->GetColor().Packed());
+
+          if (!color_buffer) {
+            printf_stderr("hwc:no color buffer");
+            return false;
+          }
+          hwc_region_t region;
+          region.numRects = 1;
+          region.rects = &(hwcLayer.displayFrame);
+
+          hwcLayer.sourceCrop.left = 0;
+          hwcLayer.sourceCrop.top = 0;
+          hwcLayer.sourceCrop.right = buffer_width;
+          hwcLayer.sourceCrop.bottom = buffer_height;
+          hwcLayer.visibleRegionScreen = region;
+          hwcLayer.transform = 0;
+          hwcLayer.handle = color_buffer->handle;
+        }
     }
 
     mHwcLayerMap.AppendElement(static_cast<LayerComposite*>(aLayer->ImplData()));
@@ -676,6 +712,7 @@ HwcComposer2D::TryHwComposition()
 
     if (!(fbsurface && fbsurface->lastHandle)) {
         LOGD("H/W Composition failed. FBSurface not initialized.");
+        printf_stderr("bignose hwc failed, line:%d",__LINE__);
         return false;
     }
 
@@ -684,6 +721,7 @@ HwcComposer2D::TryHwComposition()
     if (idx >= mMaxLayerCount) {
         if (!ReallocLayerList() || idx >= mMaxLayerCount) {
             LOGE("TryHwComposition failed! Could not add FB layer");
+            printf_stderr("bignose hwc failed, line:%d",__LINE__);
             return false;
         }
     }
@@ -740,6 +778,7 @@ HwcComposer2D::TryHwComposition()
 
         if (gpuComposite) {
             // GPU or partial OVERLAY Composition
+          printf_stderr("bignose hwc failed, line:%d",__LINE__);
             return false;
         } else if (blitComposite) {
             // Some EGLSurface implementations require glClear() on blit composition.
@@ -754,6 +793,7 @@ HwcComposer2D::TryHwComposition()
             FramebufferSurface* fbsurface = (FramebufferSurface*)(GetGonkDisplay()->GetFBSurface());
             if (!fbsurface) {
                 LOGE("H/W Composition failed. NULL FBSurface.");
+                printf_stderr("bignose hwc failed, line:%d",__LINE__);
                 return false;
             }
             mList->hwLayers[idx].handle = fbsurface->lastHandle;
@@ -762,6 +802,7 @@ HwcComposer2D::TryHwComposition()
     }
 
     // BLIT or full OVERLAY Composition
+    printf_stderr("bignose full hwc");
     Commit();
 
     GetGonkDisplay()->SetFBReleaseFd(mList->hwLayers[idx].releaseFenceFd);
@@ -786,10 +827,14 @@ HwcComposer2D::Render(EGLDisplay dpy, EGLSurface sur)
     }
 
     if (mPrepared) {
+      printf_stderr("bignose render prepared");
+
         // No mHwc prepare, if already prepared in current draw cycle
         mList->hwLayers[mList->numHwLayers - 1].handle = fbsurface->lastHandle;
         mList->hwLayers[mList->numHwLayers - 1].acquireFenceFd = fbsurface->GetPrevFBAcquireFd();
     } else {
+      printf_stderr("bignose render no prepared");
+
         mList->flags = HWC_GEOMETRY_CHANGED;
         mList->numHwLayers = 2;
         mList->hwLayers[0].hints = 0;
@@ -798,7 +843,9 @@ HwcComposer2D::Render(EGLDisplay dpy, EGLSurface sur)
         mList->hwLayers[0].backgroundColor = {0};
         mList->hwLayers[0].acquireFenceFd = -1;
         mList->hwLayers[0].releaseFenceFd = -1;
+        mList->hwLayers[0].transform = 0;
         mList->hwLayers[0].displayFrame = {0, 0, mScreenRect.width, mScreenRect.height};
+
         Prepare(fbsurface->lastHandle, fbsurface->GetPrevFBAcquireFd());
     }
 
@@ -813,6 +860,8 @@ HwcComposer2D::Render(EGLDisplay dpy, EGLSurface sur)
 void
 HwcComposer2D::Prepare(buffer_handle_t fbHandle, int fence)
 {
+    printf_stderr("bignose begin prepare call, layer num:%d",mList->numHwLayers);
+
     int idx = mList->numHwLayers - 1;
     const hwc_rect_t r = {0, 0, mScreenRect.width, mScreenRect.height};
     hwc_display_contents_1_t *displays[HWC_NUM_DISPLAY_TYPES] = { nullptr };
@@ -837,10 +886,45 @@ HwcComposer2D::Prepare(buffer_handle_t fbHandle, int fence)
 #if ANDROID_VERSION >= 18
     mList->hwLayers[idx].planeAlpha = 0xFF;
 #endif
+
     if (mPrepared) {
         LOGE("Multiple hwc prepare calls!");
     }
-    mHwc->prepare(mHwc, HWC_NUM_DISPLAY_TYPES, displays);
+
+    int dump_list=0;
+    char propValue[PROPERTY_VALUE_MAX];
+    property_get("bignose.dump_list", propValue, "0");
+    dump_list=atoi(propValue);
+
+    if(dump_list){
+      printf_stderr("bignose hwc prepare begin, total layer=%d",mList->numHwLayers);
+      for (uint32_t index=0; index < mList->numHwLayers; index++) {
+        printf_stderr("bignose hwc layer:%d",index);
+        printf_stderr("  bignose hwc hint:%d",mList->hwLayers[index].hints);
+        printf_stderr("  bignose hwc flag:%d",mList->hwLayers[index].flags);
+        printf_stderr("  bignose hwc transform:%x",mList->hwLayers[index].transform);
+        printf_stderr("  bignose hwc handle:%p",mList->hwLayers[index].handle);
+        printf_stderr("  bignose hwc type:%d",mList->hwLayers[index].compositionType);
+      }
+      printf_stderr("bignose hwc prepare end");
+    }
+
+    int hwc_return=mHwc->prepare(mHwc, HWC_NUM_DISPLAY_TYPES, displays);
+    printf_stderr("bignose hwc prepare return:%d",hwc_return);
+
+    if(dump_list){
+      printf_stderr("bignose hwc after prepare begin, total layer=%d",mList->numHwLayers);
+      for (uint32_t index=0; index < mList->numHwLayers; index++) {
+        printf_stderr("bignose hwc layer:%d",index);
+        printf_stderr("  bignose hwc hint:%d",mList->hwLayers[index].hints);
+        printf_stderr("  bignose hwc flag:%d",mList->hwLayers[index].flags);
+        printf_stderr("  bignose hwc transform:%x",mList->hwLayers[index].transform);
+        printf_stderr("  bignose hwc handle:%p",mList->hwLayers[index].handle);
+        printf_stderr("  bignose hwc type:%d",mList->hwLayers[index].compositionType);
+      }
+      printf_stderr("bignose hwc after prepare end");
+    }
+
     mPrepared = true;
 }
 
@@ -870,7 +954,27 @@ HwcComposer2D::Commit()
         }
     }
 
+    int dump_list=0;
+    char propValue[PROPERTY_VALUE_MAX];
+    property_get("bignose.dump_list", propValue, "0");
+    dump_list=atoi(propValue);
+
+    if(dump_list){
+      printf_stderr("bignose hwc commit begin, total layer=%d",mList->numHwLayers);
+      for (uint32_t idx=0; idx < mList->numHwLayers; idx++) {
+        printf_stderr("bignose hwc layer:%d",idx);
+        printf_stderr("  bignose hwc hint:%d",mList->hwLayers[idx].hints);
+        printf_stderr("  bignose hwc flag:%d",mList->hwLayers[idx].flags);
+        printf_stderr("  bignose hwc transform:%x",mList->hwLayers[idx].transform);
+        printf_stderr("  bignose hwc handle:%p",mList->hwLayers[idx].handle);
+        printf_stderr("  bignose hwc type:%d",mList->hwLayers[idx].compositionType);
+      }
+      printf_stderr("bignose hwc commit end");
+    }
+
     int err = mHwc->set(mHwc, HWC_NUM_DISPLAY_TYPES, displays);
+
+    printf_stderr("bignose hwc set return:%d",err);
 
     mPrevDisplayFence = mPrevRetireFence;
     mPrevRetireFence = Fence::NO_FENCE;
@@ -899,6 +1003,86 @@ HwcComposer2D::Commit()
 
     mPrepared = false;
     return !err;
+
+
+
+//  hwc_display_contents_1_t *displays[HWC_NUM_DISPLAY_TYPES] = { nullptr };
+//  displays[HWC_DISPLAY_PRIMARY] = mList;
+//
+//  mList->numHwLayers = 4;
+//  for(int i=0;i<mList->numHwLayers;++i){
+//    if(mList->numHwLayers>mMaxLayerCount){
+//      ReallocLayerList();
+//    }
+//  }
+//
+//  hwc_display_contents_1_t *displays[HWC_NUM_DISPLAY_TYPES] = { nullptr };
+//  displays[HWC_DISPLAY_PRIMARY] = mList;
+//
+//  for (uint32_t j=0; j < (mList->numHwLayers - 1); j++) {
+//      mList->hwLayers[j].acquireFenceFd = -1;
+//      if (mHwcLayerMap.IsEmpty() ||
+//          (mList->hwLayers[j].compositionType == HWC_FRAMEBUFFER)) {
+//          continue;
+//      }
+//      LayerRenderState state = mHwcLayerMap[j]->GetLayer()->GetRenderState();
+//      if (!state.mTexture) {
+//          continue;
+//      }
+//      TextureHostOGL* texture = state.mTexture->AsHostOGL();
+//      if (!texture) {
+//          continue;
+//      }
+//      sp<Fence> fence = texture->GetAndResetAcquireFence();
+//      if (fence.get() && fence->isValid()) {
+//          mList->hwLayers[j].acquireFenceFd = fence->dup();
+//      }
+//  }
+//
+//
+//  printf_stderr("bignose hwc commit begin, total layer=%d",mList->numHwLayers);
+//  for (uint32_t idx=0; idx < mList->numHwLayers; idx++) {
+//    printf_stderr("bignose hwc layer:%d",idx);
+//    printf_stderr("  bignose hwc hint:%d",mList->hwLayers[idx].hints);
+//    printf_stderr("  bignose hwc flag:%d",mList->hwLayers[idx].flags);
+//    printf_stderr("  bignose hwc transform:%x",mList->hwLayers[idx].transform);
+//    printf_stderr("  bignose hwc handle:%p",mList->hwLayers[idx].handle);
+//    printf_stderr("  bignose hwc type:%d",mList->hwLayers[idx].compositionType);
+//  }
+//  printf_stderr("bignose hwc commit end");
+//
+//
+//  int err = mHwc->set(mHwc, HWC_NUM_DISPLAY_TYPES, displays);
+//
+//  printf_stderr("bignose hwc set return:%d",err);
+//
+//  mPrevDisplayFence = mPrevRetireFence;
+//  mPrevRetireFence = Fence::NO_FENCE;
+//
+//  for (uint32_t j=0; j < (mList->numHwLayers - 1); j++) {
+//      if (mList->hwLayers[j].releaseFenceFd >= 0) {
+//          int fd = mList->hwLayers[j].releaseFenceFd;
+//          mList->hwLayers[j].releaseFenceFd = -1;
+//          sp<Fence> fence = new Fence(fd);
+//
+//          LayerRenderState state = mHwcLayerMap[j]->GetLayer()->GetRenderState();
+//          if (!state.mTexture) {
+//              continue;
+//          }
+//          TextureHostOGL* texture = state.mTexture->AsHostOGL();
+//          if (!texture) {
+//              continue;
+//          }
+//          texture->SetReleaseFence(fence);
+//     }
+// }
+//
+//  if (mList->retireFenceFd >= 0) {
+//      mPrevRetireFence = new Fence(mList->retireFenceFd);
+//  }
+//
+//  mPrepared = false;
+//  return !err;
 }
 
 void
@@ -935,6 +1119,9 @@ HwcComposer2D::TryRender(Layer* aRoot,
                          bool aGeometryChanged)
 {
     MOZ_ASSERT(Initialized());
+
+    ColorBufferFactory::GetSingleton()->Reset();
+
     if (mList) {
         setHwcGeometry(aGeometryChanged);
         mList->numHwLayers = 0;

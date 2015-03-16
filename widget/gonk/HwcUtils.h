@@ -20,6 +20,8 @@
 #include "Layers.h"
 #include <vector>
 #include "hardware/hwcomposer.h"
+#include <ui/GraphicBuffer.h>
+#include "mozilla/RefPtr.h"
 
 namespace mozilla {
 
@@ -125,6 +127,24 @@ static bool PrepareLayerRects(nsIntRect aVisible,
                               hwc_rect_t* aSourceCrop,
                               hwc_rect_t* aVisibleRegionScreen);
 
+};
+
+class ColorBuffer;
+
+class ColorBufferFactory
+{
+public:
+  static ColorBufferFactory* GetSingleton(void);
+
+  virtual ~ColorBufferFactory();
+
+  void Reset(void);
+  android::GraphicBuffer *GetColorBuffer(uint32_t w,uint32_t h,uint32_t color);
+
+private:
+  ColorBufferFactory();
+
+  std::vector<std::pair<RefPtr<ColorBuffer>,bool>> mColorBuffers;
 };
 
 } // namespace mozilla
