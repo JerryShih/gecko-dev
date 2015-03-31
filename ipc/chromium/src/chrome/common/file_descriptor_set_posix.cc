@@ -33,25 +33,29 @@ FileDescriptorSet::~FileDescriptorSet() {
   }
 }
 
-bool FileDescriptorSet::Add(int fd) {
-  if (descriptors_.size() == MAX_DESCRIPTORS_PER_MESSAGE)
-    return false;
-
-  struct base::FileDescriptor sd;
-  sd.fd = fd;
-  sd.auto_close = false;
-  descriptors_.push_back(sd);
-  return true;
+void FileDescriptorSet::MaybeDupFileDescriptor() {
+  for (auto i = descriptors_.begin(); i != descriptors_.end(); ++i) {
+    // Please check base::FileDescriptor::dup comment.
+    if (i->dup) {
+      if (i->auto_close) {
+        i->auto_close = false;
+      } else {
+        i->fd = dup(i->fd);
+        // It's not a easy way to avoid crashing here if dup() fails.
+        // We might need to restructure a bunch of code to pass the failed
+        // around.
+        MOZ_RELEASE_ASSERT(i->fd != -1);
+      }
+    }
+  }
 }
 
-bool FileDescriptorSet::AddAndAutoClose(int fd) {
-  if (descriptors_.size() == MAX_DESCRIPTORS_PER_MESSAGE)
+bool FileDescriptorSet::Add(const base::FileDescriptor& descriptor) {
+  if (descriptors_.size() == MAX_DESCRIPTORS_PER_MESSAGE) {
     return false;
+  }
 
-  struct base::FileDescriptor sd;
-  sd.fd = fd;
-  sd.auto_close = true;
-  descriptors_.push_back(sd);
+  descriptors_.push_back(descriptor);
   DCHECK(descriptors_.size() <= MAX_DESCRIPTORS_PER_MESSAGE);
   return true;
 }

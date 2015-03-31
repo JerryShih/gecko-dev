@@ -134,11 +134,7 @@ bool Message::WriteFileDescriptor(const base::FileDescriptor& descriptor) {
   // Also, we rely on each file descriptor being accompanied by sizeof(int)
   // bytes of data in the message. See the comment for input_cmsg_buf_.
   WriteInt(file_descriptor_set()->size());
-  if (descriptor.auto_close) {
-    return file_descriptor_set()->AddAndAutoClose(descriptor.fd);
-  } else {
-    return file_descriptor_set()->Add(descriptor.fd);
-  }
+  return file_descriptor_set()->Add(descriptor);
 }
 
 bool Message::ReadFileDescriptor(void** iter,
@@ -155,6 +151,10 @@ bool Message::ReadFileDescriptor(void** iter,
   descriptor->auto_close = false;
 
   return descriptor->fd >= 0;
+}
+
+void Message::MaybeDupFileDescriptor() {
+  file_descriptor_set()->MaybeDupFileDescriptor();
 }
 
 void Message::EnsureFileDescriptorSet() {

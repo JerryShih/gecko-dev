@@ -30,11 +30,11 @@ class FileDescriptorSet {
   // ---------------------------------------------------------------------------
   // Interfaces for building during message serialisation...
 
+  // Update the fd with the new duplicated fd number.
+  void MaybeDupFileDescriptor();
+
   // Add a descriptor to the end of the set. Returns false iff the set is full.
-  bool Add(int fd);
-  // Add a descriptor to the end of the set and automatically close it after
-  // transmission. Returns false iff the set is full.
-  bool AddAndAutoClose(int fd);
+  bool Add(const base::FileDescriptor& descriptor);
 
   // ---------------------------------------------------------------------------
 

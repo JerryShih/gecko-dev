@@ -258,8 +258,12 @@ ThreadLink::SendMessage(Message *msg)
     mChan->AssertWorkerThread();
     mChan->mMonitor->AssertCurrentThreadOwns();
 
-    if (mTargetChan)
+    if (mTargetChan) {
+#if defined(OS_POSIX)
+        msg->MaybeDupFileDescriptor();
+#endif
         mTargetChan->OnMessageReceivedFromLink(*msg);
+    }
     delete msg;
 }
 

@@ -246,6 +246,10 @@ class Message : public Pickle {
   // Get a file descriptor from the message. Returns false on error.
   //   iter: a Pickle iterator to the current location in the message.
   bool ReadFileDescriptor(void** iter, base::FileDescriptor* descriptor) const;
+  // Replace the fd with the new duplicated fd number(using dup()). Please check
+  // base::FileDescriptor::dup comment. It's only used in thread link message
+  // case.
+  void MaybeDupFileDescriptor();
 
 #if defined(OS_MACOSX)
   void set_fd_cookie(uint32_t cookie) {
