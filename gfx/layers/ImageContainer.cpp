@@ -198,6 +198,8 @@ ImageContainer::ClearCurrentImage()
   SetCurrentImageInternal(nullptr);
 }
 
+#include "cutils/properties.h"
+
 void
 ImageContainer::SetCurrentImage(Image *aImage)
 {
@@ -207,6 +209,25 @@ ImageContainer::SetCurrentImage(Image *aImage)
   }
 
   ReentrantMonitorAutoEnter mon(mReentrantMonitor);
+
+
+  char propValue[PROPERTY_VALUE_MAX];
+  property_get("bignose.dump.content.image", propValue, "0");
+  if (atoi(propValue)==1) {
+    static int count=0;
+    count++;
+    char path[64];
+    sprintf(path,"/data/local/dump/%s/Child_img_%03d.png",
+        IsAsync() ? "async" : "sync",
+        count);
+
+    RefPtr<gfx::SourceSurface> surface = aImage->GetAsSourceSurface();
+    gfxUtils::WriteAsPNG(surface,path);
+    printf_stderr("bignose (%d,%d)",aImage->GetSize().width,aImage->GetSize().height);
+    printf_stderr("bignose dump:%s",path);
+  }
+
+
   if (IsAsync()) {
     ImageBridgeChild::DispatchImageClientUpdate(mImageClient, this);
   }

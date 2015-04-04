@@ -25,6 +25,10 @@
 #include "nsRect.h"                     // for nsIntRect
 #include "nsString.h"                   // for nsAutoCString
 
+#include "mozilla/layers/GrallocTextureHost.h"
+
+#include "cutils/properties.h"
+
 namespace mozilla {
 namespace layers {
 
@@ -88,12 +92,53 @@ ImageLayerComposite::RenderLayer(const nsIntRect& aClipRect)
     return;
   }
 
-#ifdef MOZ_DUMP_PAINTING
-  if (gfxUtils::sDumpPainting) {
-    RefPtr<gfx::DataSourceSurface> surf = mImageHost->GetAsSurface();
-    WriteSnapshotToDumpFile(this, surf);
+//#ifdef MOZ_DUMP_PAINTING
+//  if (gfxUtils::sDumpPainting) {
+//    RefPtr<gfx::DataSourceSurface> surf = mImageHost->GetAsSurface();
+//    WriteSnapshotToDumpFile(this, surf);
+//  }
+//#endif
+
+  char propValue[PROPERTY_VALUE_MAX];
+  property_get("bignose.dump.content.image", propValue, "0");
+  if (atoi(propValue)==1) {
+    static int count=0;
+    count++;
+    char path[64];
+    sprintf(path,"/data/local/dump/async/Parent_img_%03d.png",count);
+
+    printf_stderr("bignose mComposietor:%p, mask:%p",mCompositor.get(),mMaskLayer.get());
+
+    mCompositor->MakeCurrent();
+
+    EffectChain effectChain(this);
+    LayerManagerComposite::AutoAddMaskEffect autoMaskEffect(mMaskLayer, effectChain);
+    AddBlendModeEffect(effectChain);
+
+    gfx::Rect clipRect(aClipRect.x, aClipRect.y, aClipRect.width, aClipRect.height);
+    mImageHost->SetCompositor(mCompositor);
+    mImageHost->Composite(effectChain,
+                          GetEffectiveOpacity(),
+                          GetEffectiveTransformForBuffer(),
+                          GetEffectFilter(),
+                          clipRect);
+    mImageHost->BumpFlashCounter();
+
+    GrallocTextureHostOGL* texture = (GrallocTextureHostOGL*)mImageHost->GetAsTextureHost();
+
+    if(texture){
+      printf_stderr("bignose dump: (%d,%d), format:%x",texture->GetSize().width,texture->GetSize().height,texture->GetFormat());
+      RefPtr<gfx::DataSourceSurface> surface = texture->GetAsYUVSurface();
+      if(surface.get()) {
+        printf_stderr("bignose dump:%s ",path);
+        gfxUtils::WriteAsPNG(surface,path);
+      }
+    }
+
+    return;
   }
-#endif
+
+
 
   mCompositor->MakeCurrent();
 

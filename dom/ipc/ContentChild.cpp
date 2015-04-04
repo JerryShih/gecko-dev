@@ -2874,7 +2874,7 @@ OnNuwaProcessReady()
 NS_EXPORT void
 AfterNuwaFork()
 {
-    SetCurrentProcessPrivileges(base::PRIVILEGES_DEFAULT);
+    SetCurrentProcessPrivileges(base::PRIVILEGES_INHERIT);
 }
 
 #endif // MOZ_NUWA_PROCESS

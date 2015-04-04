@@ -17,6 +17,8 @@
 
 #include <ui/GraphicBuffer.h>
 
+#include <OMX_IVCommon.h>
+
 namespace mozilla {
 namespace layers {
 
@@ -126,6 +128,23 @@ public:
 private:
   RefPtr<GrallocTextureClientOGL> mTextureClient;
 };
+
+void
+ConvertYVU420SPToRGB565(void *aYData, uint32_t aYStride,
+                        void *aUData, void *aVData, uint32_t aUVStride,
+                        void *aOut,
+                        uint32_t aWidth, uint32_t aHeight);
+
+android::status_t
+ConvertVendorYUVFormatToRGB565(android::sp<android::GraphicBuffer>& aBuffer,
+                               gfx::DataSourceSurface *aSurface,
+                               gfx::DataSourceSurface::MappedSurface *aMappedSurface);
+
+android::status_t
+ConvertOmxYUVFormatToRGB565(android::sp<android::GraphicBuffer>& aBuffer,
+                            gfx::DataSourceSurface *aSurface,
+                            gfx::DataSourceSurface::MappedSurface *aMappedSurface,
+                            const layers::PlanarYCbCrData& aYcbcrData);
 
 } // namespace layers
 } // namespace mozilla

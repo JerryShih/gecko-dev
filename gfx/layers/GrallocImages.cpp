@@ -157,7 +157,7 @@ void GrallocImage::SetData(const GrallocData& aData)
  * Needed because the Android ColorConverter class assumes that the Y and UV
  * channels have equal stride.
  */
-static void
+void
 ConvertYVU420SPToRGB565(void *aYData, uint32_t aYStride,
                         void *aUData, void *aVData, uint32_t aUVStride,
                         void *aOut,
@@ -216,7 +216,7 @@ ConvertYVU420SPToRGB565(void *aYData, uint32_t aYStride,
  * the YUV color format without awaring actual definition/enumeration
  * of vendor formats.
  */
-static status_t
+status_t
 ConvertVendorYUVFormatToRGB565(android::sp<GraphicBuffer>& aBuffer,
                                gfx::DataSourceSurface *aSurface,
                                gfx::DataSourceSurface::MappedSurface *aMappedSurface)
@@ -270,7 +270,7 @@ ConvertVendorYUVFormatToRGB565(android::sp<GraphicBuffer>& aBuffer,
   return rv;
 }
 
-static status_t
+status_t
 ConvertOmxYUVFormatToRGB565(android::sp<GraphicBuffer>& aBuffer,
                             gfx::DataSourceSurface *aSurface,
                             gfx::DataSourceSurface::MappedSurface *aMappedSurface,
@@ -386,6 +386,8 @@ GrallocImage::GetAsSourceSurface()
   if (!mTextureClient) {
     return nullptr;
   }
+
+  printf_stderr("bignose GrallocImage::GetAsSourceSurface");
 
   android::sp<GraphicBuffer> graphicBuffer =
     mTextureClient->GetGraphicBuffer();

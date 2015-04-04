@@ -15,6 +15,8 @@
 #include "EGLImageHelpers.h"
 #include "GLReadTexImageHelper.h"
 
+#include "GrallocImages.h"
+
 namespace mozilla {
 namespace layers {
 
@@ -229,7 +231,8 @@ GrallocTextureHostOGL::GetRenderState()
 }
 
 TemporaryRef<gfx::DataSourceSurface>
-GrallocTextureHostOGL::GetAsSurface() {
+GrallocTextureHostOGL::GetAsSurface()
+{
   android::GraphicBuffer* graphicBuffer = GetGraphicBufferFromDesc(mGrallocHandle).get();
   uint8_t* grallocData;
   graphicBuffer->lock(GRALLOC_USAGE_SW_READ_OFTEN, reinterpret_cast<void**>(&grallocData));
@@ -242,6 +245,36 @@ GrallocTextureHostOGL::GetAsSurface() {
   graphicBuffer->unlock();
 
   return surf.forget();
+}
+
+TemporaryRef<gfx::DataSourceSurface>
+GrallocTextureHostOGL::GetAsYUVSurface()
+{
+  printf_stderr("bignose GrallocTextureHostOGL::GetAsYUVSurface");
+
+  android::sp<android::GraphicBuffer> graphicBuffer = GetGraphicBufferFromDesc(mGrallocHandle);
+
+  RefPtr<gfx::DataSourceSurface> surface =
+    gfx::Factory::CreateDataSourceSurface(GetSize(), gfx::SurfaceFormat::R5G6B5);
+  if (NS_WARN_IF(!surface)) {
+    return nullptr;
+  }
+
+  gfx::DataSourceSurface::MappedSurface mappedSurface;
+  if (!surface->Map(gfx::DataSourceSurface::WRITE, &mappedSurface)) {
+    NS_WARNING("Could not map DataSourceSurface");
+    return nullptr;
+  }
+
+  int32_t rv;
+  rv = ConvertVendorYUVFormatToRGB565(graphicBuffer, surface, &mappedSurface);
+  surface->Unmap();
+  if (rv != OK) {
+    NS_WARNING("Unknown color format");
+    return nullptr;
+  }
+
+  return surface;
 }
 
 void

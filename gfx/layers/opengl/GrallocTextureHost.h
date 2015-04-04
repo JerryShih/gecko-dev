@@ -62,6 +62,8 @@ public:
 
   virtual TemporaryRef<gfx::DataSourceSurface> GetAsSurface() override;
 
+  TemporaryRef<gfx::DataSourceSurface> GetAsYUVSurface();
+
   bool IsValid() const;
 
   virtual const char* Name() override { return "GrallocTextureHostOGL"; }

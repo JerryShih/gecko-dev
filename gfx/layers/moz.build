@@ -384,6 +384,10 @@ CXXFLAGS += [
     ]
 ]
 
+CXXFLAGS += [
+    '-O0'
+]
+
 MOCHITEST_MANIFESTS += ['apz/test/mochitest.ini']
 
 CXXFLAGS += CONFIG['MOZ_CAIRO_CFLAGS']
