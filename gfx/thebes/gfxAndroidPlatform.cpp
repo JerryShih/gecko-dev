@@ -492,7 +492,8 @@ gfxAndroidPlatform::CreateHardwareVsyncSource()
     // Android pre-JB doesn't have hardware vsync
     // Once L HwcComposer issues have been resolved, re-enable for L devices
     // L is andriod version 21, Kit-kat is 19, 20 is kit-kat for wearables
-#if defined(MOZ_WIDGET_GONK) && (ANDROID_VERSION == 19)
+//#if defined(MOZ_WIDGET_GONK) && (ANDROID_VERSION == 19)
+#if defined(MOZ_WIDGET_GONK)
     nsRefPtr<GonkVsyncSource> vsyncSource = new GonkVsyncSource();
     VsyncSource::Display& display = vsyncSource->GetGlobalDisplay();
     display.EnableVsync();

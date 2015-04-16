@@ -224,11 +224,11 @@ HwcComposer2D::RegisterHwcEventCallback()
 
 // Only support actual hardware vsync on kitkat due to innaccurate timings
 // with JellyBean, and HwcComposer bugs with L. Reenable for L later
-#if ANDROID_VERSION == 19
+//#if ANDROID_VERSION == 19
     mHasHWVsync = gfxPrefs::HardwareVsyncEnabled();
-#else
-    mHasHWVsync = false;
-#endif
+//#else
+//    mHasHWVsync = false;
+//#endif
     return mHasHWVsync;
 }
 
