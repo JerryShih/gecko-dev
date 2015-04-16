@@ -471,6 +471,18 @@ public:
       MOZ_ASSERT(NS_IsMainThread());
       return mVsyncEnabled;
     }
+
+    virtual void NotifyVsync(TimeStamp aVsyncTimestamp) override
+    {
+      static int count=0;
+      ++count;
+
+      if(count%20==0){
+        printf_stderr("bignose gonk notifyVsync");
+      }
+
+      Display::NotifyVsync(aVsyncTimestamp);
+    }
   private:
     bool mVsyncEnabled;
   }; // GonkDisplay

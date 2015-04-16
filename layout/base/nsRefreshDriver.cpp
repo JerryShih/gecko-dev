@@ -371,7 +371,9 @@ private:
       // the scheduled TickRefreshDriver() runs. Check mVsyncRefreshDriverTimer
       // before use.
       if (mVsyncRefreshDriverTimer) {
+        printf_stderr("bignose begin vsync rd tick, pid:%d, tid:%d",getpid(),gettid());
         mVsyncRefreshDriverTimer->RunRefreshDrivers(aVsyncTimestamp);
+        printf_stderr("bignose end vsync rd tick, pid:%d, tid:%d",getpid(),gettid());
       }
     }
 
