@@ -16,7 +16,7 @@
 
 class CancelableTask;
 
-class SoftwareDisplay final : public mozilla::gfx::VsyncSource::Display
+class SoftwareDisplay : public mozilla::gfx::VsyncSource::Display
 {
   NS_INLINE_DECL_THREADSAFE_REFCOUNTING(SoftwareDisplay)
 
@@ -36,6 +36,7 @@ protected:
 private:
   void VsyncControl(bool aEnable);
 
+protected:
   mozilla::TimeDuration mVsyncRate;
   // Use a chromium thread because nsITimers* fire on the main thread
   base::Thread* mVsyncThread;

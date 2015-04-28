@@ -23,6 +23,7 @@
 #include "nsServiceManagerUtils.h"
 #include "gfxPrefs.h"
 #include "cairo.h"
+#include "SoftwareVsyncSource.h"
 #include "VsyncSource.h"
 
 #ifdef MOZ_WIDGET_ANDROID
@@ -429,23 +430,20 @@ class GonkVsyncSource final : public VsyncSource
 public:
   GonkVsyncSource()
   {
+    mGlobalDisplay = new GonkDisplay;
   }
 
   virtual Display& GetGlobalDisplay() override
   {
-    return mGlobalDisplay;
+    return *(mGlobalDisplay.get());
   }
 
-  class GonkDisplay final : public VsyncSource::Display
+  class GonkDisplay final : public SoftwareDisplay
   {
   public:
-    GonkDisplay() : mVsyncEnabled(false)
+    GonkDisplay()
+      : mUseSoftware(false)
     {
-    }
-
-    ~GonkDisplay()
-    {
-      DisableVsync();
     }
 
     virtual void EnableVsync() override
@@ -454,7 +452,16 @@ public:
       if (IsVsyncEnabled()) {
         return;
       }
-      mVsyncEnabled = HwcComposer2D::GetInstance()->EnableVsync(true);
+
+      if (HwcComposer2D::GetInstance()->EnableVsync(true)) {
+        mUseSoftware = false;
+        mVsyncEnabled = true;
+      } else {
+        // If we can't use hwc, fall back to software vsync.
+        NS_WARNING("Error enabling gonk vsync. Falling back to software vsync.");
+        mUseSoftware = true;
+        SoftwareDisplay::EnableVsync();
+      }
     }
 
     virtual void DisableVsync() override
@@ -463,16 +470,31 @@ public:
       if (!IsVsyncEnabled()) {
         return;
       }
-      mVsyncEnabled = HwcComposer2D::GetInstance()->EnableVsync(false);
+
+      if (!mUseSoftware) {
+        HwcComposer2D::GetInstance()->EnableVsync(false);
+        mVsyncEnabled = false;
+      } else {
+        SoftwareDisplay::DisableVsync();
+      }
     }
 
-    virtual bool IsVsyncEnabled() override
+    virtual void NotifyVsync(TimeStamp aVsyncTimestamp) override
     {
-      MOZ_ASSERT(NS_IsMainThread());
-      return mVsyncEnabled;
+      if (!IsInSoftwareVsyncThread()) {
+        Display::NotifyVsync(aVsyncTimestamp);
+      } else {
+        SoftwareDisplay::NotifyVsync(aVsyncTimestamp);
+      }
     }
+
   private:
-    bool mVsyncEnabled;
+    ~GonkDisplay()
+    {
+      DisableVsync();
+    }
+
+    bool mUseSoftware;
   }; // GonkDisplay
 
 private:
@@ -480,7 +502,7 @@ private:
   {
   }
 
-  GonkDisplay mGlobalDisplay;
+  nsRefPtr<GonkDisplay> mGlobalDisplay;
 }; // GonkVsyncSource
 #endif
 
