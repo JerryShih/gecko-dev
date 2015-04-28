@@ -76,6 +76,19 @@ SoftwareDisplay::DisableVsync()
   }
 }
 
+void
+SoftwareDisplay::VsyncControl(bool aEnable)
+{
+  MOZ_ASSERT(IsInSoftwareVsyncThread());
+
+  if (aEnable) {
+    NotifyVsync(mozilla::TimeStamp::Now());
+  } else if (mCurrentVsyncTask) {
+    mCurrentVsyncTask->Cancel();
+    mCurrentVsyncTask = nullptr;
+  }
+}
+
 bool
 SoftwareDisplay::IsVsyncEnabled()
 {
