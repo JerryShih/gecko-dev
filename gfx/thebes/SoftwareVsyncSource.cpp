@@ -38,42 +38,32 @@ SoftwareDisplay::~SoftwareDisplay() {}
 void
 SoftwareDisplay::EnableVsync()
 {
+  MOZ_ASSERT(NS_IsMainThread());
   MOZ_ASSERT(mVsyncThread->IsRunning());
-  if (NS_IsMainThread()) {
-    if (mVsyncEnabled) {
-      return;
-    }
-    mVsyncEnabled = true;
 
-    mVsyncThread->message_loop()->PostTask(FROM_HERE,
-      NewRunnableMethod(this, &SoftwareDisplay::EnableVsync));
+  if (mVsyncEnabled) {
     return;
   }
 
-  MOZ_ASSERT(IsInSoftwareVsyncThread());
-  NotifyVsync(mozilla::TimeStamp::Now());
+  mVsyncEnabled = true;
+  mVsyncThread->message_loop()->PostTask(FROM_HERE,
+      NewRunnableMethod(this, &SoftwareDisplay::VsyncControl, true));
 }
 
 void
 SoftwareDisplay::DisableVsync()
 {
+  MOZ_ASSERT(NS_IsMainThread());
   MOZ_ASSERT(mVsyncThread->IsRunning());
-  if (NS_IsMainThread()) {
-    if (!mVsyncEnabled) {
-      return;
-    }
-    mVsyncEnabled = false;
 
-    mVsyncThread->message_loop()->PostTask(FROM_HERE,
-      NewRunnableMethod(this, &SoftwareDisplay::DisableVsync));
+  if (!mVsyncEnabled) {
     return;
   }
+  mVsyncEnabled = false;
 
-  MOZ_ASSERT(IsInSoftwareVsyncThread());
-  if (mCurrentVsyncTask) {
-    mCurrentVsyncTask->Cancel();
-    mCurrentVsyncTask = nullptr;
-  }
+  mVsyncThread->message_loop()->PostTask(FROM_HERE,
+      NewRunnableMethod(this, &SoftwareDisplay::VsyncControl, false));
+  return;
 }
 
 void
