@@ -56,6 +56,7 @@
 #include "mozilla/TouchEvents.h"
 #include "nsThreadUtils.h"
 #include "HwcComposer2D.h"
+#include "VsyncSource.h"
 
 #define LOG(args...)  __android_log_print(ANDROID_LOG_INFO, "Gonk" , ## args)
 #define LOGW(args...) __android_log_print(ANDROID_LOG_WARN, "Gonk", ## args)
@@ -132,7 +133,14 @@ static StaticRefPtr<ScreenOnOffEvent> sScreenOffEvent;
 static void
 displayEnabledCallback(bool enabled)
 {
-    HwcComposer2D::GetInstance()->EnableVsync(enabled);
+    if (gfxPrefs::HardwareVsyncEnabled()) {
+        if (enabled) {
+            gfxPlatform::GetPlatform()->GetHardwareVsync()->GetGlobalDisplay().EnableVsync();
+        } else {
+            gfxPlatform::GetPlatform()->GetHardwareVsync()->GetGlobalDisplay().DisableVsync();
+        }
+    }
+
     NS_DispatchToMainThread(enabled ? sScreenOnEvent : sScreenOffEvent);
 }
 
