@@ -167,6 +167,8 @@ GonkDisplayJB::~GonkDisplayJB()
 ANativeWindow*
 GonkDisplayJB::GetNativeWindow()
 {
+  ALOGE("bignose %s, addr:%p",__FUNCTION__,mSTClient.get());
+
     StopBootAnim();
 
     return mSTClient.get();
@@ -222,18 +224,24 @@ GonkDisplayJB::OnEnabled(OnEnabledCallbackType callback)
 void*
 GonkDisplayJB::GetHWCDevice()
 {
+  ALOGE("bignose %s, caller tid:%d",__FUNCTION__,gettid());
+
     return mHwc;
 }
 
 void*
 GonkDisplayJB::GetDispSurface()
 {
+  ALOGE("bignose %s, caller tid:%d",__FUNCTION__,gettid());
+
     return mDispSurface.get();
 }
 
 bool
 GonkDisplayJB::SwapBuffers(EGLDisplay dpy, EGLSurface sur)
 {
+    ALOGE("bignose %s",__FUNCTION__);
+
     StopBootAnim();
 
     // Should be called when composition rendering is complete for a frame.
@@ -333,6 +341,8 @@ GonkDisplayJB::QueueBuffer(ANativeWindowBuffer* buf)
 void
 GonkDisplayJB::UpdateDispSurface(EGLDisplay dpy, EGLSurface sur)
 {
+    ALOGE("bignose %s",__FUNCTION__);
+
     StopBootAnim();
 
     eglSwapBuffers(dpy, sur);
@@ -341,12 +351,15 @@ GonkDisplayJB::UpdateDispSurface(EGLDisplay dpy, EGLSurface sur)
 void
 GonkDisplayJB::SetDispReleaseFd(int fd)
 {
+    ALOGE("bignose %s",__FUNCTION__);
+
     mDispSurface->setReleaseFenceFd(fd);
 }
 
 int
 GonkDisplayJB::GetPrevDispAcquireFd()
 {
+    ALOGE("bignose %s",__FUNCTION__);
     return mDispSurface->GetPrevDispAcquireFd();
 }
 
