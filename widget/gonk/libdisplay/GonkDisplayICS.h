@@ -43,6 +43,10 @@ public:
         return nullptr;
     }
 
+    virtual void RequestHwcComposition() { }
+
+    virtual void RequestFBDeviceComposition { }
+
     virtual bool SwapBuffers(EGLDisplay dpy, EGLSurface sur);
 
     virtual ANativeWindowBuffer* DequeueBuffer();

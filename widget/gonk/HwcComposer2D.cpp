@@ -34,6 +34,8 @@
 #include "gfxPlatform.h"
 #include "VsyncSource.h"
 
+#include <utils/CallStack.h>
+
 #if ANDROID_VERSION >= 17
 #include "libdisplay/DisplaySurface.h"
 #include "gfxPrefs.h"
@@ -674,6 +676,10 @@ HwcComposer2D::PrepareLayerList(Layer* aLayer,
 bool
 HwcComposer2D::TryHwComposition()
 {
+    LOGE("bignose hwc2d try render");
+
+    GetGonkDisplay()->RequestHwcComposition();
+
     DisplaySurface* dispSurface = (DisplaySurface*)(GetGonkDisplay()->GetDispSurface());
 
     if (!(dispSurface && dispSurface->lastHandle)) {
@@ -767,8 +773,12 @@ HwcComposer2D::TryHwComposition()
 bool
 HwcComposer2D::Render()
 {
+    LOGE("bignose hwc2d render");
+    GetGonkDisplay()->RequestHwcComposition();
+
     // HWC module does not exist or mList is not created yet.
     if (!mHwc || !mList) {
+        printf_stderr("bignose have mlist");
         return GetGonkDisplay()->SwapBuffers(mDpy, mSur);
     }
 
@@ -779,10 +789,12 @@ HwcComposer2D::Render()
     }
 
     if (mPrepared) {
+      printf_stderr("bignose prepared");
         // No mHwc prepare, if already prepared in current draw cycle
         mList->hwLayers[mList->numHwLayers - 1].handle = dispSurface->lastHandle;
         mList->hwLayers[mList->numHwLayers - 1].acquireFenceFd = dispSurface->GetPrevDispAcquireFd();
     } else {
+      printf_stderr("bignose not prepared");
         mList->flags = HWC_GEOMETRY_CHANGED;
         mList->numHwLayers = 2;
         mList->hwLayers[0].hints = 0;

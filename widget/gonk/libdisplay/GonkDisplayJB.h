@@ -40,6 +40,10 @@ public:
 
     virtual void* GetDispSurface();
 
+    virtual void RequestHwcComposition();
+
+    virtual void RequestFBDeviceComposition();
+
     virtual bool SwapBuffers(EGLDisplay dpy, EGLSurface sur);
 
     virtual ANativeWindowBuffer* DequeueBuffer();
@@ -55,8 +59,6 @@ public:
     bool Post(buffer_handle_t buf, int fence);
 
 private:
-    void StopBootAnim();
-
     hw_module_t const*        mModule;
     hw_module_t const*        mFBModule;
     hwc_composer_device_1_t*  mHwc;

@@ -772,6 +772,7 @@ LayerManagerComposite::Render()
   }
 
   if (composer2D) {
+    printf_stderr("bignose have composer2D->Render()");
     composer2D->Render();
   }
 

@@ -39,6 +39,16 @@ public:
     virtual void* GetDispSurface() = 0;
 
     /**
+     * The hint to GonkDisplay that b2g will use hwc device soon.
+     */
+    virtual void RequestHwcComposition() = 0;
+
+    /**
+     * The hint to GonkDisplay that b2g will use fb device soon.
+     */
+    virtual void RequestFBDeviceComposition() = 0;
+
+    /**
      * Only GonkDisplayICS uses arguments.
      */
     virtual bool SwapBuffers(EGLDisplay dpy, EGLSurface sur) = 0;

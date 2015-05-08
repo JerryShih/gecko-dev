@@ -32,6 +32,8 @@
 #endif
 #include "BootAnimation.h"
 
+#include <utils/CallStack.h>
+
 using namespace android;
 
 namespace mozilla {
@@ -169,8 +171,6 @@ GonkDisplayJB::GetNativeWindow()
 {
   ALOGE("bignose %s, addr:%p",__FUNCTION__,mSTClient.get());
 
-    StopBootAnim();
-
     return mSTClient.get();
 }
 
@@ -241,8 +241,6 @@ bool
 GonkDisplayJB::SwapBuffers(EGLDisplay dpy, EGLSurface sur)
 {
     ALOGE("bignose %s",__FUNCTION__);
-
-    StopBootAnim();
 
     // Should be called when composition rendering is complete for a frame.
     // Only HWC v1.0 needs this call.
@@ -343,8 +341,6 @@ GonkDisplayJB::UpdateDispSurface(EGLDisplay dpy, EGLSurface sur)
 {
     ALOGE("bignose %s",__FUNCTION__);
 
-    StopBootAnim();
-
     eglSwapBuffers(dpy, sur);
 }
 
@@ -359,17 +355,42 @@ GonkDisplayJB::SetDispReleaseFd(int fd)
 int
 GonkDisplayJB::GetPrevDispAcquireFd()
 {
+
     ALOGE("bignose %s",__FUNCTION__);
+
+    android::CallStack stack;
+    stack.update( );
+    stack.log("bignose display::getprefd");
+
+
+
     return mDispSurface->GetPrevDispAcquireFd();
 }
 
 void
-GonkDisplayJB::StopBootAnim()
+GonkDisplayJB::RequestHwcComposition()
 {
-    StopBootAnimation();
+  ALOGE("bignose %s",__FUNCTION__);
+
+    assert(mHwc);
+    assert(!mFBDevice);
+
     if (mBootAnimBuffer.get()) {
+        StopBootAnimation();
         mBootAnimBuffer = nullptr;
     }
+}
+
+void
+GonkDisplayJB::RequestFBDeviceComposition()
+{
+//    assert(!mHwc);
+//    assert(mFBDevice);
+//
+//    if (!mBootAnimBuffer.get()) {
+//        StopBootAnimation();
+//        mBootAnimBuffer = nullptr;
+//    }
 }
 
 __attribute__ ((visibility ("default")))
