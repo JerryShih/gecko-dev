@@ -370,27 +370,23 @@ GonkDisplayJB::GetPrevDispAcquireFd()
 void
 GonkDisplayJB::RequestHwcComposition()
 {
-  ALOGE("bignose %s",__FUNCTION__);
-
-    assert(mHwc);
-    assert(!mFBDevice);
-
-    if (mBootAnimBuffer.get()) {
+    // We are going to use hwc. Stop the boot animation to prevent the racing
+    // problem for hwc::prepare() and hwc::set().
+    if (mHwc) {
         StopBootAnimation();
         mBootAnimBuffer = nullptr;
     }
 }
 
 void
-GonkDisplayJB::RequestFBDeviceComposition()
+GonkDisplayJB::RequestGLComposition()
 {
-//    assert(!mHwc);
-//    assert(mFBDevice);
-//
-//    if (!mBootAnimBuffer.get()) {
-//        StopBootAnimation();
-//        mBootAnimBuffer = nullptr;
-//    }
+    // If we don't use hwc, stop the boot animation here. We use the framebuffer
+    // for boot animation. Since we are going to create gl context, we should
+    // stop to use framebuffer.
+    if (mFBDevice) {
+        StopBootAnimation();
+    }
 }
 
 __attribute__ ((visibility ("default")))

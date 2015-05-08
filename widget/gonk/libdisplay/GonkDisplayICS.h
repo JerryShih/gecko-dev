@@ -45,7 +45,7 @@ public:
 
     virtual void RequestHwcComposition() { }
 
-    virtual void RequestFBDeviceComposition { }
+    virtual void RequestGLComposition { }
 
     virtual bool SwapBuffers(EGLDisplay dpy, EGLSurface sur);
 

@@ -44,9 +44,9 @@ public:
     virtual void RequestHwcComposition() = 0;
 
     /**
-     * The hint to GonkDisplay that b2g will use fb device soon.
+     * The hint to GonkDisplay that b2g will use gl composition soon.
      */
-    virtual void RequestFBDeviceComposition() = 0;
+    virtual void RequestGLComposition() = 0;
 
     /**
      * Only GonkDisplayICS uses arguments.
