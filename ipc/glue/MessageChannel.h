@@ -397,6 +397,9 @@ class MessageChannel : HasResultCodes
     // Can be run on either thread
     void AssertWorkerThread() const
     {
+        if (mWorkerLoopID != MessageLoop::current()->id()) {
+           printf_stderr("bignose thread error, tid:%d, worker:%d current:%d",gettid(),mWorkerLoopID,MessageLoop::current()->id());
+        }
         NS_ABORT_IF_FALSE(mWorkerLoopID == MessageLoop::current()->id(),
                           "not on worker thread!");
     }

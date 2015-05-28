@@ -154,6 +154,8 @@ TextureChild::ActorDestroy(ActorDestroyReason why)
   }
   mWaitForRecycle = nullptr;
   mKeep = nullptr;
+
+  printf_stderr("bignose TextureChild::ActorDestroy, actor:%p, tid:%d",this,gettid());
 }
 
 // static
@@ -506,11 +508,13 @@ void TextureClient::ForceRemove(bool sync)
 {
   if (mValid && mActor) {
     if (sync || GetFlags() & TextureFlags::DEALLOCATE_CLIENT) {
+      printf_stderr("bignose ForceRemove 1, addr:%p, actor:%p, tid:%d",this, mActor.get(),gettid());
       if (mActor->IPCOpen()) {
         mActor->SendClearTextureHostSync();
         mActor->SendRemoveTexture();
       }
     } else {
+      printf_stderr("bignose ForceRemove 2, addr:%p, actor:%p, tid:%d",this, mActor.get(),gettid());
       if (mActor->IPCOpen()) {
         mActor->SendRemoveTexture();
       }
