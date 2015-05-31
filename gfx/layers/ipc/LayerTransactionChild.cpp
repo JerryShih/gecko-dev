@@ -38,6 +38,7 @@ LayerTransactionChild::Destroy()
   for (size_t i = 0; i < ManagedPTextureChild().Length(); ++i) {
     TextureClient* texture = TextureClient::AsTextureClient(ManagedPTextureChild()[i]);
     if (texture) {
+      printf_stderr("bignose LayerTransactionChild::Destroy, textureClient:%p, tid:%d",texture,gettid());
       texture->ForceRemove();
     }
   }
@@ -129,6 +130,8 @@ LayerTransactionChild::SendFenceHandle(AsyncTransactionTracker* aTracker,
 void
 LayerTransactionChild::ActorDestroy(ActorDestroyReason why)
 {
+  printf_stderr("bignose LayerTransactionChild::ActorDestroy, actor:%p, tid:%d",this,gettid());
+
   mDestroyed = true;
   DestroyAsyncTransactionTrackersHolder();
 #ifdef MOZ_B2G

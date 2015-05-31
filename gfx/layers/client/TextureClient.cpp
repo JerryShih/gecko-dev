@@ -155,7 +155,7 @@ TextureChild::ActorDestroy(ActorDestroyReason why)
   mWaitForRecycle = nullptr;
   mKeep = nullptr;
 
-  printf_stderr("bignose TextureChild::ActorDestroy, actor:%p, tid:%d",this,gettid());
+  printf_stderr("bignose TextureChild::ActorDestroy, actor:%p, forwarder:%p, textureClient:%p, tid:%d",this,GetForwarder(),mTextureClient, gettid());
 }
 
 // static
@@ -558,6 +558,7 @@ TextureClient::Finalize()
     actor->mTextureClient = nullptr;
     // this will call ForceRemove in the right thread, using a sync proxy if needed
     if (actor->GetForwarder()) {
+      printf_stderr("bignose TextureClient::Finalize, actor:%p, forwarder:%p, tid:%d",this,actor->GetForwarder(),gettid());
       actor->GetForwarder()->RemoveTexture(this);
     }
   }
