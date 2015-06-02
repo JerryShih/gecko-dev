@@ -56,13 +56,16 @@ class AtomicRefCountedWithFinalize
         mRefCount = detail::DEAD;
 #endif
         T* derived = static_cast<T*>(this);
+        printf_stderr("bignose AtomicRefCountedWithFinalize addr:%p call Finalize, tid:%d",this,gettid());
         derived->Finalize();
         if (MOZ_LIKELY(!mMessageLoopToPostDestructionTo)) {
           delete derived;
         } else {
           if (MOZ_LIKELY(NS_IsMainThread())) {
+            printf_stderr("bignose AtomicRefCountedWithFinalize addr:%p use main, tid:%d",this,gettid());
             delete derived;
           } else {
+            printf_stderr("bignose AtomicRefCountedWithFinalize addr:%p use post, tid:%d",this,gettid());
             mMessageLoopToPostDestructionTo->PostTask(
               FROM_HERE,
               NewRunnableFunction(&DestroyToBeCalledOnMainThread, derived));

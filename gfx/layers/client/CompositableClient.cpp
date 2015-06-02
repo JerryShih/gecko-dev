@@ -63,13 +63,13 @@ RemoveTextureFromCompositableTracker::ReleaseTextureClient()
       mTextureClient->GetAllocator() &&
       !mTextureClient->GetAllocator()->IsImageBridgeChild())
   {
-    printf_stderr("bignose RemoveTextureFromCompositableTracker::ReleaseTextureClient, post release textureClient:%p, forwarder:%p, tid:%d",mTextureClient.get(),mTextureClient->GetAllocator(),gettid());
+    printf_stderr("bignose RemoveTextureFromCompositableTracker::ReleaseTextureClient, post release addr:%p textureClient:%p, forwarder:%p, tid:%d",this,mTextureClient.get(),mTextureClient->GetAllocator(),gettid());
     TextureClientReleaseTask* task = new TextureClientReleaseTask(mTextureClient);
     RefPtr<ISurfaceAllocator> allocator = mTextureClient->GetAllocator();
     mTextureClient = nullptr;
     allocator->GetMessageLoop()->PostTask(FROM_HERE, task);
   } else {
-    printf_stderr("bignose RemoveTextureFromCompositableTracker::ReleaseTextureClient, textureClient:%p, tid:%d",mTextureClient.get(),gettid());
+    printf_stderr("bignose RemoveTextureFromCompositableTracker::ReleaseTextureClient, addr:%p textureClient:%p, tid:%d",this,mTextureClient.get(),gettid());
     mTextureClient = nullptr;
   }
 }

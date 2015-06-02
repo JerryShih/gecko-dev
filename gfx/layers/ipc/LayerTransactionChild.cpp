@@ -38,7 +38,7 @@ LayerTransactionChild::Destroy()
   for (size_t i = 0; i < ManagedPTextureChild().Length(); ++i) {
     TextureClient* texture = TextureClient::AsTextureClient(ManagedPTextureChild()[i]);
     if (texture) {
-      printf_stderr("bignose LayerTransactionChild::Destroy, textureClient:%p, tid:%d",texture,gettid());
+      printf_stderr("bignose LayerTransactionChild::Destroy, addr:%p textureClient:%p, actor:%p, tid:%d",this,texture,texture->GetIPDLActor(),gettid());
       texture->ForceRemove();
     }
   }
@@ -130,7 +130,7 @@ LayerTransactionChild::SendFenceHandle(AsyncTransactionTracker* aTracker,
 void
 LayerTransactionChild::ActorDestroy(ActorDestroyReason why)
 {
-  printf_stderr("bignose LayerTransactionChild::ActorDestroy, actor:%p, tid:%d",this,gettid());
+  printf_stderr("bignose LayerTransactionChild::ActorDestroy, addr:%p, tid:%d",this,gettid());
 
   mDestroyed = true;
   DestroyAsyncTransactionTrackersHolder();
@@ -150,7 +150,10 @@ LayerTransactionChild::AllocPTextureChild(const SurfaceDescriptor&,
                                           const TextureFlags&)
 {
   MOZ_ASSERT(!mDestroyed);
-  return TextureClient::CreateIPDLActor();
+  PTextureChild* textureChild = TextureClient::CreateIPDLActor();
+  printf_stderr("bignose LayerTransactionChild::AllocPTextureChild, addr:%p, PTextureChild:%p",this, textureChild);
+
+  return textureChild;
 }
 
 bool

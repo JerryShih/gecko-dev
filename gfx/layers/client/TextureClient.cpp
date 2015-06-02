@@ -155,7 +155,7 @@ TextureChild::ActorDestroy(ActorDestroyReason why)
   mWaitForRecycle = nullptr;
   mKeep = nullptr;
 
-  printf_stderr("bignose TextureChild::ActorDestroy, actor:%p, forwarder:%p, textureClient:%p, tid:%d",this,GetForwarder(),mTextureClient, gettid());
+  printf_stderr("bignose TextureChild::ActorDestroy, addr:%p, forwarder:%p, textureClient:%p, tid:%d",this,GetForwarder(),mTextureClient, gettid());
 }
 
 // static
@@ -508,13 +508,13 @@ void TextureClient::ForceRemove(bool sync)
 {
   if (mValid && mActor) {
     if (sync || GetFlags() & TextureFlags::DEALLOCATE_CLIENT) {
-      printf_stderr("bignose ForceRemove 1, addr:%p, actor:%p, tid:%d",this, mActor.get(),gettid());
+      printf_stderr("bignose ForceRemove 1, addr:%p, actor:%p, forwarder:%p, tid:%d",this, mActor.get(),mActor->GetForwarder(),gettid());
       if (mActor->IPCOpen()) {
         mActor->SendClearTextureHostSync();
         mActor->SendRemoveTexture();
       }
     } else {
-      printf_stderr("bignose ForceRemove 2, addr:%p, actor:%p, tid:%d",this, mActor.get(),gettid());
+      printf_stderr("bignose ForceRemove 2, addr:%p, actor:%p, forwarder:%p, tid:%d",this, mActor.get(),mActor->GetForwarder(),gettid());
       if (mActor->IPCOpen()) {
         mActor->SendRemoveTexture();
       }
@@ -558,7 +558,7 @@ TextureClient::Finalize()
     actor->mTextureClient = nullptr;
     // this will call ForceRemove in the right thread, using a sync proxy if needed
     if (actor->GetForwarder()) {
-      printf_stderr("bignose TextureClient::Finalize, actor:%p, forwarder:%p, tid:%d",this,actor->GetForwarder(),gettid());
+      printf_stderr("bignose TextureClient::Finalize, addr:%p, actor:%p, forwarder:%p, tid:%d",this,actor.get(),actor->GetForwarder(),gettid());
       actor->GetForwarder()->RemoveTexture(this);
     }
   }

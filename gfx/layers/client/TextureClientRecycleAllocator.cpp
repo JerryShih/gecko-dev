@@ -205,6 +205,7 @@ TextureClientRecycleAllocatorImp::Destroy()
   }
   mDestroyed = true;
   while (!mPooledClients.empty()) {
+    printf_stderr("bignose TextureClientRecycleAllocatorImp::Destroy, textureClient:%p tid:%d",mPooledClients.top()->GetTextureClient(),gettid());
     mPooledClients.pop();
   }
 }
@@ -212,6 +213,7 @@ TextureClientRecycleAllocatorImp::Destroy()
 void
 TextureClientRecycleAllocatorImp::RecycleCallbackImp(TextureClient* aClient)
 {
+  printf_stderr("bignose TextureClientRecycleAllocatorImp::RecycleCallbackImp, addr:%p, textureClient:%p, tid:%d",this,aClient,gettid());
   RefPtr<TextureClientHolder> textureHolder;
   aClient->ClearRecycleCallback();
   {
@@ -219,6 +221,7 @@ TextureClientRecycleAllocatorImp::RecycleCallbackImp(TextureClient* aClient)
     if (mInUseClients.find(aClient) != mInUseClients.end()) {
       textureHolder = mInUseClients[aClient]; // Keep reference count of TextureClientHolder within lock.
       if (!mDestroyed && mPooledClients.size() < mMaxPooledSize) {
+        printf_stderr("bignose TextureClientRecycleAllocatorImp::RecycleCallbackImp, addr:%p, recycle textureClient:%p, tid:%d",this,aClient,gettid());
         mPooledClients.push(textureHolder);
       }
       mInUseClients.erase(aClient);
