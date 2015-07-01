@@ -139,6 +139,9 @@ using mozilla::gl::GLContextProvider;
 #include "mozilla/layers/ShadowLayers.h"
 #endif
 
+#include "cutils/properties.h"
+#include "GeckoProfiler.h"
+
 // windows.h (included by chromium code) defines this, in its infinite wisdom
 #undef DrawText
 
@@ -4677,6 +4680,9 @@ CanvasRenderingContext2D::DrawWindow(nsGlobalWindow& window, double x,
                                      const nsAString& bgColor,
                                      uint32_t flags, ErrorResult& error)
 {
+  PROFILER_LABEL("CanvasRenderingContext2D", "DrawWindow",
+    js::ProfileEntry::Category::GRAPHICS);
+
   // protect against too-large surfaces that will cause allocation
   // or overflow issues
   if (!gfxASurface::CheckSurfaceSize(gfxIntSize(int32_t(w), int32_t(h)),
