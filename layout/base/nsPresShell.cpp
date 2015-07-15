@@ -4712,20 +4712,19 @@ PresShell::RenderDocument(const nsRect& aRect, uint32_t aFlags,
     flags |= nsLayoutUtils::PAINT_SYNC_DECODE_IMAGES;
   }
   if (aFlags & RENDER_USE_WIDGET_LAYERS) {
-    // We only support using widget layers on display root's with widgets.
     nsView* view = rootFrame->GetView();
     if (view && view->GetWidget() &&
         nsLayoutUtils::GetDisplayRootFrame(rootFrame) == rootFrame) {
       LayerManager* layerManager = view->GetWidget()->GetLayerManager();
-      // ClientLayerManagers in content processes don't support
-      // taking snapshots.
-      if (layerManager &&
-          (!layerManager->AsClientLayerManager() ||
-           XRE_IsParentProcess())) {
+      // Parent process can always use PAINT_WIDGET_LAYERS flag, but we need to
+      // check the layer manager type and UseWidgetLayerAtContent() pref for content.
+      if (layerManager && (XRE_IsParentProcess() ||
+                           (gfxPrefs::UseWidgetLayerAtContent() && layerManager->AsClientLayerManager()))) {
         flags |= nsLayoutUtils::PAINT_WIDGET_LAYERS;
       }
     }
   }
+
   if (!(aFlags & RENDER_CARET)) {
     wouldFlushRetainedLayers = true;
     flags |= nsLayoutUtils::PAINT_HIDE_CARET;

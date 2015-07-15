@@ -222,7 +222,7 @@ ClientLayerManager::BeginTransactionWithTarget(gfxContext* aTarget)
 
   // If we have a non-default target, we need to let our shadow manager draw
   // to it. This will happen at the end of the transaction.
-  if (aTarget && XRE_IsParentProcess()) {
+  if (aTarget && (XRE_IsParentProcess() || gfxPrefs::UseWidgetLayerAtContent())) {
     mShadowTarget = aTarget;
   } else {
     NS_ASSERTION(!aTarget,
