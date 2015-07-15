@@ -604,13 +604,35 @@ CompositorChild::SendAdoptChild(const uint64_t& id)
 }
 
 bool
-CompositorChild::SendMakeSnapshot(const SurfaceDescriptor& inSnapshot, const gfx::IntRect& dirtyRect)
+CompositorChild::SendMakeSnapshotWithSurface(PLayerTransactionChild* layerTransactionChildActor,
+                                             PLayerChild* layerChildActor,
+                                             const SurfaceDescriptor& inSnapshot,
+                                             const gfx::IntRect& dirtyRect)
 {
   MOZ_ASSERT(mCanSend);
   if (!mCanSend) {
     return true;
   }
-  return PCompositorChild::SendMakeSnapshot(inSnapshot, dirtyRect);
+  return PCompositorChild::SendMakeSnapshotWithSurface(layerTransactionChildActor,
+                                                       layerChildActor,
+                                                       inSnapshot,
+                                                       dirtyRect);
+}
+
+bool
+CompositorChild::SendMakeSnapshotWithTexture(PLayerTransactionChild* layerTransactionChildActor,
+                                             PLayerChild* layerChildActor,
+                                             PTextureChild* inSnapshot,
+                                             const gfx::IntRect& dirtyRect)
+{
+  MOZ_ASSERT(mCanSend);
+  if (!mCanSend) {
+    return true;
+  }
+  return PCompositorChild::SendMakeSnapshotWithTexture(layerTransactionChildActor,
+                                                       layerChildActor,
+                                                       inSnapshot,
+                                                       dirtyRect);
 }
 
 bool

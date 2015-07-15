@@ -70,6 +70,7 @@
 #include "ProfilerMarkers.h"
 #endif
 #include "mozilla/VsyncDispatcher.h"
+#include "ShadowLayerParent.h"
 
 #ifdef MOZ_WIDGET_GONK
 #include "GeckoTouchDispatcher.h"
@@ -802,11 +803,20 @@ CompositorParent::RecvResume()
 }
 
 bool
-CompositorParent::RecvMakeSnapshot(const SurfaceDescriptor& aInSnapshot,
-                                   const gfx::IntRect& aRect)
+CompositorParent::RecvMakeSnapshotWithSurface(PLayerTransactionParent* aLayerTransactionActor,
+                                              PLayerParent* aSnapshotRoot,
+                                              const SurfaceDescriptor& aInSnapshot,
+                                              const gfx::IntRect& aRect)
 {
-  RefPtr<DrawTarget> target = GetDrawTargetForDescriptor(aInSnapshot, gfx::BackendType::CAIRO);
-  ForceComposeToTarget(target, &aRect);
+  return true;
+}
+
+bool
+CompositorParent::RecvMakeSnapshotWithTexture(PLayerTransactionParent* aLayerTransactionActor,
+                                              PLayerParent* aSnapshotRoot,
+                                              PTextureParent* aInSnapshot,
+                                              const gfx::IntRect& aRect)
+{
   return true;
 }
 
@@ -1756,9 +1766,14 @@ public:
   virtual bool RecvNotifyVisible(const uint64_t& id) override;
   virtual bool RecvNotifyChildCreated(const uint64_t& child) override;
   virtual bool RecvAdoptChild(const uint64_t& child) override { return false; }
-  virtual bool RecvMakeSnapshot(const SurfaceDescriptor& aInSnapshot,
-                                const gfx::IntRect& aRect) override
-  { return true; }
+  virtual bool RecvMakeSnapshotWithSurface(PLayerTransactionParent* aLayerTransactionActor,
+                                           PLayerParent* aSnapshotRoot,
+                                           const SurfaceDescriptor& aInSnapshot,
+                                           const gfx::IntRect& aRect) override;
+  virtual bool RecvMakeSnapshotWithTexture(PLayerTransactionParent* aLayerTransactionActor,
+                                           PLayerParent* aSnapshotRoot,
+                                           PTextureParent* aInSnapshot,
+                                           const gfx::IntRect& aRect) override;
   virtual bool RecvMakeWidgetSnapshot(const SurfaceDescriptor& aInSnapshot) override
   { return true; }
   virtual bool RecvFlushRendering() override { return true; }
@@ -2318,5 +2333,52 @@ CrossProcessCompositorParent::CloneToplevel(const InfallibleTArray<mozilla::ipc:
   return nullptr;
 }
 
+bool
+CrossProcessCompositorParent::RecvMakeSnapshotWithSurface(PLayerTransactionParent* aLayerTransactionActor,
+                                                          PLayerParent* aSnapshotRoot,
+                                                          const SurfaceDescriptor& aInSnapshot,
+                                                          const gfx::IntRect& aRect)
+{
+  uint64_t id = static_cast<LayerTransactionParent*>(aLayerTransactionActor)->GetId();
+  MOZ_ASSERT(id != 0);
+
+  CompositorParent* parent;
+  {
+    // scope lock
+    MonitorAutoLock lock(*sIndirectLayerTreesLock);
+    parent = sIndirectLayerTrees[id].mParent;
+  }
+
+  MOZ_ASSERT(parent);
+  if (parent) {
+    return parent->RecvMakeSnapshotWithSurface(aLayerTransactionActor, aSnapshotRoot, aInSnapshot, aRect);
+  }
+
+  return true;
+}
+
+bool
+CrossProcessCompositorParent::RecvMakeSnapshotWithTexture(PLayerTransactionParent* aLayerTransactionActor,
+                                                          PLayerParent* aSnapshotRoot,
+                                                          PTextureParent* aInSnapshot,
+                                                          const gfx::IntRect& aRect)
+{
+  uint64_t id = static_cast<LayerTransactionParent*>(aLayerTransactionActor)->GetId();
+  MOZ_ASSERT(id != 0);
+
+  CompositorParent* parent;
+  {
+    // scope lock
+    MonitorAutoLock lock(*sIndirectLayerTreesLock);
+    parent = sIndirectLayerTrees[id].mParent;
+  }
+
+  MOZ_ASSERT(parent);
+  if (parent) {
+    return parent->RecvMakeSnapshotWithTexture(aLayerTransactionActor, aSnapshotRoot, aInSnapshot, aRect);
+  }
+
+  return true;
+}
 } // namespace layers
 } // namespace mozilla

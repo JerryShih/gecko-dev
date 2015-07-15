@@ -239,8 +239,14 @@ public:
   virtual bool RecvNotifyVisible(const uint64_t& id) override { return true; }
   virtual bool RecvNotifyChildCreated(const uint64_t& child) override;
   virtual bool RecvAdoptChild(const uint64_t& child) override;
-  virtual bool RecvMakeSnapshot(const SurfaceDescriptor& aInSnapshot,
-                                const gfx::IntRect& aRect) override;
+  virtual bool RecvMakeSnapshotWithSurface(PLayerTransactionParent* aLayerTransactionActor,
+                                           PLayerParent* aSnapshotRoot,
+                                           const SurfaceDescriptor& aInSnapshot,
+                                           const gfx::IntRect& aRect) override;
+  virtual bool RecvMakeSnapshotWithTexture(PLayerTransactionParent* aLayerTransactionActor,
+                                           PLayerParent* aSnapshotRoot,
+                                           PTextureParent* aInSnapshot,
+                                           const gfx::IntRect& aRect) override;
   virtual bool RecvMakeWidgetSnapshot(const SurfaceDescriptor& aInSnapshot) override;
   virtual bool RecvFlushRendering() override;
 
