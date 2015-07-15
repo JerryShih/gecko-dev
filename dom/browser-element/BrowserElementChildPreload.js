@@ -1186,7 +1186,8 @@ BrowserElementChild.prototype = {
     let ctx = canvas.getContext("2d", { willReadFrequently: true });
     ctx.scale(scale * devicePixelRatio, scale * devicePixelRatio);
 
-    let flags = ctx.DRAWWINDOW_DRAW_VIEW |
+    let flags = ctx.DRAWWINDOW_DRAW_CARET |
+                ctx.DRAWWINDOW_DRAW_VIEW |
                 ctx.DRAWWINDOW_USE_WIDGET_LAYERS |
                 ctx.DRAWWINDOW_DO_NOT_FLUSH |
                 ctx.DRAWWINDOW_ASYNC_DECODE_IMAGES;
