@@ -879,7 +879,8 @@ ClientTiledLayerBuffer::PaintThebes(const nsIntRegion& aNewValidRegion,
                                    const nsIntRegion& aPaintRegion,
                                    const nsIntRegion& aDirtyRegion,
                                    LayerManager::DrawPaintedLayerCallback aCallback,
-                                   void* aCallbackData)
+                                   void* aCallbackData,
+                                   bool aDraw)
 {
   TILING_LOG("TILING %p: PaintThebes painting region %s\n", mPaintedLayer, Stringify(aPaintRegion).c_str());
   TILING_LOG("TILING %p: PaintThebes new valid region %s\n", mPaintedLayer, Stringify(aNewValidRegion).c_str());
@@ -893,6 +894,10 @@ ClientTiledLayerBuffer::PaintThebes(const nsIntRegion& aNewValidRegion,
 
   // If this region is empty XMost() - 1 will give us a negative value.
   NS_ASSERTION(!aPaintRegion.GetBounds().IsEmpty(), "Empty paint region\n");
+
+  mNewValidRegion = aNewValidRegion;
+  mPaintRegion = aPaintRegion;
+  mDirtyRegion = aDirtyRegion;
 
   if (!gfxPrefs::TiledDrawTargetEnabled()) {
     nsRefPtr<gfxContext> ctxt;
@@ -930,8 +935,23 @@ ClientTiledLayerBuffer::PaintThebes(const nsIntRegion& aNewValidRegion,
     PROFILER_LABEL("ClientTiledLayerBuffer", "PaintThebesSingleBufferDraw",
       js::ProfileEntry::Category::GRAPHICS);
 
-    mCallback(mPaintedLayer, ctxt, aPaintRegion, aDirtyRegion,
-              DrawRegionClip::NONE, nsIntRegion(), mCallbackData);
+    if (aDraw) {
+      mCallback(mPaintedLayer, ctxt, mPaintRegion, mDirtyRegion, DrawRegionClip::NONE, nsIntRegion(), mCallbackData);
+    } else {
+      PaintParam param;
+      param.ctxt = ctxt;
+      param.mPaintRegion = mPaintRegion;
+      param.mDirtyRegion = mDirtyRegion;
+      param.clip = DrawRegionClip::NONE;
+      param.mRegionToInvalidate = nsIntRegion();
+      mPaintParamList.push_back(param);
+    }
+  }
+
+  mLastPaintContentType = GetContentType(&mLastPaintSurfaceMode);
+
+  if (!gfxPrefs::LayersTilesMT() || !NS_IsMainThread()) {
+    PaintThebesCallBack();
   }
 
 #ifdef GFX_TILEDLAYER_PREF_WARNINGS
@@ -948,12 +968,26 @@ ClientTiledLayerBuffer::PaintThebes(const nsIntRegion& aNewValidRegion,
   }
   start = PR_IntervalNow();
 #endif
+}
+
+void
+ClientTiledLayerBuffer::FinishPaint()
+{
+  mPaintParamList.clear();
+  PaintThebesCallBack();
+}
+
+void
+ClientTiledLayerBuffer::PaintThebesCallBack()
+{
+   if (!mSinglePaintDrawTarget) {
+     return;
+   }
 
   PROFILER_LABEL("ClientTiledLayerBuffer", "PaintThebesUpdate",
     js::ProfileEntry::Category::GRAPHICS);
 
-  mNewValidRegion = aNewValidRegion;
-  Update(aNewValidRegion, aPaintRegion, aDirtyRegion);
+  Update(mNewValidRegion, mPaintRegion, mDirtyRegion);
 
 #ifdef GFX_TILEDLAYER_PREF_WARNINGS
   if (PR_IntervalNow() - start > 10) {
@@ -962,7 +996,7 @@ ClientTiledLayerBuffer::PaintThebes(const nsIntRegion& aNewValidRegion,
   }
 #endif
 
-  mLastPaintContentType = GetContentType(&mLastPaintSurfaceMode);
+  //mLastPaintContentType = GetContentType(&mLastPaintSurfaceMode);
   mCallback = nullptr;
   mCallbackData = nullptr;
   mSinglePaintDrawTarget = nullptr;
@@ -1614,6 +1648,9 @@ ClientTiledLayerBuffer::ProgressiveUpdate(nsIntRegion& aValidRegion,
   TILING_LOG("TILING %p: Progressive update invalid region %s\n", mPaintedLayer, Stringify(aInvalidRegion).c_str());
   TILING_LOG("TILING %p: Progressive update old valid region %s\n", mPaintedLayer, Stringify(aOldValidRegion).c_str());
 
+  PROFILER_LABEL("ClientTiledLayerBuffer", "ProgressiveUpdate",
+                 js::ProfileEntry::Category::GRAPHICS);
+
   bool repeat = false;
   bool isBufferChanged = false;
   do {
@@ -1645,10 +1682,20 @@ ClientTiledLayerBuffer::ProgressiveUpdate(nsIntRegion& aValidRegion,
     validOrStale.Or(aValidRegion, aOldValidRegion);
 
     // Paint the computed region and subtract it from the invalid region.
-    PaintThebes(validOrStale, regionToPaint, aInvalidRegion,
-                aCallback, aCallbackData);
+    if (NS_IsMainThread()) {
+      PaintThebes(validOrStale, regionToPaint, regionToPaint, aCallback, aCallbackData, false);
+      //PaintThebesCallBack();
+    } else {
+      PaintThebes(validOrStale, regionToPaint, regionToPaint, aCallback, aCallbackData, true);
+    }
     aInvalidRegion.Sub(aInvalidRegion, regionToPaint);
   } while (repeat);
+
+  if (NS_IsMainThread()) {
+    for (auto iter = mPaintParamList.begin(); iter != mPaintParamList.end(); ++iter) {
+      mCallback(mPaintedLayer, iter->ctxt, iter->mPaintRegion, iter->mDirtyRegion, iter->clip, iter->mRegionToInvalidate, mCallbackData);
+    }
+  }
 
   TILING_LOG("TILING %p: Progressive update final valid region %s buffer changed %d\n", mPaintedLayer, Stringify(aValidRegion).c_str(), isBufferChanged);
   TILING_LOG("TILING %p: Progressive update final invalid region %s\n", mPaintedLayer, Stringify(aInvalidRegion).c_str());

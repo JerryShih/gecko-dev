@@ -36,6 +36,7 @@
 #include "mozilla/layers/ISurfaceAllocator.h"
 #include "gfxReusableSurfaceWrapper.h"
 #include "pratom.h"                     // For PR_ATOMIC_INCREMENT/DECREMENT
+#include <list>
 
 namespace mozilla {
 namespace layers {
@@ -417,11 +418,16 @@ public:
                    const nsIntRegion& aPaintRegion,
                    const nsIntRegion& aDirtyRegion,
                    LayerManager::DrawPaintedLayerCallback aCallback,
-                   void* aCallbackData);
+                   void* aCallbackData,
+                   bool aDraw = true);
 
   void Update(const nsIntRegion& aNewValidRegion,
               const nsIntRegion& aPaintRegion,
               const nsIntRegion& aDirtyRegion);
+
+  void PaintThebesCallBack();
+
+  void FinishPaint();
 
   void ReadLock();
 
@@ -478,6 +484,18 @@ protected:
 
 private:
   gfxContentType GetContentType(SurfaceMode* aMode = nullptr) const;
+
+  class PaintParam {
+  public:
+    nsRefPtr<gfxContext> ctxt;
+    nsIntRegion mPaintRegion;
+    nsIntRegion mDirtyRegion;
+    DrawRegionClip clip;
+    nsIntRegion mRegionToInvalidate;
+  };
+
+  std::list<PaintParam> mPaintParamList;
+
   ClientTiledPaintedLayer* mPaintedLayer;
   CompositableClient* mCompositableClient;
   ClientLayerManager* mManager;
@@ -490,6 +508,8 @@ private:
   // The region that will be made valid during Update(). Once Update() is
   // completed then this is identical to mValidRegion.
   nsIntRegion mNewValidRegion;
+  nsIntRegion mPaintRegion;
+  nsIntRegion mDirtyRegion;
 
   // The DrawTarget we use when UseSinglePaintBuffer() above is true.
   RefPtr<gfx::DrawTarget>       mSinglePaintDrawTarget;

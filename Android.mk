@@ -3,3 +3,5 @@
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
 # empty file to block B2G/Gonk from trying to build anything inside mozilla-central
+
+LOCAL_SHARED_LIBRARIES += libutils

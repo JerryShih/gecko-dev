@@ -72,6 +72,7 @@
 #include "nsDOMTokenList.h"
 #include "mozilla/RuleNodeCacheConditions.h"
 #include "nsCSSProps.h"
+#include "ClientTiledPaintedLayer.h"
 
 // GetCurrentTime is defined in winbase.h as zero argument macro forwarding to
 // GetTickCount().
@@ -87,6 +88,47 @@ using namespace mozilla::gfx;
 
 typedef FrameMetrics::ViewID ViewID;
 typedef nsStyleTransformMatrix::TransformReferenceBox TransformReferenceBox;
+
+class PaintTask final : public nsRunnable
+{
+public:
+  PaintTask(PaintedLayer* aLayer,
+            gfxContext* aContext,
+            const nsIntRegion& aRegionToDraw,
+            const nsIntRegion& aDirtyRegion,
+            DrawRegionClip aClip,
+            const nsIntRegion& aRegionToInvalidate,
+            void* aCallbackData)
+    : mLayer(aLayer)
+    , mContext(aContext)
+    , mRegionToDraw(aRegionToDraw)
+    , mDirtyRegion(aDirtyRegion)
+    , mClip(aClip)
+    , mRegionToInvalidate(aRegionToInvalidate)
+    , mCallbackData(aCallbackData)
+  {
+  }
+
+  NS_IMETHOD Run()
+  {
+    FrameLayerBuilder::DrawPaintedLayer(mLayer, mContext, mRegionToDraw, mDirtyRegion, mClip, mRegionToInvalidate, mCallbackData);
+
+    if (mLayer->AsTiledPaintedLayer()) {
+      nsDisplayList::AddCallBackLayer(mLayer->AsTiledPaintedLayer());
+    }
+
+    return NS_OK;
+  }
+
+private:
+  nsRefPtr<PaintedLayer> mLayer;
+  nsRefPtr<gfxContext> mContext;
+  const nsIntRegion mRegionToDraw;
+  const nsIntRegion mDirtyRegion;
+  DrawRegionClip mClip;
+  const nsIntRegion mRegionToInvalidate;
+  void* mCallbackData;
+};
 
 #ifdef DEBUG
 static bool
@@ -1681,6 +1723,17 @@ already_AddRefed<LayerManager> nsDisplayList::PaintRoot(nsDisplayListBuilder* aB
 
   layerManager->EndTransaction(FrameLayerBuilder::DrawPaintedLayer,
                                aBuilder, flags);
+
+  //bignose
+  //wait off-main thread painting task
+  nsDisplayList::WaitThread();
+
+  for (auto iter = mCallBackQueue.begin(); iter != mCallBackQueue.end(); ++iter) {
+    (*iter)->PaintThebesCallBack();
+  }
+  mCallBackQueue.clear();
+  /////
+
   aBuilder->SetIsCompositingCheap(temp);
   layerBuilder->DidEndTransaction();
 
@@ -1956,6 +2009,38 @@ static bool IsZOrderLEQ(nsDisplayItem* aItem1, nsDisplayItem* aItem2,
   // z-indices here, because that might overflow a 32-bit int.
   return aItem1->ZIndex() <= aItem2->ZIndex();
 }
+
+/* static */ void
+nsDisplayList::PaintThread(PaintedLayer* aLayer,
+                           gfxContext* aContext,
+                           const nsIntRegion& aRegionToDraw,
+                           const nsIntRegion& aDirtyRegion,
+                           DrawRegionClip aClip,
+                           const nsIntRegion& aRegionToInvalidate,
+                           void* aCallbackData)
+{
+  MOZ_RELEASE_ASSERT(NS_IsMainThread());
+
+  if (!mTaskQueue) {
+    RefPtr<SharedThreadPool> pool = SharedThreadPool::Get(NS_LITERAL_CSTRING("Paint_Thread"), 10);
+    mTaskQueue = new TaskQueue(pool.forget());
+  }
+
+  RefPtr<nsIRunnable> task = new PaintTask(aLayer, aContext, aRegionToDraw, aDirtyRegion, aClip, aRegionToInvalidate, aCallbackData);
+  mTaskQueue->Dispatch(task.forget());
+}
+
+//static
+void nsDisplayList::WaitThread()
+{
+  if (mTaskQueue) {
+    mTaskQueue->AwaitIdle();
+  }
+}
+
+//static
+nsRefPtr<TaskQueue> nsDisplayList::mTaskQueue = nullptr;
+std::list<ClientTiledPaintedLayer*> nsDisplayList::mCallBackQueue;
 
 void nsDisplayList::SortByZOrder(nsDisplayListBuilder* aBuilder) {
   Sort(aBuilder, IsZOrderLEQ, nullptr);

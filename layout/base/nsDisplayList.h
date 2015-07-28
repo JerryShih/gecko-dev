@@ -28,12 +28,15 @@
 #include "FrameMetrics.h"
 #include "mozilla/UniquePtr.h"
 #include "mozilla/gfx/UserData.h"
+#include "mozilla/TaskQueue.h"
+#include "Layers.h"
 
 #include <stdint.h>
 #include "nsTHashtable.h"
 
 #include <stdlib.h>
 #include <algorithm>
+#include <list>
 
 class nsIContent;
 class nsRenderingContext;
@@ -49,6 +52,7 @@ namespace layers {
 class Layer;
 class ImageLayer;
 class ImageContainer;
+class ClientTiledPaintedLayer;
 } // namespace layers
 namespace gfx {
 class VRHMDInfo;
@@ -1585,6 +1589,9 @@ public:
   typedef mozilla::layers::Layer Layer;
   typedef mozilla::layers::LayerManager LayerManager;
   typedef mozilla::layers::PaintedLayer PaintedLayer;
+  typedef mozilla::layers::DrawRegionClip DrawRegionClip;
+  typedef mozilla::layers::ClientTiledPaintedLayer ClientTiledPaintedLayer;
+  typedef mozilla::TaskQueue TaskQueue;
 
   /**
    * Create an empty list.
@@ -1601,6 +1608,22 @@ public:
       NS_WARNING("Nonempty list left over?");
     }
     DeleteAll();
+  }
+
+  //static void PaintThread(ClientTiledPaintedLayer* layer);
+  static void PaintThread(PaintedLayer* aLayer,
+                          gfxContext* aContext,
+                          const nsIntRegion& aRegionToDraw,
+                          const nsIntRegion& aDirtyRegion,
+                          DrawRegionClip aClip,
+                          const nsIntRegion& aRegionToInvalidate,
+                          void* aCallbackData);
+
+  static void WaitThread();
+
+  static void AddCallBackLayer(ClientTiledPaintedLayer* aLayer)
+  {
+    mCallBackQueue.push_back(aLayer);
   }
 
   /**
@@ -1863,6 +1886,9 @@ private:
   // it.  Don't let us be heap-allocated!
   void* operator new(size_t sz) CPP_THROW_NEW;
   
+  static nsRefPtr<TaskQueue> mTaskQueue;
+  static std::list<ClientTiledPaintedLayer*> mCallBackQueue;
+
   nsDisplayItemLink  mSentinel;
   nsDisplayItemLink* mTop;
 

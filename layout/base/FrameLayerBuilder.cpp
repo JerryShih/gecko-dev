@@ -30,6 +30,7 @@
 #include "nsPrintfCString.h"
 #include "nsRenderingContext.h"
 #include "nsSVGIntegrationUtils.h"
+#include "ClientLayerManager.h"
 
 #include "mozilla/Move.h"
 #include "mozilla/ReverseIterator.h"
@@ -40,6 +41,7 @@
 #include "LayersLogging.h"
 #include "gfxPrefs.h"
 
+#include <utils/CallStack.h>
 #include <algorithm>
 
 using namespace mozilla::layers;
@@ -5541,14 +5543,41 @@ private:
 
 /* static */ void
 FrameLayerBuilder::DrawPaintedLayer(PaintedLayer* aLayer,
-                                   gfxContext* aContext,
-                                   const nsIntRegion& aRegionToDraw,
-                                   const nsIntRegion& aDirtyRegion,
-                                   DrawRegionClip aClip,
-                                   const nsIntRegion& aRegionToInvalidate,
-                                   void* aCallbackData)
+                                    gfxContext* aContext,
+                                    const nsIntRegion& aRegionToDraw,
+                                    const nsIntRegion& aDirtyRegion,
+                                    DrawRegionClip aClip,
+                                    const nsIntRegion& aRegionToInvalidate,
+                                    void* aCallbackData)
 {
-  DrawTarget& aDrawTarget = *aContext->GetDrawTarget();
+  //android::CallStack stack;
+  //stack.update();
+  //stack.log("@@@");
+
+  if (!aLayer) {
+    return;
+  }
+
+  if (XRE_IsContentProcess() && gfxPrefs::LayersTilesMT() && NS_IsMainThread() &&
+      aLayer->Manager() && aLayer->Manager()->AsClientLayerManager()) {
+    nsDisplayList::PaintThread(aLayer, aContext, aRegionToDraw, aDirtyRegion, aClip, aRegionToInvalidate, aCallbackData);
+  } else {
+    DrawPaintedLayerNow(aLayer, aContext, aRegionToDraw, aDirtyRegion, aClip, aRegionToInvalidate, aCallbackData);
+  }
+}
+
+/* static */ void
+FrameLayerBuilder::DrawPaintedLayerNow(PaintedLayer* aLayer,
+                                       gfxContext* aContext,
+                                       const nsIntRegion& aRegionToDraw,
+                                       const nsIntRegion& aDirtyRegion,
+                                       DrawRegionClip aClip,
+                                       const nsIntRegion& aRegionToInvalidate,
+                                       void* aCallbackData)
+{
+  nsRefPtr<gfxContext> temp = aContext;
+
+  DrawTarget &aDrawTarget = *aContext->GetDrawTarget();
 
   PROFILER_LABEL("FrameLayerBuilder", "DrawPaintedLayer",
     js::ProfileEntry::Category::GRAPHICS);
@@ -5680,6 +5709,9 @@ FrameLayerBuilder::DrawPaintedLayer(PaintedLayer* aLayer,
 bool
 FrameLayerBuilder::CheckDOMModified()
 {
+  return false;
+
+#if 0
   if (!mRootPresContext ||
       mInitialDOMGeneration == mRootPresContext->GetDOMGeneration())
     return false;
@@ -5693,6 +5725,7 @@ FrameLayerBuilder::CheckDOMModified()
   // is likely to lead to an infinite repaint loop.
   NS_WARNING("Detected DOM modification during paint, bailing out!");
   return true;
+#endif
 }
 
 /* static */ void

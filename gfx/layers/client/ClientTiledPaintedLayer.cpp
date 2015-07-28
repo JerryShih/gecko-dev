@@ -229,6 +229,8 @@ ClientTiledPaintedLayer::IsScrollingOnCompositor(const FrameMetrics& aParentMetr
 
 bool
 ClientTiledPaintedLayer::UseProgressiveDraw() {
+  return false;
+
   if (!gfxPlatform::GetPlatform()->UseProgressivePaint()) {
     // pref is disabled, so never do progressive
     return false;
@@ -276,6 +278,9 @@ ClientTiledPaintedLayer::RenderHighPrecision(nsIntRegion& aInvalidRegion,
                                             LayerManager::DrawPaintedLayerCallback aCallback,
                                             void* aCallbackData)
 {
+  PROFILER_LABEL("ClientTiledPaintedLayer", "RenderHighPrecision",
+                 js::ProfileEntry::Category::GRAPHICS);
+
   // If we have no high-precision stuff to draw, or we have started drawing low-precision
   // already, then we shouldn't do anything there.
   if (aInvalidRegion.IsEmpty() || mPaintData.mLowPrecisionPaintCount != 0) {
@@ -323,6 +328,9 @@ ClientTiledPaintedLayer::RenderLowPrecision(nsIntRegion& aInvalidRegion,
                                            LayerManager::DrawPaintedLayerCallback aCallback,
                                            void* aCallbackData)
 {
+  PROFILER_LABEL("ClientTiledPaintedLayer", "RenderLowPrecision",
+                 js::ProfileEntry::Category::GRAPHICS);
+
   // Render the low precision buffer, if the visible region is larger than the
   // critical display port.
   if (!nsIntRegion(LayerIntRect::ToUntyped(mPaintData.mCriticalDisplayPort)).Contains(aVisibleRegion)) {
@@ -391,6 +399,10 @@ ClientTiledPaintedLayer::EndPaint()
 void
 ClientTiledPaintedLayer::RenderLayer()
 {
+
+  PROFILER_LABEL("ClientTiledPaintedLayer", "RenderLayer",
+                 js::ProfileEntry::Category::GRAPHICS);
+
   LayerManager::DrawPaintedLayerCallback callback =
     ClientManager()->GetPaintedLayerCallback();
   void *data = ClientManager()->GetPaintedLayerCallbackData();

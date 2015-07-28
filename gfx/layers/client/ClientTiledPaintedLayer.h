@@ -51,6 +51,8 @@ public:
   // Override name to distinguish it from ClientPaintedLayer in layer dumps
   virtual const char* Name() const override { return "TiledPaintedLayer"; }
 
+  virtual ClientTiledPaintedLayer* AsTiledPaintedLayer() override { return this; }
+
   // PaintedLayer
   virtual Layer* AsLayer() override { return this; }
   virtual void InvalidateRegion(const nsIntRegion& aRegion) override {
@@ -81,6 +83,14 @@ public:
   void GetAncestorLayers(LayerMetricsWrapper* aOutScrollAncestor,
                          LayerMetricsWrapper* aOutDisplayPortAncestor,
                          bool* aOutHasTransformAnimation);
+
+  //void PaintThebesCallBack() { return mContentClient->mTiledBuffer.PaintThebesCallBack(); }
+  void PaintThebesCallBack()
+  {
+    if (mContentClient) {
+      mContentClient->mTiledBuffer.FinishPaint();
+    }
+  }
 
 private:
   ClientLayerManager* ClientManager()

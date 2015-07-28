@@ -79,6 +79,7 @@ class ClientLayerManager;
 class Layer;
 class LayerMetricsWrapper;
 class PaintedLayer;
+class ClientTiledPaintedLayer;
 class ContainerLayer;
 class ImageLayer;
 class ColorLayer;
@@ -282,12 +283,12 @@ public:
    * The origin of aContext is 0,0 in the PaintedLayer.
    */
   typedef void (* DrawPaintedLayerCallback)(PaintedLayer* aLayer,
-                                           gfxContext* aContext,
-                                           const nsIntRegion& aRegionToDraw,
-                                           const nsIntRegion& aDirtyRegion,
-                                           DrawRegionClip aClip,
-                                           const nsIntRegion& aRegionToInvalidate,
-                                           void* aCallbackData);
+                                            gfxContext* aContext,
+                                            const nsIntRegion& aRegionToDraw,
+                                            const nsIntRegion& aDirtyRegion,
+                                            DrawRegionClip aClip,
+                                            const nsIntRegion& aRegionToInvalidate,
+                                            void* aCallbackData);
 
   /**
    * Finish the construction phase of the transaction, perform the
@@ -1856,6 +1857,8 @@ public:
    * The residual translation components are always in the range [-0.5, 0.5).
    */
   gfxPoint GetResidualTranslation() const { return mResidualTranslation; }
+
+  virtual ClientTiledPaintedLayer* AsTiledPaintedLayer() { return nullptr; }
 
 protected:
   PaintedLayer(LayerManager* aManager, void* aImplData,
