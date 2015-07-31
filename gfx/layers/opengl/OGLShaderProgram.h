@@ -41,7 +41,8 @@ enum ShaderFeatures {
   ENABLE_MASK_2D=0x400,
   ENABLE_MASK_3D=0x800,
   ENABLE_PREMULTIPLY=0x1000,
-  ENABLE_DEAA=0x2000
+  ENABLE_DEAA=0x2000,
+  ENABLE_DRAW_TARGET_RB_SWAP=0x4000
 };
 
 class KnownUniform {
@@ -222,6 +223,7 @@ public:
   void SetMask3D(bool aEnabled);
   void SetPremultiply(bool aEnabled);
   void SetDEAA(bool aEnabled);
+  void SetDrawTargetRBSwap(bool aEnabled);
 
   bool operator< (const ShaderConfigOGL& other) const {
     return mFeatures < other.mFeatures;

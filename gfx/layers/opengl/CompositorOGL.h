@@ -315,6 +315,16 @@ public:
     return mRenderOffset;
   }
 
+  void SetUseGLCoordinate(bool aUseGLCoordinate)
+  {
+    mUseGLCoordinate = aUseGLCoordinate;
+  }
+
+  void SetDrawTargetRBSwap(bool aRBSwap)
+  {
+    mDrawTargetRBSwap = aRBSwap;
+  }
+
 private:
   virtual gfx::IntSize GetWidgetSize() const override
   {
@@ -464,6 +474,9 @@ private:
   gfx::Rect mRenderBoundsOut;
 
   CompositorOGLVRObjects mVR;
+
+  bool mUseGLCoordinate;
+  bool mDrawTargetRBSwap;
 };
 
 } // namespace layers

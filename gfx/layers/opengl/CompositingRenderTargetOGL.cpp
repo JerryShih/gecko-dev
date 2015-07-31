@@ -35,6 +35,9 @@ CompositingRenderTargetOGL::BindRenderTarget()
 {
   bool needsClear = false;
 
+  mCompositor->SetUseGLCoordinate(mUseGLCoordinate);
+  mCompositor->SetDrawTargetRBSwap(mRBSwap);
+
   if (mInitParams.mStatus != InitParams::INITIALIZED) {
     InitializeImpl();
     if (mInitParams.mInit == INIT_MODE_CLEAR) {

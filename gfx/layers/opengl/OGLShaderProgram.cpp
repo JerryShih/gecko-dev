@@ -152,6 +152,12 @@ ShaderConfigOGL::SetDEAA(bool aEnabled)
   SetFeature(ENABLE_DEAA, aEnabled);
 }
 
+void
+ShaderConfigOGL::SetDrawTargetRBSwap(bool aEnabled)
+{
+  SetFeature(ENABLE_DRAW_TARGET_RB_SWAP, aEnabled);
+}
+
 /* static */ ProgramProfileOGL
 ProgramProfileOGL::GetProfileFor(ShaderConfigOGL aConfig)
 {
@@ -444,7 +450,11 @@ For [0,1] instead of [0,255], and to 5 places:
     fs << "  COLOR_PRECISION float mask = 1.0;" << endl;
     fs << "  color *= mask;" << endl;
   }
-  fs << "  gl_FragColor = color;" << endl;
+  if (aConfig.mFeatures & ENABLE_DRAW_TARGET_RB_SWAP) {
+    fs << "  gl_FragColor = color.bgra;" << endl;
+  } else {
+    fs << "  gl_FragColor = color;" << endl;
+  }
   fs << "}" << endl;
 
   result.mVertexShaderString = vs.str();

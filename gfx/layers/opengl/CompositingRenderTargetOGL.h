@@ -66,13 +66,16 @@ class CompositingRenderTargetOGL : public CompositingRenderTarget
 
 public:
   CompositingRenderTargetOGL(CompositorOGL* aCompositor, const gfx::IntPoint& aOrigin,
-                             GLuint aTexure, GLuint aFBO)
+                             GLuint aTexure, GLuint aFBO,
+                             bool aUseGLCoordinate = true, bool aRBSwap = false)
     : CompositingRenderTarget(aOrigin)
     , mInitParams()
     , mCompositor(aCompositor)
     , mGL(aCompositor->gl())
     , mTextureHandle(aTexure)
     , mFBO(aFBO)
+    , mUseGLCoordinate(aUseGLCoordinate)
+    , mRBSwap(aRBSwap)
   {}
 
   ~CompositingRenderTargetOGL();
@@ -172,6 +175,8 @@ private:
   GLContext* mGL;
   GLuint mTextureHandle;
   GLuint mFBO;
+  bool mUseGLCoordinate;
+  bool mRBSwap;
 };
 
 } // namespace layers

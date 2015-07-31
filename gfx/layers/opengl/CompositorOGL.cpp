@@ -90,6 +90,8 @@ CompositorOGL::CompositorOGL(nsIWidget *aWidget, int aSurfaceWidth,
   , mDestroyed(false)
   , mViewportSize(0, 0)
   , mCurrentProgram(nullptr)
+  , mUseGLCoordinate(true)
+  , mDrawTargetRBSwap(false)
 {
   MOZ_COUNT_CTOR(CompositorOGL);
   SetBackend(LayersBackend::LAYERS_OPENGL);
@@ -463,7 +465,7 @@ CompositorOGL::PrepareViewport(CompositingRenderTargetOGL* aRenderTarget)
     // Matrix to transform (0, 0, aWidth, aHeight) to viewport space (-1.0, 1.0,
     // 2, 2) and flip the contents.
     Matrix viewMatrix;
-    if (mGLContext->IsOffscreen() && !gIsGtest) {
+    if ((mGLContext->IsOffscreen() && !gIsGtest) || !mUseGLCoordinate) {
       // In case of rendering via GL Offscreen context, disable Y-Flipping
       viewMatrix.PreTranslate(-1.0, -1.0);
       viewMatrix.PreScale(2.0f / float(size.width), 2.0f / float(size.height));
@@ -566,8 +568,12 @@ CompositorOGL::CreateRenderTargetFromTextureHost(const gfx::IntRect& aRect,
   texture = glSource->GetTextureHandle();
   mGLContext->fGenFramebuffers(1, &frameBufferObject);
 
+  // Since we create the render target from TextureHost, it might probably come
+  // from content. So, we don't use gl coordinate and setup rb_swap for client
+  // cairo backend.
   RefPtr<CompositingRenderTargetOGL> target =
-      new CompositingRenderTargetOGL(this, aRect.TopLeft(), texture, frameBufferObject);
+      new CompositingRenderTargetOGL(this, aRect.TopLeft(), texture, frameBufferObject,
+                                     false, true);
   target->Initialize(aRect.Size(), mFBOTextureTarget, INIT_MODE_NONE);
   return target.forget();
 }
@@ -887,6 +893,7 @@ CompositorOGL::GetShaderConfigFor(Effect *aEffect,
   config.SetMask2D(aMask == MaskType::Mask2d);
   config.SetMask3D(aMask == MaskType::Mask3d);
   config.SetDEAA(aDEAAEnabled);
+  config.SetDrawTargetRBSwap(mDrawTargetRBSwap);
   return config;
 }
 
@@ -896,6 +903,9 @@ CompositorOGL::GetShaderProgramFor(const ShaderConfigOGL &aConfig)
   std::map<ShaderConfigOGL, ShaderProgramOGL *>::iterator iter = mPrograms.find(aConfig);
   if (iter != mPrograms.end())
     return iter->second;
+
+  PROFILER_LABEL("CompositorOGL", "CompileShaderProgram",
+    js::ProfileEntry::Category::GRAPHICS);
 
   ProgramProfileOGL profile = ProgramProfileOGL::GetProfileFor(aConfig);
   ShaderProgramOGL *shader = new ShaderProgramOGL(gl(), profile);
@@ -1040,7 +1050,7 @@ CompositorOGL::DrawQuad(const Rect& aRect,
   IntRect intClipRect;
   clipRect.ToIntRect(&intClipRect);
 
-  gl()->fScissor(intClipRect.x, FlipY(intClipRect.y + intClipRect.height),
+  gl()->fScissor(intClipRect.x, (mUseGLCoordinate) ? FlipY(intClipRect.y + intClipRect.height) : intClipRect.y,
                  intClipRect.width, intClipRect.height);
 
   MaskType maskType;
