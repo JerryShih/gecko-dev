@@ -1157,12 +1157,13 @@ BrowserElementChild.prototype = {
     }
 
     let devicePixelRatio = content.devicePixelRatio;
+    let zoomFactor = content.screen.width / content.innerWidth;
 
     let maxPixelWidth = Math.round(maxWidth * devicePixelRatio);
     let maxPixelHeight = Math.round(maxHeight * devicePixelRatio);
 
-    let contentPixelWidth = content.innerWidth * devicePixelRatio;
-    let contentPixelHeight = content.innerHeight * devicePixelRatio;
+    let contentPixelWidth = Math.round(content.innerWidth * devicePixelRatio * zoomFactor);
+    let contentPixelHeight = Math.round(content.innerHeight * devicePixelRatio * zoomFactor);
 
     let scaleWidth = Math.min(1, maxPixelWidth / contentPixelWidth);
     let scaleHeight = Math.min(1, maxPixelHeight / contentPixelHeight);
