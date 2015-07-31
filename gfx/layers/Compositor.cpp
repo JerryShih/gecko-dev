@@ -7,6 +7,7 @@
 #include "base/message_loop.h"          // for MessageLoop
 #include "mozilla/layers/CompositorParent.h"  // for CompositorParent
 #include "mozilla/layers/Effects.h"     // for Effect, EffectChain, etc
+#include "mozilla/layers/TextureHost.h"  // for CompositingRenderTarget and TextureHost
 #include "mozilla/mozalloc.h"           // for operator delete, etc
 #include "gfx2DGlue.h"
 #include "nsAppRunner.h"
@@ -17,6 +18,62 @@ class Matrix4x4;
 } // namespace gfx
 
 namespace layers {
+
+Compositor::Compositor(PCompositorParent* aParent)
+  : mCompositorID(0)
+  , mDiagnosticTypes(DiagnosticTypes::NO_DIAGNOSTIC)
+  , mParent(aParent)
+  , mScreenRotation(ROTATION_0)
+{
+}
+
+Compositor::~Compositor()
+{
+}
+
+void
+Compositor::SetTarget(gfx::DrawTarget* aTarget, const gfx::IntRect& aRect)
+{
+  mCompositingRenderTarget = nullptr;
+  mTarget = aTarget;
+  mTargetBounds = aRect;
+}
+
+void
+Compositor::SetTarget(TextureHost* aTextureTarget, const gfx::IntRect& aRect)
+{
+  mCompositingRenderTarget = nullptr;
+  mTarget = nullptr;
+  mTargetBounds = aRect;
+
+  mCompositingRenderTarget = CreateRenderTargetFromTextureHost(aRect, aTextureTarget);
+
+  if (mCompositingRenderTarget) {
+    SetRenderTarget(mCompositingRenderTarget);
+  } else {
+    gfxWarning() << "Can not create render target from a TextureHost";
+  }
+}
+
+bool
+Compositor::HasTarget() const
+{
+  return (mCompositingRenderTarget || mTarget);
+}
+
+void
+Compositor::ClearTarget()
+{
+  mCompositingRenderTarget = nullptr;
+  mTarget = nullptr;
+}
+
+already_AddRefed<CompositingRenderTarget>
+Compositor::CreateRenderTargetFromTextureHost(const gfx::IntRect& aRect,
+                                              TextureHost* aTextureHost)
+{
+  return nullptr;
+}
 
 /* static */ LayersBackend Compositor::sBackend = LayersBackend::LAYERS_NONE;
 /* static */ LayersBackend

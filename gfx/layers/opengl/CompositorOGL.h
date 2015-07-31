@@ -223,6 +223,10 @@ public:
                                const CompositingRenderTarget *aSource,
                                const gfx::IntPoint &aSourcePoint) override;
 
+  virtual already_AddRefed<CompositingRenderTarget>
+  CreateRenderTargetFromTextureHost(const gfx::IntRect& aRect,
+                                    TextureHost* aTextureHost) override;
+
   virtual void SetRenderTarget(CompositingRenderTarget *aSurface) override;
   virtual CompositingRenderTarget* GetCurrentRenderTarget() const override;
 

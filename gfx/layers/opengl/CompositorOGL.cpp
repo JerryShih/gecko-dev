@@ -543,6 +543,35 @@ CompositorOGL::CreateRenderTargetFromSource(const IntRect &aRect,
   return surface.forget();
 }
 
+already_AddRefed<CompositingRenderTarget>
+CompositorOGL::CreateRenderTargetFromTextureHost(const gfx::IntRect& aRect,
+                                                 TextureHost* aTextureHost)
+{
+  if (!aTextureHost || !aTextureHost->HasInternalBuffer() ||
+      !mGLContext || !mGLContext->MakeCurrent()) {
+    return nullptr;
+  }
+
+  CompositableTextureSourceRef aTextureSource;
+  aTextureHost->SetCompositor(this);
+  aTextureHost->PrepareTextureSource(aTextureSource);
+  if (!aTextureSource.get()) {
+    return nullptr;
+  }
+
+  GLTextureSource* glSource = aTextureSource->AsSourceOGL()->AsGLTextureSource();
+
+  GLuint texture;
+  GLuint frameBufferObject;
+  texture = glSource->GetTextureHandle();
+  mGLContext->fGenFramebuffers(1, &frameBufferObject);
+
+  RefPtr<CompositingRenderTargetOGL> target =
+      new CompositingRenderTargetOGL(this, aRect.TopLeft(), texture, frameBufferObject);
+  target->Initialize(aRect.Size(), mFBOTextureTarget, INIT_MODE_NONE);
+  return target.forget();
+}
+
 void
 CompositorOGL::SetRenderTarget(CompositingRenderTarget *aSurface)
 {

@@ -269,7 +269,7 @@ public:
     // Also when we're not drawing to the screen, DidComposite will not be
     // called to extract and send these notifications, so they might linger
     // and contain stale ImageContainerParent pointers.
-    if (!mCompositor->GetTargetContext()) {
+    if (!mCompositor->HasTarget()) {
       mImageCompositeNotifications.AppendElement(aNotification);
     }
   }

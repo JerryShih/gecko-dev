@@ -121,6 +121,7 @@ struct Effect;
 struct EffectChain;
 class Image;
 class Layer;
+class TextureHost;
 class TextureSource;
 class DataTextureSource;
 class CompositingRenderTarget;
@@ -178,18 +179,12 @@ enum SurfaceInitMode
 class Compositor
 {
 protected:
-  virtual ~Compositor() {}
+  virtual ~Compositor();
 
 public:
   NS_INLINE_DECL_REFCOUNTING(Compositor)
 
-  explicit Compositor(PCompositorParent* aParent = nullptr)
-    : mCompositorID(0)
-    , mDiagnosticTypes(DiagnosticTypes::NO_DIAGNOSTIC)
-    , mParent(aParent)
-    , mScreenRotation(ROTATION_0)
-  {
-  }
+  explicit Compositor(PCompositorParent* aParent = nullptr);
 
   virtual already_AddRefed<DataTextureSource> CreateDataTextureSource(TextureFlags aFlags = TextureFlags::NO_FLAGS) = 0;
   virtual bool Initialize() = 0;
@@ -224,19 +219,10 @@ public:
    * If this method is not used, or we pass in nullptr, we target the compositor's
    * usual swap chain and render to the screen.
    */
-  void SetTargetContext(gfx::DrawTarget* aTarget, const gfx::IntRect& aRect)
-  {
-    mTarget = aTarget;
-    mTargetBounds = aRect;
-  }
-  gfx::DrawTarget* GetTargetContext() const
-  {
-    return mTarget;
-  }
-  void ClearTargetContext()
-  {
-    mTarget = nullptr;
-  }
+  void SetTarget(gfx::DrawTarget* aTarget, const gfx::IntRect& aRect);
+  void SetTarget(TextureHost* aTextureTarget, const gfx::IntRect& aRect);
+  bool HasTarget() const;
+  void ClearTarget();
 
   typedef uint32_t MakeCurrentFlags;
   static const MakeCurrentFlags ForceMakeCurrent = 0x1;
@@ -271,6 +257,14 @@ public:
   CreateRenderTargetFromSource(const gfx::IntRect& aRect,
                                const CompositingRenderTarget* aSource,
                                const gfx::IntPoint& aSourcePoint) = 0;
+
+  /**
+   * Creates a Surface from a TextureHost that can be used as a rendering
+   * target by this compositor.
+   */
+  virtual already_AddRefed<CompositingRenderTarget>
+  CreateRenderTargetFromTextureHost(const gfx::IntRect& aRect,
+                                    TextureHost* aTextureHost);
 
   /**
    * Sets the given surface as the target for subsequent calls to DrawQuad.
@@ -553,6 +547,7 @@ protected:
 
   virtual gfx::IntSize GetWidgetSize() const = 0;
 
+  RefPtr<CompositingRenderTarget> mCompositingRenderTarget;
   RefPtr<gfx::DrawTarget> mTarget;
   gfx::IntRect mTargetBounds;
 
