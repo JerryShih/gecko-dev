@@ -808,6 +808,35 @@ CompositorParent::RecvMakeSnapshotWithSurface(PLayerTransactionParent* aLayerTra
                                               const SurfaceDescriptor& aInSnapshot,
                                               const gfx::IntRect& aRect)
 {
+  PROFILER_LABEL("CompositorParent", "MakeSnapshot(SurfaceTarget)",
+    js::ProfileEntry::Category::GRAPHICS);
+
+  MOZ_ASSERT(IsInCompositorThread(),
+             "MakeSnapshot can only be called on the compositor thread");
+
+  Layer* currentRoot = static_cast<ShadowLayerParent*>(aSnapshotRoot)->AsLayer();
+  Layer* originalRoot = mLayerManager->GetRoot();
+
+  if (!mLayerManager || !currentRoot) {
+    return false;
+  }
+
+  RefPtr<DrawTarget> target = GetDrawTargetForDescriptor(aInSnapshot, gfx::BackendType::CAIRO);
+
+  mLayerManager->BeginTransactionWithDrawTarget(target.get(), aRect);
+
+  mLayerManager->SetRoot(currentRoot);
+
+  AutoResolveRefLayers resolve(mCompositionManager);
+
+  TimeStamp time = mCompositorScheduler->GetLastComposeTime();
+  SetShadowProperties(mLayerManager->GetRoot());
+  mCompositionManager->ComputeRotation();
+  mCompositionManager->TransformShadowTree(time);
+
+  mLayerManager->EndTransaction(time);
+  mLayerManager->SetRoot(originalRoot);
+
   return true;
 }
 
@@ -817,6 +846,35 @@ CompositorParent::RecvMakeSnapshotWithTexture(PLayerTransactionParent* aLayerTra
                                               PTextureParent* aInSnapshot,
                                               const gfx::IntRect& aRect)
 {
+  PROFILER_LABEL("CompositorParent", "MakeSnapshot(TextureHostTarget)",
+    js::ProfileEntry::Category::GRAPHICS);
+
+  MOZ_ASSERT(IsInCompositorThread(),
+             "MakeSnapshot can only be called on the compositor thread");
+
+  Layer* currentRoot = static_cast<ShadowLayerParent*>(aSnapshotRoot)->AsLayer();
+  Layer* originalRoot = mLayerManager->GetRoot();
+
+  if (!mLayerManager || !currentRoot) {
+    return false;
+  }
+
+  RefPtr<TextureHost> textureHost = TextureHost::AsTextureHost(aInSnapshot);
+
+  mLayerManager->BeginTransactionWithTextureHostTarget(textureHost.get(), aRect);
+
+  mLayerManager->SetRoot(currentRoot);
+
+  AutoResolveRefLayers resolve(mCompositionManager);
+
+  TimeStamp time = mCompositorScheduler->GetLastComposeTime();
+  SetShadowProperties(mLayerManager->GetRoot());
+  mCompositionManager->ComputeRotation();
+  mCompositionManager->TransformShadowTree(time);
+
+  mLayerManager->EndTransaction(time);
+  mLayerManager->SetRoot(originalRoot);
+
   return true;
 }
 

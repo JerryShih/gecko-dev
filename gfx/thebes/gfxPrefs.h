@@ -359,6 +359,7 @@ private:
 
   // Use widget-layer at content process
   DECL_GFX_PREF(Once, "layer.content.widget-layer",            UseWidgetLayerAtContent, bool, false);
+  DECL_GFX_PREF(Once, "layer.snapshot.compositor.direct.draw", SnpashotUseDirectDraw, bool, false);
 
   DECL_GFX_PREF(Live, "layout.css.scroll-behavior.damping-ratio", ScrollBehaviorDampingRatio, float, 1.0f);
   DECL_GFX_PREF(Live, "layout.css.scroll-behavior.enabled",    ScrollBehaviorEnabled, bool, false);

@@ -479,7 +479,11 @@ ClientLayerManager::MakeSnapshotIfRequired()
     return;
   }
   if (mWidget) {
-    if (CompositorChild* remoteRenderer = GetRemoteRenderer()) {
+    if (XRE_IsContentProcess()) {
+      MOZ_ASSERT(gfxPrefs::UseWidgetLayerAtContent());
+    }
+
+    if (CompositorChild* remoteRenderer = GetCompositorChild()) {
       // The compositor doesn't draw to a different sized surface
       // when there's a rotation. Instead we rotate the result
       // when drawing into dt
@@ -491,28 +495,81 @@ ClientLayerManager::MakeSnapshotIfRequired()
         bounds = RotateRect(bounds, outerBounds, mTargetRotation);
       }
 
-      SurfaceDescriptor inSnapshot;
-      if (!bounds.IsEmpty() &&
-          mForwarder->AllocSurfaceDescriptor(bounds.Size(),
-                                             gfxContentType::COLOR_ALPHA,
-                                             &inSnapshot) &&
-          remoteRenderer->SendMakeSnapshot(inSnapshot, bounds)) {
-        RefPtr<DataSourceSurface> surf = GetSurfaceForDescriptor(inSnapshot);
-        DrawTarget* dt = mShadowTarget->GetDrawTarget();
+      if (!bounds.IsEmpty()) {
+        DrawTarget* drawTarget = mShadowTarget->GetDrawTarget();
 
         Rect dstRect(bounds.x, bounds.y, bounds.width, bounds.height);
         Rect srcRect(0, 0, bounds.width, bounds.height);
 
         gfx::Matrix rotate = ComputeTransformForUnRotation(outerBounds, mTargetRotation);
 
-        gfx::Matrix oldMatrix = dt->GetTransform();
-        dt->SetTransform(oldMatrix * rotate);
-        dt->DrawSurface(surf, dstRect, srcRect,
-                        DrawSurfaceOptions(),
-                        DrawOptions(1.0f, CompositionOp::OP_OVER));
-        dt->SetTransform(oldMatrix);
+        gfx::Matrix oldMatrix = drawTarget->GetTransform();
+        drawTarget->SetTransform(oldMatrix * rotate);
+
+        SurfaceDescriptor snapshotSurface;
+        RefPtr<TextureClient> snapshotTextureClient;
+
+        // Try to use direct drawing first. If we can't create direct drawing
+        // textureClient, fall back to surface target.
+        if (gfxPrefs::SnpashotUseDirectDraw()) {
+          snapshotTextureClient =
+              TextureClient::CreateForParentDrawing(mForwarder,
+                                                    SurfaceFormat::R8G8B8A8,
+                                                    bounds.Size(),
+                                                    gfx::BackendType::NONE,
+                                                    TextureFlags::NO_FLAGS);
+        }
+
+        if (snapshotTextureClient) {
+          // Init texture actor
+          DebugOnly<bool> actorCreationResult = snapshotTextureClient->InitIPDLActor(mForwarder);
+          MOZ_ASSERT(actorCreationResult);
+
+          printf_stderr("bignose snapshot client layer root:%p",GetRoot());
+
+          if (remoteRenderer->SendMakeSnapshotWithTexture(mForwarder->GetShadowManager(),
+                                                          GetRoot()->AsShadowableLayer()->GetShadow(),
+                                                          snapshotTextureClient->GetIPDLActor(),
+                                                          bounds)) {
+            if (snapshotTextureClient->Lock(OpenMode::OPEN_READ_ONLY)) {
+              DrawTarget* textureDrawTarget = snapshotTextureClient->BorrowDrawTarget();
+              RefPtr<gfx::SourceSurface> textureSourceSurface = textureDrawTarget->Snapshot();
+
+              drawTarget->DrawSurface(textureSourceSurface, dstRect, srcRect,
+                                      DrawSurfaceOptions(),
+                                      DrawOptions(1.0f, CompositionOp::OP_OVER));
+
+              snapshotTextureClient->Unlock();
+            }
+
+            // Defer the release of textureClient. When we use GrallocTextureHostOGL,
+            // it spends a lot of time for munmap() call in dtor.
+            mForwarder->GetMessageLoop()
+                ->PostTask(FROM_HERE, new TextureClientReleaseTask(snapshotTextureClient));
+          }
+        } else if (mForwarder->AllocSurfaceDescriptor(bounds.Size(),
+                                                      gfxContentType::COLOR_ALPHA,
+                                                      &snapshotSurface)) {
+          // Shmem SurfaceDescriptor will be reset to nullptr during ipc. Make
+          // a copy here for later using.
+          SurfaceDescriptor surfaceToParent(snapshotSurface);
+
+          if (remoteRenderer->SendMakeSnapshotWithSurface(mForwarder->GetShadowManager(),
+                                                          GetRoot()->AsShadowableLayer()->GetShadow(),
+                                                          surfaceToParent,
+                                                          bounds)) {
+            RefPtr<DataSourceSurface> dataSourceSurface =
+                GetSurfaceForDescriptor(snapshotSurface);
+
+            drawTarget->DrawSurface(dataSourceSurface, dstRect, srcRect,
+                                    DrawSurfaceOptions(),
+                                    DrawOptions(1.0f, CompositionOp::OP_OVER));
+          }
+          mForwarder->DestroySharedSurface(&snapshotSurface);
+        }
+
+        drawTarget->SetTransform(oldMatrix);
       }
-      mForwarder->DestroySharedSurface(&inSnapshot);
     }
   }
   mShadowTarget = nullptr;
