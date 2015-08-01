@@ -703,8 +703,13 @@ CompositorOGL::BeginFrame(const nsIntRegion& aInvalidRegion,
     mGLContext->fScissor(0, 0, viewportSize.width, viewportSize.height);
   }
 
-  RefPtr<CompositingRenderTargetOGL> rt =
-    CompositingRenderTargetOGL::RenderTargetForWindow(this, viewportSize);
+  RefPtr<CompositingRenderTargetOGL> rt;
+  if (!mCompositingRenderTarget) {
+    rt = CompositingRenderTargetOGL::RenderTargetForWindow(this,
+                                                           IntSize(width, height));
+  } else {
+    rt = static_cast<CompositingRenderTargetOGL*>(mCompositingRenderTarget.get());
+  }
   SetRenderTarget(rt);
 
 #ifdef DEBUG
@@ -1416,8 +1421,14 @@ CompositorOGL::EndFrame()
 
   mFrameInProgress = false;
 
-  if (mTarget) {
-    CopyToTarget(mTarget, mTargetBounds.TopLeft(), Matrix());
+  if (HasTarget()) {
+    if (mCompositingRenderTarget) {
+      // Flush all GL command for mCompositingRenderTarget.
+      mGLContext->fFinish();
+    } else if (mTarget) {
+      CopyToTarget(mTarget, mTargetBounds.TopLeft(), Matrix());
+    }
+
     mGLContext->fBindBuffer(LOCAL_GL_ARRAY_BUFFER, 0);
     mCurrentRenderTarget = nullptr;
     return;

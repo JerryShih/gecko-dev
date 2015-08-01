@@ -112,6 +112,8 @@ public:
   }
   void BeginTransactionWithDrawTarget(gfx::DrawTarget* aTarget,
                                       const gfx::IntRect& aRect);
+  void BeginTransactionWithTextureHostTarget(TextureHost* aTextureTarget,
+                                             const gfx::IntRect& aRect);
 
   virtual bool EndEmptyTransaction(EndTransactionFlags aFlags = END_DEFAULT) override
   {
@@ -330,6 +332,7 @@ private:
    * Context target, nullptr when drawing directly to our swap chain.
    */
   RefPtr<gfx::DrawTarget> mTarget;
+  RefPtr<TextureHost> mTextureTarget;
   gfx::IntRect mTargetBounds;
 
   nsIntRegion mInvalidRegion;

@@ -193,8 +193,35 @@ LayerManagerComposite::BeginTransactionWithDrawTarget(DrawTarget* aTarget, const
   }
 
   mIsCompositorReady = true;
-  mCompositor->SetTargetContext(aTarget, aRect);
+  mCompositor->SetTarget(aTarget, aRect);
   mTarget = aTarget;
+  mTargetBounds = aRect;
+}
+
+void
+LayerManagerComposite::BeginTransactionWithTextureHostTarget(TextureHost* aTextureTarget,
+                                                             const gfx::IntRect& aRect)
+{
+  mInTransaction = true;
+
+  if (!mCompositor->Ready()) {
+    return;
+  }
+
+#ifdef MOZ_LAYERS_HAVE_LOG
+  MOZ_LAYERS_LOG(("[----- BeginTransactionWithTextureTarget"));
+  Log();
+#endif
+
+  if (mDestroyed) {
+    NS_WARNING("Call on destroyed layer manager");
+    return;
+  }
+
+  mCompositor->SetTarget(aTextureTarget, aRect);
+
+  mIsCompositorReady = true;
+  mTextureTarget = aTextureTarget;
   mTargetBounds = aRect;
 }
 
@@ -311,8 +338,11 @@ LayerManagerComposite::EndTransaction(const TimeStamp& aTimeStamp,
     mGeometryChanged = true;
   }
 
-  mCompositor->ClearTargetContext();
+  mCompositor->ClearTarget();
+
   mTarget = nullptr;
+  mTextureTarget = nullptr;
+
 
 #ifdef MOZ_LAYERS_HAVE_LOG
   Log();
