@@ -281,6 +281,8 @@ public:
   }
 
 private:
+  bool HaveTarget();
+
   /** Region we're clipping our current drawing to. */
   nsIntRegion mClippingRegion;
   gfx::IntRect mRenderBounds;

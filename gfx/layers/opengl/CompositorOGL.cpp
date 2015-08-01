@@ -476,7 +476,7 @@ CompositorOGL::PrepareViewport(CompositingRenderTargetOGL* aRenderTarget)
     MOZ_ASSERT(mCurrentRenderTarget, "No destination");
     // If we're drawing directly to the window then we want to offset
     // drawing by the render offset.
-    if (!mTarget && mCurrentRenderTarget->IsWindow()) {
+    if (!HasTarget() && mCurrentRenderTarget->IsWindow()) {
       viewMatrix.PreTranslate(mRenderOffset.x, mRenderOffset.y);
     }
 
@@ -1034,7 +1034,7 @@ CompositorOGL::DrawQuad(const Rect& aRect,
   // transforms and offsets have been applied) so if our
   // drawing is going to be shifted by mRenderOffset then we need
   // to shift the clip rect by the same amount.
-  if (!mTarget && mCurrentRenderTarget->IsWindow()) {
+  if (!HasTarget() && mCurrentRenderTarget->IsWindow()) {
     clipRect.MoveBy(mRenderOffset.x, mRenderOffset.y);
   }
   IntRect intClipRect;

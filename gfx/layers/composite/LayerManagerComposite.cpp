@@ -304,17 +304,17 @@ LayerManagerComposite::EndTransaction(const TimeStamp& aTimeStamp,
   mCompositor->SetCompositionTime(aTimeStamp);
 
   if (mRoot && mClonedLayerTreeProperties) {
-    MOZ_ASSERT(!mTarget);
+    MOZ_ASSERT(!HaveTarget());
     nsIntRegion invalid =
       mClonedLayerTreeProperties->ComputeDifferences(mRoot, nullptr, &mGeometryChanged);
     mClonedLayerTreeProperties = nullptr;
 
     mInvalidRegion.Or(mInvalidRegion, invalid);
-  } else if (!mTarget) {
+  } else if (!HaveTarget()) {
     mInvalidRegion.Or(mInvalidRegion, mRenderBounds);
   }
 
-  if (mInvalidRegion.IsEmpty() && !mTarget) {
+  if (mInvalidRegion.IsEmpty() && !HaveTarget()) {
     // Composition requested, but nothing has changed. Don't do any work.
     return;
   }
@@ -684,7 +684,7 @@ LayerManagerComposite::Render()
   composer2D = mCompositor->GetWidget()->GetComposer2D();
 
   // We can't use composert2D if we have layer effects
-  if (!mTarget && !haveLayerEffects &&
+  if (!HaveTarget() && !haveLayerEffects &&
       gfxPrefs::Composer2DCompositionEnabled() &&
       composer2D && composer2D->HasHwc() && composer2D->TryRenderWithHwc(mRoot,
           mCompositor->GetWidget(), mGeometryChanged))
@@ -701,7 +701,7 @@ LayerManagerComposite::Render()
     mInvalidRegion.SetEmpty();
     mLastFrameMissedHWC = false;
     return;
-  } else if (!mTarget && !haveLayerEffects) {
+  } else if (!HaveTarget() && !haveLayerEffects) {
     mLastFrameMissedHWC = !!composer2D;
   }
 
@@ -715,7 +715,7 @@ LayerManagerComposite::Render()
   }
 
   nsIntRegion invalid;
-  if (mTarget) {
+  if (HaveTarget()) {
     invalid = mTargetBounds;
   } else {
     invalid = mInvalidRegion;
@@ -791,7 +791,7 @@ LayerManagerComposite::Render()
     mCompositor->EndFrame();
   }
 
-  if (composer2D) {
+  if (composer2D && !HaveTarget()) {
     composer2D->Render(mCompositor->GetWidget());
     mCompositor->SetDispAcquireFence(mRoot);
   }
@@ -1292,6 +1292,12 @@ LayerManagerComposite::CreateDrawTarget(const IntSize &aSize,
   }
 #endif
   return LayerManager::CreateDrawTarget(aSize, aFormat);
+}
+
+bool
+LayerManagerComposite::HaveTarget()
+{
+  return mTarget || mTextureTarget;
 }
 
 LayerComposite::LayerComposite(LayerManagerComposite *aManager)
