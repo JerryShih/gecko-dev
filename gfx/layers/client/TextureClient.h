@@ -178,6 +178,17 @@ public:
                    TextureFlags aTextureFlags,
                    TextureAllocationFlags flags = ALLOC_DEFAULT);
 
+  // Creates and allocates a TextureClient for parent side drawing and usable
+  // with Moz2D. It will return nullptr if this platform doesn't support direct
+  // drawing.
+  static already_AddRefed<TextureClient>
+  CreateForParentDrawing(ISurfaceAllocator* aAllocator,
+                         gfx::SurfaceFormat aFormat,
+                         gfx::IntSize aSize,
+                         gfx::BackendType aMoz2dBackend,
+                         TextureFlags aTextureFlags,
+                         TextureAllocationFlags flags = ALLOC_DEFAULT);
+
   // Creates and allocates a BufferTextureClient supporting the YCbCr format.
   static already_AddRefed<BufferTextureClient>
   CreateForYCbCr(ISurfaceAllocator* aAllocator,
@@ -186,7 +197,7 @@ public:
                  StereoMode aStereoMode,
                  TextureFlags aTextureFlags);
 
-  // Creates and allocates a BufferTextureClient (can beaccessed through raw
+  // Creates and allocates a BufferTextureClient (can be accessed through raw
   // pointers).
   static already_AddRefed<BufferTextureClient>
   CreateForRawBufferAccess(ISurfaceAllocator* aAllocator,
@@ -196,7 +207,7 @@ public:
                            TextureFlags aTextureFlags,
                            TextureAllocationFlags flags = ALLOC_DEFAULT);
 
-  // Creates and allocates a BufferTextureClient (can beaccessed through raw
+  // Creates and allocates a BufferTextureClient (can be accessed through raw
   // pointers) with a certain buffer size. It's unfortunate that we need this.
   // providing format and sizes could let us do more optimization.
   static already_AddRefed<BufferTextureClient>

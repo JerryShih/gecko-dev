@@ -430,6 +430,45 @@ TextureClient::CreateForDrawing(ISurfaceAllocator* aAllocator,
 }
 
 // static
+already_AddRefed<TextureClient>
+TextureClient::CreateForParentDrawing(ISurfaceAllocator* aAllocator,
+                                      gfx::SurfaceFormat aFormat,
+                                      gfx::IntSize aSize,
+                                      gfx::BackendType aMoz2DBackend,
+                                      TextureFlags aTextureFlags,
+                                      TextureAllocationFlags aAllocFlags)
+{
+  if (aMoz2DBackend == gfx::BackendType::NONE) {
+    aMoz2DBackend = gfxPlatform::GetPlatform()->GetContentBackend();
+  }
+
+  RefPtr<TextureClient> texture;
+
+  // TODO: Use MacIOSurface at mac platform.
+
+#ifdef MOZ_WIDGET_GONK
+  // We use GrallocTexture at gonk platform.
+  int32_t maxTextureSize = aAllocator->GetMaxTextureSize();
+  if (!DisableGralloc(aFormat, aSize)) {
+    // Don't allow Gralloc texture clients to exceed the maximum texture size.
+    // BufferTextureClients have code to handle tiling the surface client-side.
+    if (aSize.width <= maxTextureSize && aSize.height <= maxTextureSize) {
+      texture = new GrallocTextureClientOGL(aAllocator, aFormat, aMoz2DBackend,
+                                           aTextureFlags);
+    }
+  }
+#endif
+
+  MOZ_ASSERT(!texture || texture->CanExposeDrawTarget(), "texture cannot expose a DrawTarget?");
+
+  if (texture && texture->AllocateForSurface(aSize, aAllocFlags)) {
+    return texture.forget();
+  }
+
+  return nullptr;
+}
+
+// static
 already_AddRefed<BufferTextureClient>
 TextureClient::CreateForRawBufferAccess(ISurfaceAllocator* aAllocator,
                                         gfx::SurfaceFormat aFormat,

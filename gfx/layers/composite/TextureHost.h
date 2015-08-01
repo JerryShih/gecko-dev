@@ -326,8 +326,8 @@ public:
    * Factory method.
    */
   static already_AddRefed<TextureHost> Create(const SurfaceDescriptor& aDesc,
-                                          ISurfaceAllocator* aDeallocator,
-                                          TextureFlags aFlags);
+                                              ISurfaceAllocator* aDeallocator,
+                                              TextureFlags aFlags);
 
   /**
    * Tell to TextureChild that TextureHost is recycled.
