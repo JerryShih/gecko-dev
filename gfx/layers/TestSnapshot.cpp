@@ -26,3 +26,11 @@ bool UseOriginalPath()
   return atoi(propValue);
 }
 
+bool ShowGeckoProfilerLabel()
+{
+  char propValue[PROPERTY_VALUE_MAX];
+  property_get("bignose.label", propValue, "0");
+
+  return atoi(propValue);
+}
+

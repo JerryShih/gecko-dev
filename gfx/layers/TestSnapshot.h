@@ -4,6 +4,7 @@
 bool UseWidgetLayer();
 bool UseDirectTexture();
 bool UseOriginalPath();
+bool ShowGeckoProfilerLabel();
 
 #endif //TEST_SNAPSHOT_H
 
