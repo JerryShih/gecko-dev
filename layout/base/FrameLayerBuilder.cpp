@@ -3665,6 +3665,8 @@ GetScrollClipIntersection(nsDisplayListBuilder* aBuilder, const nsIFrame* aAnima
 void
 ContainerState::ProcessDisplayItems(nsDisplayList* aList)
 {
+  ATRACE_NAME("ContainerState::ProcessDisplayItems");
+
   PROFILER_LABEL("ContainerState", "ProcessDisplayItems",
     js::ProfileEntry::Category::GRAPHICS);
 

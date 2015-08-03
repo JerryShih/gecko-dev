@@ -808,6 +808,8 @@ CompositorParent::RecvMakeSnapshotWithSurface(PLayerTransactionParent* aLayerTra
                                               const SurfaceDescriptor& aInSnapshot,
                                               const gfx::IntRect& aRect)
 {
+  ATRACE_NAME("CompositorParent::RecvMakeSnapshotWithSurface");
+
   PROFILER_LABEL("CompositorParent", "MakeSnapshot(SurfaceTarget)",
     js::ProfileEntry::Category::GRAPHICS);
 
@@ -846,6 +848,8 @@ CompositorParent::RecvMakeSnapshotWithTexture(PLayerTransactionParent* aLayerTra
                                               PTextureParent* aInSnapshot,
                                               const gfx::IntRect& aRect)
 {
+  ATRACE_NAME("CompositorParent::RecvMakeSnapshotWithTexture");
+
   PROFILER_LABEL("CompositorParent", "MakeSnapshot(TextureHostTarget)",
     js::ProfileEntry::Category::GRAPHICS);
 

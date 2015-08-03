@@ -533,6 +533,8 @@ ClientLayerManager::MakeSnapshotIfRequired()
                                                           snapshotTextureClient->GetIPDLActor(),
                                                           bounds)) {
             if (snapshotTextureClient->Lock(OpenMode::OPEN_READ_ONLY)) {
+              ATRACE_NAME("ClientLayerManager::MakeSnapshotIfRequired TextureClientToShadowTarget");
+
               DrawTarget* textureDrawTarget = snapshotTextureClient->BorrowDrawTarget();
               RefPtr<gfx::SourceSurface> textureSourceSurface = textureDrawTarget->Snapshot();
 
@@ -559,6 +561,8 @@ ClientLayerManager::MakeSnapshotIfRequired()
                                                           GetRoot()->AsShadowableLayer()->GetShadow(),
                                                           surfaceToParent,
                                                           bounds)) {
+            ATRACE_NAME("ClientLayerManager::MakeSnapshotIfRequired SurfaceToShadowTarget");
+
             RefPtr<DataSourceSurface> dataSourceSurface =
                 GetSurfaceForDescriptor(snapshotSurface);
 

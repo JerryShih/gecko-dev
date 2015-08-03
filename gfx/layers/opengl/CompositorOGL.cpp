@@ -904,6 +904,7 @@ CompositorOGL::GetShaderProgramFor(const ShaderConfigOGL &aConfig)
   if (iter != mPrograms.end())
     return iter->second;
 
+  ATRACE_NAME("CompositorOGL::CompileShaderProgram");
   PROFILER_LABEL("CompositorOGL", "CompileShaderProgram",
     js::ProfileEntry::Category::GRAPHICS);
 
@@ -1433,9 +1434,13 @@ CompositorOGL::EndFrame()
 
   if (HasTarget()) {
     if (mCompositingRenderTarget) {
+      ATRACE_NAME("CompositorOGL::EndFrame glFinish to TextureTarget");
+
       // Flush all GL command for mCompositingRenderTarget.
       mGLContext->fFinish();
     } else if (mTarget) {
+      ATRACE_NAME("CompositorOGL::EndFrame CopyToTarget");
+
       CopyToTarget(mTarget, mTargetBounds.TopLeft(), Matrix());
     }
 

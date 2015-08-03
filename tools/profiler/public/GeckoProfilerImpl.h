@@ -26,6 +26,8 @@
 #include "GeckoTaskTracer.h"
 #endif
 
+#include "TestSnapshot.h"
+
 /* QT has a #define for the word "slots" and jsfriendapi.h has a struct with
  * this variable name, causing compilation problems. Alleviate this for now by
  * removing this #define */
@@ -293,6 +295,33 @@ static inline void profiler_tracing(const char* aCategory, const char* aInfo,
 // ac_add_options --enable-systace
 #define MOZ_USE_SYSTRACE
 #ifdef MOZ_USE_SYSTRACE
+
+class ScopedTraceEmpty {
+public:
+  inline ScopedTraceEmpty(uint64_t tag, const char* name)
+    : mTag(tag)
+  {
+    if (ShowGeckoProfilerLabel()) {
+#ifdef HAVE_ANDROID_OS
+      atrace_begin(mTag,name);
+#endif
+    }
+  }
+
+  inline ~ScopedTraceEmpty()
+  {
+    if (ShowGeckoProfilerLabel()) {
+#ifdef HAVE_ANDROID_OS
+      atrace_end(mTag);
+#endif
+    }
+  }
+
+private:
+    uint64_t mTag;
+};
+
+
 #ifndef ATRACE_TAG
 # define ATRACE_TAG ATRACE_TAG_ALWAYS
 #endif
@@ -310,7 +339,8 @@ static inline void profiler_tracing(const char* aCategory, const char* aInfo,
 // atrace_end with defined HAVE_ANDROID_OS again. Then there is no build-break.
 # undef _LIBS_CUTILS_TRACE_H
 # include <utils/Trace.h>
-# define MOZ_PLATFORM_TRACING(name) android::ScopedTrace SAMPLER_APPEND_LINE_NUMBER(scopedTrace)(ATRACE_TAG, name);
+//# define MOZ_PLATFORM_TRACING(name) android::ScopedTrace SAMPLER_APPEND_LINE_NUMBER(scopedTrace)(ATRACE_TAG, name);
+# define MOZ_PLATFORM_TRACING(name) ScopedTraceEmpty SAMPLER_APPEND_LINE_NUMBER(scopedTrace)(ATRACE_TAG, name);
 # ifdef REMOVE_HAVE_ANDROID_OS
 #  undef HAVE_ANDROID_OS
 #  undef REMOVE_HAVE_ANDROID_OS

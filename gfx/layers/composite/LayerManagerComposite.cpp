@@ -278,6 +278,8 @@ void
 LayerManagerComposite::EndTransaction(const TimeStamp& aTimeStamp,
                                       EndTransactionFlags aFlags)
 {
+  ATRACE_NAME("LayerManagerComposite::EndTransaction");
+
   NS_ASSERTION(mInTransaction, "Didn't call BeginTransaction?");
   NS_ASSERTION(!(aFlags & END_NO_COMPOSITE),
                "Shouldn't get END_NO_COMPOSITE here");

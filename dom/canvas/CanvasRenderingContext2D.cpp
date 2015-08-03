@@ -4680,6 +4680,8 @@ CanvasRenderingContext2D::DrawWindow(nsGlobalWindow& window, double x,
                                      const nsAString& bgColor,
                                      uint32_t flags, ErrorResult& error)
 {
+  ATRACE_NAME("CanvasRenderingContext2D::DrawWindow");
+
   PROFILER_LABEL("CanvasRenderingContext2D", "DrawWindow",
     js::ProfileEntry::Category::GRAPHICS);
 
@@ -4783,6 +4785,8 @@ CanvasRenderingContext2D::DrawWindow(nsGlobalWindow& window, double x,
   nsCOMPtr<nsIPresShell> shell = presContext->PresShell();
   unused << shell->RenderDocument(r, renderDocFlags, backgroundColor, thebes);
   if (drawDT) {
+    ATRACE_NAME("CanvasRenderingContext2D::DrawWindow ShadowTargetToCanvasTarget");
+
     RefPtr<SourceSurface> snapshot = drawDT->Snapshot();
     RefPtr<DataSourceSurface> data = snapshot->GetDataSurface();
 
