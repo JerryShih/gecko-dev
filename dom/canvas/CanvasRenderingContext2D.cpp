@@ -142,6 +142,8 @@ using mozilla::gl::GLContextProvider;
 #include "cutils/properties.h"
 #include "GeckoProfiler.h"
 
+#include "TestSnapshot.h"
+
 // windows.h (included by chromium code) defines this, in its infinite wisdom
 #undef DrawText
 
@@ -4685,6 +4687,8 @@ CanvasRenderingContext2D::DrawWindow(nsGlobalWindow& window, double x,
   PROFILER_LABEL("CanvasRenderingContext2D", "DrawWindow",
     js::ProfileEntry::Category::GRAPHICS);
 
+  if (!UseWidgetLayer()) {
+    flags &= ~nsIDOMCanvasRenderingContext2D::DRAWWINDOW_USE_WIDGET_LAYERS;
   }
 
   // We can't allow web apps to call this until we fix at least the

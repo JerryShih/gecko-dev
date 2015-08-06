@@ -2282,11 +2282,11 @@ ContentParent::ContentParent(mozIApplication* aApp,
 #endif
 
     NS_ASSERTION(NS_IsMainThread(), "Wrong thread!");
-//    ChildPrivileges privs = aIsNuwaProcess
-//        ? base::PRIVILEGES_INHERIT
-//        : base::PRIVILEGES_DEFAULT;
+    ChildPrivileges privs = aIsNuwaProcess
+        ? base::PRIVILEGES_INHERIT
+        : base::PRIVILEGES_DEFAULT;
 
-    ChildPrivileges privs = base::PRIVILEGES_INHERIT;
+    //ChildPrivileges privs = base::PRIVILEGES_INHERIT;
 
     mSubprocess = new GeckoChildProcessHost(GeckoProcessType_Content, privs);
 

@@ -1164,6 +1164,10 @@ BrowserElementChild.prototype = {
 
     let contentPixelWidth = Math.round(content.innerWidth * devicePixelRatio * zoomFactor);
     let contentPixelHeight = Math.round(content.innerHeight * devicePixelRatio * zoomFactor);
+    //let contentPixelWidth = Math.round(content.innerWidth * devicePixelRatio);
+    //let contentPixelHeight = Math.round(content.innerHeight * devicePixelRatio);
+    //let contentPixelWidth = content.innerWidth;
+    //let contentPixelHeight = content.innerHeight;
 
     let scaleWidth = Math.min(1, maxPixelWidth / contentPixelWidth);
     let scaleHeight = Math.min(1, maxPixelHeight / contentPixelHeight);
@@ -1174,6 +1178,15 @@ BrowserElementChild.prototype = {
       Math.min(maxPixelWidth, Math.round(contentPixelWidth * scale));
     let canvasHeight =
       Math.min(maxPixelHeight, Math.round(contentPixelHeight * scale));
+
+    dump('bignose devicePixelRatio:'+devicePixelRatio);
+    dump('bignose content.screen.width:'+content.screen.width+' content.innerWidth:'+content.innerWidth);
+    //dump('bignose zoomFactor:'+zoomFactor);
+    dump('bignose maxPixelWidth:'+maxPixelWidth+' maxPixHeight:'+maxPixelHeight);
+    dump('bignose contentPixelWidth:'+contentPixelWidth+' contentPixHeight:'+contentPixelHeight);
+    dump('bignose scale(w,h):'+maxPixelWidth/contentPixelWidth+','+maxPixelHeight/contentPixelHeight);
+    dump('bignose scale:'+scale);
+    dump('bignose canvas:'+canvasWidth+','+canvasHeight);
 
     let transparent = (mimeType !== 'image/jpeg');
 
@@ -1186,6 +1199,7 @@ BrowserElementChild.prototype = {
 
     let ctx = canvas.getContext("2d", { willReadFrequently: true });
     ctx.scale(scale * devicePixelRatio, scale * devicePixelRatio);
+    //ctx.scale(scale, scale);
 
     let flags = ctx.DRAWWINDOW_DRAW_CARET |
                 ctx.DRAWWINDOW_DRAW_VIEW |

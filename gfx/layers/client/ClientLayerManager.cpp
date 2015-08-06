@@ -483,6 +483,8 @@ ClientLayerManager::MakeSnapshotIfRequired()
       MOZ_ASSERT(gfxPrefs::UseWidgetLayerAtContent());
     }
 
+    printf_stderr("bignose call MakeSnapshotIfRequired()");
+
     if (CompositorChild* remoteRenderer = GetCompositorChild()) {
       // The compositor doesn't draw to a different sized surface
       // when there's a rotation. Instead we rotate the result
@@ -490,11 +492,33 @@ ClientLayerManager::MakeSnapshotIfRequired()
       IntRect outerBounds;
       mWidget->GetBounds(outerBounds);
 
+      printf_stderr("bignose MakeSnapshotIfRequired outerBounds(%d,%d,%d,%d)",
+          outerBounds.x,outerBounds.y,outerBounds.width,outerBounds.height);
+
       IntRect bounds = ToOutsideIntRect(mShadowTarget->GetClipExtents());
+
+      printf_stderr("bignose MakeSnapshotIfRequired original bound(%d,%d,%d,%d)",
+          bounds.x,bounds.y,bounds.width,bounds.height);
+
       if (mTargetRotation) {
         bounds = RotateRect(bounds, outerBounds, mTargetRotation);
       }
 
+      printf_stderr("bignose MakeSnapshotIfRequired rotation bound(%d,%d,%d,%d)",
+          bounds.x,bounds.y,bounds.width,bounds.height);
+
+//      // Handle pan/zoom factor.
+//      float scale = 1.0f;
+//      if (ContainerLayer* rootLayer = GetRoot()->AsContainerLayer()) {
+//        scale *= rootLayer->GetPresShellResolution();
+//      }
+//      Matrix resolutionScaleMatrix = Matrix::Scaling(scale, scale);
+//      Rect scaledRect = resolutionScaleMatrix.TransformBounds(Rect(bounds));
+//      scaledRect.Round();
+//      scaledRect.ToIntRect(&bounds);
+//
+//      printf_stderr("bignose MakeSnapshotIfRequired scale:%f scaled bound(%d,%d,%d,%d)",
+//          scale,bounds.x,bounds.y,bounds.width,bounds.height);
 
       if (!bounds.IsEmpty()) {
         DrawTarget* drawTarget = mShadowTarget->GetDrawTarget();
@@ -506,6 +530,9 @@ ClientLayerManager::MakeSnapshotIfRequired()
 
         gfx::Matrix oldMatrix = drawTarget->GetTransform();
         drawTarget->SetTransform(oldMatrix * rotate);
+
+        printf_stderr("bignose %p ToShadowTarget scale(%f,%f)",
+            remoteRenderer,oldMatrix._11,oldMatrix._22);
 
         SurfaceDescriptor snapshotSurface;
         RefPtr<TextureClient> snapshotTextureClient;
@@ -535,6 +562,10 @@ ClientLayerManager::MakeSnapshotIfRequired()
             if (snapshotTextureClient->Lock(OpenMode::OPEN_READ_ONLY)) {
               ATRACE_NAME("ClientLayerManager::MakeSnapshotIfRequired TextureClientToShadowTarget");
 
+              printf_stderr("bignose TextureClientToShadowTarget src(%d,%d) to dest(%d,%d)",
+                  bounds.width,bounds.height,
+                  bounds.width,bounds.height);
+
               DrawTarget* textureDrawTarget = snapshotTextureClient->BorrowDrawTarget();
               RefPtr<gfx::SourceSurface> textureSourceSurface = textureDrawTarget->Snapshot();
 
@@ -562,6 +593,10 @@ ClientLayerManager::MakeSnapshotIfRequired()
                                                           surfaceToParent,
                                                           bounds)) {
             ATRACE_NAME("ClientLayerManager::MakeSnapshotIfRequired SurfaceToShadowTarget");
+
+            printf_stderr("bignose SurfaceToShadowTarget src(%d,%d) to dest(%d,%d)",
+                bounds.width,bounds.height,
+                bounds.width,bounds.height);
 
             RefPtr<DataSourceSurface> dataSourceSurface =
                 GetSurfaceForDescriptor(snapshotSurface);

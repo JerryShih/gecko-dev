@@ -25,6 +25,8 @@
 #include "LayersLogging.h"              // for AppendToString
 #include "gfxUtils.h"                   // for gfxUtils::GetAsLZ4Base64Str
 
+#include "TestSnapshot.h"
+
 #ifdef XP_WIN
 #include "mozilla/layers/TextureD3D9.h"
 #include "mozilla/layers/TextureD3D11.h"
@@ -438,6 +440,10 @@ TextureClient::CreateForParentDrawing(ISurfaceAllocator* aAllocator,
                                       TextureFlags aTextureFlags,
                                       TextureAllocationFlags aAllocFlags)
 {
+  if (!UseDirectTexture()) {
+    return nullptr;
+  }
+
   if (aMoz2DBackend == gfx::BackendType::NONE) {
     aMoz2DBackend = gfxPlatform::GetPlatform()->GetContentBackend();
   }
