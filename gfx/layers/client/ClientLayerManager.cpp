@@ -495,15 +495,6 @@ ClientLayerManager::MakeSnapshotIfRequired()
         bounds = RotateRect(bounds, outerBounds, mTargetRotation);
       }
 
-      // Handle pan/zoom factor.
-      float scale = 1.0f;
-      if (ContainerLayer* rootLayer = GetRoot()->AsContainerLayer()) {
-        scale *= rootLayer->GetPresShellResolution();
-      }
-      Matrix resolutionScaleMatrix = Matrix::Scaling(scale, scale);
-      Rect scaledRect = resolutionScaleMatrix.TransformBounds(Rect(bounds));
-      scaledRect.RoundOut();
-      scaledRect.ToIntRect(&bounds);
 
       if (!bounds.IsEmpty()) {
         DrawTarget* drawTarget = mShadowTarget->GetDrawTarget();

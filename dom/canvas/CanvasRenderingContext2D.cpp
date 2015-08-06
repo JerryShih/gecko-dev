@@ -4683,15 +4683,8 @@ CanvasRenderingContext2D::DrawWindow(nsGlobalWindow& window, double x,
   PROFILER_LABEL("CanvasRenderingContext2D", "DrawWindow",
     js::ProfileEntry::Category::GRAPHICS);
 
-  // protect against too-large surfaces that will cause allocation
-  // or overflow issues
-  if (!gfxASurface::CheckSurfaceSize(gfxIntSize(int32_t(w), int32_t(h)),
-                                     0xffff)) {
-    error.Throw(NS_ERROR_FAILURE);
-    return;
   }
 
-  EnsureTarget();
   // We can't allow web apps to call this until we fix at least the
   // following potential security issues:
   // -- rendering cross-domain IFRAMEs and then extracting the results
@@ -4705,9 +4698,20 @@ CanvasRenderingContext2D::DrawWindow(nsGlobalWindow& window, double x,
     return;
   }
 
-  // Flush layout updates
-  if (!(flags & nsIDOMCanvasRenderingContext2D::DRAWWINDOW_DO_NOT_FLUSH)) {
-    nsContentUtils::FlushLayoutForTree(&window);
+  EnsureTarget();
+  // Check drawTarget status.
+  if (!mTarget) {
+    error.Throw(NS_ERROR_FAILURE);
+    return;
+  }
+
+  // gfxContext-over-Azure may modify the DrawTarget's transform, so
+  // save and restore it
+  Matrix originalMatrix = mTarget->GetTransform();
+
+  // Check draw size.
+  if (!(originalMatrix._11 * w) || !(originalMatrix._22 * h)) {
+    return;
   }
 
   nsRefPtr<nsPresContext> presContext;
@@ -4718,6 +4722,11 @@ CanvasRenderingContext2D::DrawWindow(nsGlobalWindow& window, double x,
   if (!presContext) {
     error.Throw(NS_ERROR_FAILURE);
     return;
+  }
+
+  // Flush layout updates
+  if (!(flags & nsIDOMCanvasRenderingContext2D::DRAWWINDOW_DO_NOT_FLUSH)) {
+    nsContentUtils::FlushLayoutForTree(&window);
   }
 
   nscolor backgroundColor;
@@ -4749,15 +4758,6 @@ CanvasRenderingContext2D::DrawWindow(nsGlobalWindow& window, double x,
     renderDocFlags |= nsIPresShell::RENDER_DRAWWINDOW_NOT_FLUSHING;
   }
 
-  // gfxContext-over-Azure may modify the DrawTarget's transform, so
-  // save and restore it
-  Matrix matrix = mTarget->GetTransform();
-  double sw = matrix._11 * w;
-  double sh = matrix._22 * h;
-  if (!sw || !sh) {
-    return;
-  }
-
   nsRefPtr<gfxContext> thebes;
   RefPtr<DrawTarget> drawDT;
   // Rendering directly is faster and can be done if mTarget supports Azure
@@ -4766,11 +4766,9 @@ CanvasRenderingContext2D::DrawWindow(nsGlobalWindow& window, double x,
       GlobalAlpha() == 1.0f)
   {
     thebes = new gfxContext(mTarget);
-    thebes->SetMatrix(gfxMatrix(matrix._11, matrix._12, matrix._21,
-                                matrix._22, matrix._31, matrix._32));
   } else {
     drawDT =
-      gfxPlatform::GetPlatform()->CreateOffscreenContentDrawTarget(IntSize(ceil(sw), ceil(sh)),
+      gfxPlatform::GetPlatform()->CreateOffscreenContentDrawTarget(mTarget->GetSize(),
                                                                    SurfaceFormat::B8G8R8A8);
     if (!drawDT) {
       error.Throw(NS_ERROR_FAILURE);
@@ -4778,8 +4776,9 @@ CanvasRenderingContext2D::DrawWindow(nsGlobalWindow& window, double x,
     }
 
     thebes = new gfxContext(drawDT);
-    thebes->SetMatrix(gfxMatrix::Scaling(matrix._11, matrix._22));
   }
+  thebes->SetMatrix(gfxMatrix(originalMatrix._11, originalMatrix._12, originalMatrix._21,
+                              originalMatrix._22, originalMatrix._31, originalMatrix._32));
 
   nsCOMPtr<nsIPresShell> shell = presContext->PresShell();
   unused << shell->RenderDocument(r, renderDocFlags, backgroundColor, thebes);
@@ -4804,15 +4803,16 @@ CanvasRenderingContext2D::DrawWindow(nsGlobalWindow& window, double x,
       return;
     }
 
-    mgfx::Rect destRect(0, 0, w, h);
-    mgfx::Rect sourceRect(0, 0, sw, sh);
-    mTarget->DrawSurface(source, destRect, sourceRect,
+    mgfx::Rect snapshotRect(0, 0, mTarget->GetSize().width, mTarget->GetSize().height);
+
+    mTarget->SetTransform(Matrix(1.0, 0.0, 0.0, 1.0, 0.0, 0.0));
+    mTarget->DrawSurface(source, snapshotRect, snapshotRect,
                          DrawSurfaceOptions(mgfx::Filter::POINT),
                          DrawOptions(GlobalAlpha(), CompositionOp::OP_OVER,
                                      AntialiasMode::NONE));
     mTarget->Flush();
   } else {
-    mTarget->SetTransform(matrix);
+    mTarget->SetTransform(originalMatrix);
   }
 
   // note that x and y are coordinates in the document that
