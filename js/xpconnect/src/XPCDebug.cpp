@@ -30,7 +30,7 @@ static void DebugDump(const char* fmt, ...)
     OutputDebugStringA(buffer);
   }
 #endif
-  printf("%s", buffer);
+  printf_stderr("%s", buffer);
 }
 
 bool
@@ -38,7 +38,7 @@ xpc_DumpJSStack(bool showArgs, bool showLocals, bool showThisProps)
 {
     JSContext* cx = nsContentUtils::GetCurrentJSContextForThread();
     if (!cx) {
-        printf("there is no JSContext on the stack!\n");
+        printf_stderr("there is no JSContext on the stack!\n");
     } else if (char* buf = xpc_PrintJSStack(cx, showArgs, showLocals, showThisProps)) {
         DebugDump("%s\n", buf);
         JS_smprintf_free(buf);
