@@ -6,6 +6,8 @@
 #include "DrawEventRecorder.h"
 #include "PathRecording.h"
 
+#include <sstream>
+
 namespace mozilla {
 namespace gfx {
 
@@ -21,11 +23,16 @@ DrawEventRecorderPrivate::DrawEventRecorderPrivate(std::ostream *aStream)
 void
 DrawEventRecorderPrivate::RecordEvent(const RecordedEvent &aEvent)
 {
-  WriteElement(*mOutputStream, aEvent.mType);
+  //WriteElement(*mOutputStream, aEvent.mType);
 
-  aEvent.RecordToStream(*mOutputStream);
+  //aEvent.RecordToStream(*mOutputStream);
 
-  Flush();
+  //Flush();
+
+  std::stringstream ss;
+  aEvent.OutputSimpleEventInfo(ss);
+
+  printf_stderr("bignose %s",ss.str().c_str());
 }
 
 DrawEventRecorderFile::DrawEventRecorderFile(const char *aFilename)
@@ -34,9 +41,9 @@ DrawEventRecorderFile::DrawEventRecorderFile(const char *aFilename)
 {
   mOutputStream = &mOutputFile;
 
-  WriteElement(*mOutputStream, kMagicInt);
-  WriteElement(*mOutputStream, kMajorRevision);
-  WriteElement(*mOutputStream, kMinorRevision);
+//  WriteElement(*mOutputStream, kMagicInt);
+//  WriteElement(*mOutputStream, kMajorRevision);
+//  WriteElement(*mOutputStream, kMinorRevision);
 }
 
 DrawEventRecorderFile::~DrawEventRecorderFile()
@@ -47,7 +54,7 @@ DrawEventRecorderFile::~DrawEventRecorderFile()
 void
 DrawEventRecorderFile::Flush()
 {
-  mOutputFile.flush();
+  //mOutputFile.flush();
 }
 
 } // namespace gfx

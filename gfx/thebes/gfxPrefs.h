@@ -71,6 +71,10 @@ class PreferenceAccessImpl;
 class gfxPrefs;
 class gfxPrefs final
 {
+public:
+  static bool TestUseRecording();
+  static bool TestUseOffMainPainting();
+
 private:
   /// See Logging.h.  This lets Moz2D access preference values it owns.
   PreferenceAccessImpl* mMoz2DPrefAccess;
@@ -245,6 +249,8 @@ private:
   DECL_GFX_PREF(Live, "gfx.SurfaceTexture.detach.enabled",     SurfaceTextureDetachEnabled, bool, true);
   DECL_GFX_PREF(Live, "gfx.testing.device-reset",              DeviceResetForTesting, int32_t, 0);
   DECL_GFX_PREF(Live, "gfx.testing.device-fail",               DeviceFailForTesting, bool, false);
+
+  DECL_GFX_PREF(Once, "gfx.off-main-thread-painting",          OffMainThreadPainting, bool, false);
 
   // These times should be in milliseconds
   DECL_GFX_PREF(Once, "gfx.touch.resample.delay-threshold",    TouchResampleVsyncDelayThreshold, int32_t, 20);

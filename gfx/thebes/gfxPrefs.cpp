@@ -9,10 +9,32 @@
 #include "MainThreadUtils.h"
 #include "mozilla/gfx/Logging.h"
 
+#include "cutils/properties.h"
+
 using namespace mozilla;
 
 gfxPrefs* gfxPrefs::sInstance = nullptr;
 bool gfxPrefs::sInstanceHasBeenDestroyed = false;
+
+/*static*/ bool
+gfxPrefs::TestUseRecording()
+{
+  char propValue[PROPERTY_VALUE_MAX];
+
+  property_get("bignose.recording", propValue, "0");
+
+  return atoi(propValue) == 1;
+}
+
+/*static*/ bool
+gfxPrefs::TestUseOffMainPainting()
+{
+  char propValue[PROPERTY_VALUE_MAX];
+
+  property_get("bignose.off-main-painting", propValue, "0");
+
+  return atoi(propValue) == 1;
+}
 
 class PreferenceAccessImpl : public mozilla::gfx::PreferenceAccess
 {

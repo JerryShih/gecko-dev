@@ -24,6 +24,19 @@ DrawTarget::CreateCaptureDT(const IntSize& aSize)
   return dt.forget();
 }
 
+already_AddRefed<DrawTargetCapture>
+DrawTarget::CreateCaptureDT()
+{
+  RefPtr<DrawTargetCaptureImpl> dt = new DrawTargetCaptureImpl();
+
+  if (!dt->Init(this)) {
+    gfxWarning() << "Failed to initialize Capture DrawTarget!";
+    return nullptr;
+  }
+
+  return dt.forget();
+}
+
 void
 DrawTarget::DrawCapturedDT(DrawTargetCapture *aCaptureDT,
                            const Matrix& aTransform)
@@ -33,6 +46,12 @@ DrawTarget::DrawCapturedDT(DrawTargetCapture *aCaptureDT,
     return;
   }
   static_cast<DrawTargetCaptureImpl*>(aCaptureDT)->ReplayToDrawTarget(this, aTransform);
+}
+
+void
+DrawTarget::DrawCapturedDT(DrawTargetCapture *aCaptureDT)
+{
+  static_cast<DrawTargetCaptureImpl*>(aCaptureDT)->ReplayToDrawTarget(this);
 }
 
 } // namespace gfx

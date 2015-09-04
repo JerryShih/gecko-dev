@@ -618,7 +618,7 @@ var settingsToObserve = {
   'devtools.telemetry.supported_performance_marks': {
     resetToPref: true
   },
-
+  'gfx.2d.recording': false,
   'dom.mozApps.use_reviewer_certs': false,
   'dom.mozApps.signed_apps_installable_from': 'https://marketplace.firefox.com',
   'dom.presentation.discovery.enabled': false,

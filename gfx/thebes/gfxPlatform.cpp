@@ -440,23 +440,13 @@ void RecordingPrefChanged(const char *aPrefName, void *aClosure)
     if (prefFileName) {
       fileName.Append(NS_ConvertUTF16toUTF8(prefFileName));
     } else {
-      nsCOMPtr<nsIFile> tmpFile;
-      if (NS_FAILED(NS_GetSpecialDirectory(NS_OS_TEMP_DIR, getter_AddRefs(tmpFile)))) {
-        return;
-      }
-      fileName.AppendPrintf("moz2drec_%i_%i.aer", XRE_GetProcessType(), getpid());
-
-      nsresult rv = tmpFile->AppendNative(fileName);
-      if (NS_FAILED(rv))
-        return;
-
-      rv = tmpFile->GetNativePath(fileName);
-      if (NS_FAILED(rv))
-        return;
+      return;
     }
 
+    fileName.AppendPrintf("moz2drec_%i_%i.aer", XRE_GetProcessType(), getpid());
+
     gPlatform->mRecorder = Factory::CreateEventRecorderForFile(fileName.BeginReading());
-    printf_stderr("Recording to %s\n", fileName.get());
+    printf_stderr("bignose Recording to %s\n", fileName.get());
     Factory::SetGlobalEventRecorder(gPlatform->mRecorder);
   } else {
     Factory::SetGlobalEventRecorder(nullptr);

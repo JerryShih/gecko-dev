@@ -728,6 +728,7 @@ public:
    */
   virtual void DrawCapturedDT(DrawTargetCapture *aCaptureDT,
                               const Matrix& aTransform);
+  virtual void DrawCapturedDT(DrawTargetCapture *aCaptureDT);
 
   /**
    * Draw a surface to the draw target. Possibly doing partial drawing or
@@ -971,6 +972,7 @@ public:
    * @param aSize Size of the area this DT will capture. 
    */
   virtual already_AddRefed<DrawTargetCapture> CreateCaptureDT(const IntSize& aSize);
+  virtual already_AddRefed<DrawTargetCapture> CreateCaptureDT();
 
   /**
    * Create a draw target optimized for drawing a shadow.

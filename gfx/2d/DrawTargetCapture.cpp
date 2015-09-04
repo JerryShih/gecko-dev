@@ -35,6 +35,19 @@ DrawTargetCaptureImpl::Init(const IntSize& aSize, DrawTarget* aRefDT)
   return true;
 }
 
+bool
+DrawTargetCaptureImpl::Init(DrawTarget* aRefDT)
+{
+  if (!aRefDT) {
+    return false;
+  }
+
+  mRefDT = aRefDT;
+
+  mSize = aRefDT->GetSize();
+  return true;
+}
+
 already_AddRefed<SourceSurface>
 DrawTargetCaptureImpl::Snapshot()
 {
@@ -189,6 +202,19 @@ DrawTargetCaptureImpl::ReplayToDrawTarget(DrawTarget* aDT, const Matrix& aTransf
 
   while (current < start + mDrawCommandStorage.size()) {
     reinterpret_cast<DrawingCommand*>(current + sizeof(uint32_t))->ExecuteOnDT(aDT, aTransform);
+    current += *(uint32_t*)current;
+  }
+}
+
+void
+DrawTargetCaptureImpl::ReplayToDrawTarget(DrawTarget* aDT)
+{
+  uint8_t* start = &mDrawCommandStorage.front();
+
+  uint8_t* current = start;
+
+  while (current < start + mDrawCommandStorage.size()) {
+    reinterpret_cast<DrawingCommand*>(current + sizeof(uint32_t))->ExecuteOnDT(aDT);
     current += *(uint32_t*)current;
   }
 }

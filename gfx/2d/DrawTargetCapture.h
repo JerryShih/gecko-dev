@@ -23,6 +23,7 @@ public:
   {}
 
   bool Init(const IntSize& aSize, DrawTarget* aRefDT);
+  bool Init(DrawTarget* aRefDT);
 
   virtual BackendType GetBackendType() const { return mRefDT->GetBackendType(); }
   virtual DrawTargetType GetType() const { return mRefDT->GetType(); }
@@ -132,6 +133,7 @@ public:
   }
 
   void ReplayToDrawTarget(DrawTarget* aDT, const Matrix& aTransform);
+  void ReplayToDrawTarget(DrawTarget* aDT);
 
 protected:
   ~DrawTargetCaptureImpl();
