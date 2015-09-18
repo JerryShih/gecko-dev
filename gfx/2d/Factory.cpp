@@ -40,6 +40,7 @@
 #include "HelpersD2D.h"
 #endif
 
+#include "AsyncDrawTarget.h"
 #include "DrawTargetDual.h"
 #include "DrawTargetTiled.h"
 #include "DrawTargetRecording.h"
@@ -51,6 +52,9 @@
 #include "Logging.h"
 
 #include "mozilla/CheckedInt.h"
+#include "gfxPrefs.h"
+
+#include "mozilla/layers/TextureClient.h"
 
 GFX2D_API PRLogModuleInfo *
 GetGFX2DLog()
@@ -404,6 +408,14 @@ Factory::CreateDrawTargetForData(BackendType aBackend,
     gfxDebug() << "Invalid draw target type specified.";
     return nullptr;
   }
+
+//  if (mRecorder && retVal) {
+//    if (!gfxPrefs::TestUseRecording()) {
+//      return MakeAndAddRef<DrawTargetRecording>(mRecorder, retVal, true);
+//    } else {
+//      return MakeAndAddRef<AsyncDrawTarget>(mAsyncDrawTargetManager, retVal);
+//    }
+//  }
 
   if (mRecorder && retVal) {
     return MakeAndAddRef<DrawTargetRecording>(mRecorder, retVal, true);
@@ -884,6 +896,15 @@ Factory::SetGlobalEventRecorder(DrawEventRecorder *aRecorder)
   mRecorder = aRecorder;
 }
 
+/* static */
+already_AddRefed<AsyncDrawTargetManager>
+Factory::CreateAsyncDrawTargerManager()
+{
+  RefPtr<AsyncDrawTargetManager> asyncManager = new AsyncDrawTargetManager();
+
+  return asyncManager.forget();
+}
+
 LogForwarder* Factory::mLogForwarder = nullptr;
 
 // static
@@ -902,6 +923,24 @@ CriticalLogger::OutputMessage(const std::string &aString,
   }
 
   BasicLogger::OutputMessage(aString, aLevel, aNoNewline);
+}
+
+bool Factory::dumpFlag = false;
+
+DrawTarget::DrawTarget()
+  : mTransformDirty(false)
+  , mPermitSubpixelAA(false)
+{
+}
+
+DrawTarget::~DrawTarget()
+{
+}
+
+void
+DrawTarget::SetAsyncDrawTargetData(AsyncDrawTargetData* aAsyncDrawTargetData)
+{
+  mAsyncDrawTargetData = aAsyncDrawTargetData;
 }
 
 } // namespace gfx

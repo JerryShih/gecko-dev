@@ -58,6 +58,8 @@ class DrawTarget;
 class DrawEventRecorder;
 class FilterNode;
 class LogForwarder;
+class AsyncDrawTargetManager;
+class AsyncDrawTargetData;
 
 struct NativeSurface {
   NativeSurfaceType mType;
@@ -222,6 +224,14 @@ public:
   {
   }
 
+  explicit LinearGradientPattern(const LinearGradientPattern &aPattern)
+    : mBegin(aPattern.mBegin)
+    , mEnd(aPattern.mEnd)
+    , mStops(aPattern.mStops)
+    , mMatrix(aPattern.mMatrix)
+  {
+  }
+
   virtual PatternType GetType() const override
   {
     return PatternType::LINEAR_GRADIENT;
@@ -262,6 +272,16 @@ public:
   {
   }
 
+  explicit RadialGradientPattern(const RadialGradientPattern &aPattern)
+    : mCenter1(aPattern.mCenter1)
+    , mCenter2(aPattern.mCenter2)
+    , mRadius1(aPattern.mRadius1)
+    , mRadius2(aPattern.mRadius2)
+    , mStops(aPattern.mStops)
+    , mMatrix(aPattern.mMatrix)
+  {
+  }
+
   virtual PatternType GetType() const override
   {
     return PatternType::RADIAL_GRADIENT;
@@ -295,6 +315,14 @@ public:
     , mSamplingRect(aSamplingRect)
   {}
 
+  explicit SurfacePattern(const SurfacePattern &aPattern)
+    : mSurface(aPattern.mSurface)
+    , mExtendMode(aPattern.mExtendMode)
+    , mFilter(aPattern.mFilter)
+    , mMatrix(aPattern.mMatrix)
+    , mSamplingRect(aPattern.mSamplingRect)
+  {}
+
   virtual PatternType GetType() const override
   {
     return PatternType::SURFACE;
@@ -310,6 +338,7 @@ public:
                                        or an empty rect if none has been specified. */
 };
 
+class AsyncDrawTarget;
 class StoredPattern;
 class DrawTargetCaptureImpl;
 
@@ -356,6 +385,8 @@ public:
   }
 
 protected:
+  friend class AsyncDrawTarget;
+  friend class AsyncDrawCommandPatternData;
   friend class DrawTargetCaptureImpl;
   friend class StoredPattern;
 
@@ -691,8 +722,9 @@ class DrawTarget : public RefCounted<DrawTarget>
 {
 public:
   MOZ_DECLARE_REFCOUNTED_VIRTUAL_TYPENAME(DrawTarget)
-  DrawTarget() : mTransformDirty(false), mPermitSubpixelAA(false) {}
-  virtual ~DrawTarget() {}
+
+  DrawTarget();
+  virtual ~DrawTarget();
 
   virtual DrawTargetType GetType() const = 0;
 
@@ -1072,7 +1104,7 @@ public:
    * being used as an input to external drawing, or Snapshot() being called.
    * This rectangle is specified in device space.
    */
-  void SetOpaqueRect(const IntRect &aRect) {
+  virtual void SetOpaqueRect(const IntRect &aRect) {
     mOpaqueRect = aRect;
   }
 
@@ -1097,6 +1129,8 @@ public:
   }
 #endif
 
+  void SetAsyncDrawTargetData(AsyncDrawTargetData* aAsyncDrawTargetData);
+
 protected:
   UserData mUserData;
   Matrix mTransform;
@@ -1105,6 +1139,8 @@ protected:
   bool mPermitSubpixelAA : 1;
 
   SurfaceFormat mFormat;
+
+  AsyncDrawTargetData* mAsyncDrawTargetData;
 };
 
 class DrawTargetCapture : public DrawTarget
@@ -1133,6 +1169,8 @@ struct TileSet
 class GFX2D_API Factory
 {
 public:
+  static bool dumpFlag;
+
   static bool HasSSE2();
 
   /** Make sure that the given dimensions don't overflow a 32-bit signed int
@@ -1145,6 +1183,8 @@ public:
    * within 8k limit.  The 8k value is chosen a bit randomly.
    */
   static bool ReasonableSurfaceSize(const IntSize &aSize);
+
+  static already_AddRefed<AsyncDrawTargetManager> CreateAsyncDrawTargerManager();
 
   static already_AddRefed<DrawTarget> CreateDrawTargetForCairoSurface(cairo_surface_t* aSurface, const IntSize& aSize, SurfaceFormat* aFormat = nullptr);
 

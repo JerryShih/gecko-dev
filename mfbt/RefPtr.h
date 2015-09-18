@@ -160,15 +160,15 @@ private:
                                MozRefCountType>::Type mRefCnt;
 };
 
-#ifdef MOZ_REFCOUNTED_LEAK_CHECKING
+//#ifdef MOZ_REFCOUNTED_LEAK_CHECKING
 // Passing override for the optional argument marks the typeName and
 // typeSize functions defined by this macro as overrides.
 #define MOZ_DECLARE_REFCOUNTED_VIRTUAL_TYPENAME(T, ...) \
   virtual const char* typeName() const __VA_ARGS__ { return #T; } \
   virtual size_t typeSize() const __VA_ARGS__ { return sizeof(*this); }
-#else
-#define MOZ_DECLARE_REFCOUNTED_VIRTUAL_TYPENAME(T, ...)
-#endif
+//#else
+//#define MOZ_DECLARE_REFCOUNTED_VIRTUAL_TYPENAME(T, ...)
+//#endif
 
 // Note that this macro is expanded unconditionally because it declares only
 // two small inline functions which will hopefully get eliminated by the linker

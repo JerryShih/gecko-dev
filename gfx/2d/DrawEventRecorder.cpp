@@ -29,17 +29,17 @@ DrawEventRecorderPrivate::RecordEvent(const RecordedEvent &aEvent)
 
   //Flush();
 
-  std::stringstream ss;
-  aEvent.OutputSimpleEventInfo(ss);
+  //std::stringstream ss;
+  //aEvent.OutputSimpleEventInfo(ss);
 
-  printf_stderr("bignose %s",ss.str().c_str());
+  //printf_stderr("bignose %s",ss.str().c_str());
 }
 
 DrawEventRecorderFile::DrawEventRecorderFile(const char *aFilename)
   : DrawEventRecorderPrivate(nullptr) 
-  , mOutputFile(aFilename, ofstream::binary)
+//  , mOutputFile(aFilename, ofstream::binary)
 {
-  mOutputStream = &mOutputFile;
+//  mOutputStream = &mOutputFile;
 
 //  WriteElement(*mOutputStream, kMagicInt);
 //  WriteElement(*mOutputStream, kMajorRevision);
@@ -48,7 +48,7 @@ DrawEventRecorderFile::DrawEventRecorderFile(const char *aFilename)
 
 DrawEventRecorderFile::~DrawEventRecorderFile()
 {
-  mOutputFile.close();
+//  mOutputFile.close();
 }
 
 void

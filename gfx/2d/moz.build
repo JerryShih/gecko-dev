@@ -10,6 +10,7 @@ EXPORTS.mozilla += [
 
 EXPORTS.mozilla.gfx += [
     '2D.h',
+    'AsyncDrawTarget.h',
     'BaseCoord.h',
     'BaseMargin.h',
     'BasePoint.h',
@@ -114,6 +115,7 @@ elif CONFIG['CPU_ARCH'].startswith('mips'):
         ]
 
 UNIFIED_SOURCES += [
+    'AsyncDrawTarget.cpp',
     'Blur.cpp',
     'DataSourceSurface.cpp',
     'DataSurfaceHelpers.cpp',

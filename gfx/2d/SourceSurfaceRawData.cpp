@@ -6,6 +6,7 @@
 #include "SourceSurfaceRawData.h"
 
 #include "DataSurfaceHelpers.h"
+#include "GeckoProfiler.h"
 #include "Logging.h"
 #include "mozilla/Types.h" // for decltype
 
@@ -34,6 +35,9 @@ SourceSurfaceRawData::GuaranteePersistance()
   if (mOwnData) {
     return;
   }
+
+  PROFILER_LABEL("SourceSurfaceRawData", "GuaranteePersistance",
+    js::ProfileEntry::Category::GRAPHICS);
 
   uint8_t* oldData = mRawData;
   mRawData = new uint8_t[mStride * mSize.height];

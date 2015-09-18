@@ -21,8 +21,26 @@
 #include "LayersLogging.h"
 #include "mozilla/layers/SingleTiledContentClient.h"
 
+#include "mozilla/gfx/2D.h"
+
 namespace mozilla {
 namespace layers {
+
+class AsyncRenderHint
+{
+public:
+  AsyncRenderHint()
+  {
+    gfxPlatform::GetPlatform()->SetDrawTargetAsyncMode(true);
+    Factory::dumpFlag = true;
+  }
+
+  ~AsyncRenderHint()
+  {
+    gfxPlatform::GetPlatform()->SetDrawTargetAsyncMode(false);
+    Factory::dumpFlag = false;
+  }
+};
 
 ClientTiledPaintedLayer::ClientTiledPaintedLayer(ClientLayerManager* const aManager,
                                                ClientLayerManager::PaintedLayerCreationHint aCreationHint)
@@ -406,6 +424,8 @@ ClientTiledPaintedLayer::EndPaint()
 void
 ClientTiledPaintedLayer::RenderLayer()
 {
+  AsyncRenderHint asyncHint;
+
   LayerManager::DrawPaintedLayerCallback callback =
     ClientManager()->GetPaintedLayerCallback();
   void *data = ClientManager()->GetPaintedLayerCallbackData();

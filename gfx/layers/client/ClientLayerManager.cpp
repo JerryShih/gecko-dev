@@ -39,6 +39,8 @@
 #include "gfxWindowsPlatform.h"
 #endif
 
+#include "mozilla/gfx/AsyncDrawTarget.h"
+
 namespace mozilla {
 namespace layers {
 
@@ -572,6 +574,12 @@ void
 ClientLayerManager::ForwardTransaction(bool aScheduleComposite)
 {
   TimeStamp start = TimeStamp::Now();
+
+  // bignose test
+  // flush async draw call before sending transaction
+  if (gfxPlatform::GetPlatform()->GetAsyncDrawTargetManager()) {
+    gfxPlatform::GetPlatform()->GetAsyncDrawTargetManager()->FlushPendingDrawCommand();
+  }
 
   if (mForwarder->GetSyncObject()) {
     mForwarder->GetSyncObject()->FinalizeFrame();

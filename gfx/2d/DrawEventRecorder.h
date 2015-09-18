@@ -17,6 +17,8 @@
 #include <set>
 #endif
 
+#include "plarena.h"
+
 namespace mozilla {
 namespace gfx {
 

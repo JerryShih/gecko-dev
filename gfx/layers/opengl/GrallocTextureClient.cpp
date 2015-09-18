@@ -210,7 +210,9 @@ GrallocTextureClientOGL::BorrowDrawTarget()
   mDrawTarget = gfxPlatform::GetPlatform()->CreateDrawTargetForData(GetBuffer(),
                                                                     mSize,
                                                                     byteStride,
-                                                                    mFormat);
+                                                                    mFormat,
+                                                                    this);
+
   return mDrawTarget;
 }
 

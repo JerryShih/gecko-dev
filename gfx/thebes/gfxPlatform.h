@@ -40,9 +40,15 @@ class SRGBOverrideObserver;
 class gfxTextPerfMetrics;
 
 namespace mozilla {
+
+namespace layers{
+class TextureClient;
+} // namespace layers
+
 namespace gl {
 class SkiaGLGlue;
 } // namespace gl
+
 namespace gfx {
 class DrawTarget;
 class SourceSurface;
@@ -51,6 +57,7 @@ class ScaledFont;
 class DrawEventRecorder;
 class VsyncSource;
 class DeviceInitData;
+class AsyncDrawTargetManager;
 
 inline uint32_t
 BackendTypeBit(BackendType b)
@@ -231,6 +238,10 @@ public:
     virtual already_AddRefed<DrawTarget>
       CreateDrawTargetForData(unsigned char* aData, const mozilla::gfx::IntSize& aSize, 
                               int32_t aStride, mozilla::gfx::SurfaceFormat aFormat);
+    virtual already_AddRefed<DrawTarget>
+      CreateDrawTargetForData(unsigned char* aData, const mozilla::gfx::IntSize& aSize,
+                              int32_t aStride, mozilla::gfx::SurfaceFormat aFormat,
+                              mozilla::layers::TextureClient* aTextureClient);
 
     /**
      * Returns true if rendering to data surfaces produces the same results as
@@ -662,6 +673,13 @@ public:
     // devices. Currently this is only used on Windows.
     virtual void GetDeviceInitData(mozilla::gfx::DeviceInitData* aOut);
 
+    void SetDrawTargetAsyncMode(bool aAsync)
+    {
+      mUseAsyncDrawTarget = aAsync;
+    }
+
+    mozilla::gfx::AsyncDrawTargetManager* GetAsyncDrawTargetManager();
+
 protected:
     gfxPlatform();
     virtual ~gfxPlatform();
@@ -767,6 +785,7 @@ private:
     static void GetCMSOutputProfileData(void *&mem, size_t &size);
 
     friend void RecordingPrefChanged(const char *aPrefName, void *aClosure);
+    friend void AsyncContentRendering(const char *aPrefName, void *aClosure);
 
     virtual void GetPlatformCMSOutputProfile(void *&mem, size_t &size);
 
@@ -799,11 +818,16 @@ private:
     mozilla::widget::GfxInfoCollector<gfxPlatform> mApzSupportCollector;
 
     mozilla::RefPtr<mozilla::gfx::DrawEventRecorder> mRecorder;
+
+    mozilla::RefPtr<mozilla::gfx::AsyncDrawTargetManager> mAsyncDrawTargetManager;
+
     mozilla::RefPtr<mozilla::gl::SkiaGLGlue> mSkiaGlue;
 
     // Backend that we are compositing with. NONE, if no compositor has been
     // created yet.
     mozilla::layers::LayersBackend mCompositorBackend;
+
+    bool mUseAsyncDrawTarget;
 };
 
 #endif /* GFX_PLATFORM_H */

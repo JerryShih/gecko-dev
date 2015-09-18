@@ -124,6 +124,8 @@ class mozilla::gl::SkiaGLGlue : public GenericAtomicRefCounted {
 #include "nscore.h" // for NS_FREE_PERMANENT_DATA
 #include "mozilla/dom/ContentChild.h"
 
+#include "mozilla/gfx/AsyncDrawTarget.h"
+
 namespace mozilla {
 namespace layers {
 #ifdef MOZ_WIDGET_GONK
@@ -160,6 +162,49 @@ static void ShutdownCMS();
 using namespace mozilla::gfx;
 
 void InitLayersAccelerationPrefs();
+
+class TextureClientDrawTargetData final : public mozilla::gfx::AsyncDrawTargetData
+{
+public:
+  explicit TextureClientDrawTargetData(TextureClient* aTextureClient)
+    : mTextureClient(aTextureClient)
+  {
+  }
+
+  explicit TextureClientDrawTargetData(DrawTarget* aDrawTarget)
+    : mDrawTarget(aDrawTarget)
+  {
+  }
+
+  virtual ~TextureClientDrawTargetData() { }
+
+  virtual void Lock() override
+  {
+    if (mTextureClient) {
+      mTextureClient->Lock(OpenMode::OPEN_READ_WRITE);
+    }
+  }
+
+  virtual void Unlock() override
+  {
+    if (mTextureClient) {
+      mTextureClient->Unlock();
+    }
+  }
+
+  virtual DrawTarget* GetDrawTarget() override
+  {
+    if (mTextureClient) {
+      return mTextureClient->BorrowDrawTarget();
+    }
+
+    return mDrawTarget;
+  }
+
+private:
+  RefPtr<TextureClient> mTextureClient;
+  RefPtr<DrawTarget> mDrawTarget;
+};
 
 /* Class to listen for pref changes so that chrome code can dynamically
    force sRGB as an output profile. See Bug #452125. */
@@ -431,6 +476,21 @@ gfxPlatform::Initialized()
   return !!gPlatform;
 }
 
+void AsyncContentRendering(const char *aPrefName, void *aClosure)
+{
+  if (Preferences::GetBool("gfx.2d.recording", false)) {
+    printf_stderr("bignose gfx.2d.recording on, pid:%d",getpid());
+
+    if (!gPlatform->mAsyncDrawTargetManager) {
+      gPlatform->mAsyncDrawTargetManager = Factory::CreateAsyncDrawTargerManager();
+    }
+  } else {
+    printf_stderr("bignose gfx.2d.recording off, pid:%d",getpid());
+
+    gPlatform->mAsyncDrawTargetManager = nullptr;
+  }
+}
+
 void RecordingPrefChanged(const char *aPrefName, void *aClosure)
 {
   if (Preferences::GetBool("gfx.2d.recording", false)) {
@@ -559,7 +619,9 @@ gfxPlatform::Init()
     mozilla::layers::InitGralloc();
 #endif
 
-    Preferences::RegisterCallbackAndCall(RecordingPrefChanged, "gfx.2d.recording", nullptr);
+    //Preferences::RegisterCallbackAndCall(RecordingPrefChanged, "gfx.2d.recording", nullptr);
+
+    Preferences::RegisterCallbackAndCall(AsyncContentRendering, "gfx.2d.recording", nullptr);
 
     CreateCMSOutputProfile();
 
@@ -1219,6 +1281,33 @@ gfxPlatform::CreateDrawTargetForData(unsigned char* aData, const IntSize& aSize,
   RefPtr<DrawTarget> dt = Factory::CreateDrawTargetForData(backendType,
                                                            aData, aSize,
                                                            aStride, aFormat);
+
+  return dt.forget();
+}
+
+already_AddRefed<DrawTarget>
+gfxPlatform::CreateDrawTargetForData(unsigned char* aData,
+                                     const IntSize& aSize,
+                                     int32_t aStride,
+                                     SurfaceFormat aFormat,
+                                     mozilla::layers::TextureClient* aTextureClient)
+{
+  RefPtr<DrawTarget> dt = CreateDrawTargetForData(aData, aSize, aStride, aFormat);
+
+  printf_stderr("bignose pid:%d, mUseAsyncDrawTarget:%d mAsyncDrawTargetManager:%p",
+      getpid(),(bool)mUseAsyncDrawTarget,mAsyncDrawTargetManager.get());
+
+  if (mUseAsyncDrawTarget && mAsyncDrawTargetManager) {
+    printf_stderr("bignose generate async draw target for dt:%p",dt.get());
+
+    RefPtr<TextureClientDrawTargetData> holder = new TextureClientDrawTargetData(aTextureClient);
+    RefPtr<AsyncDrawTarget> asyncDT = new AsyncDrawTarget(dt.get());
+    asyncDT->SetAsyncDrawTargetData(holder.get());
+
+    mAsyncDrawTargetManager->AppendAsyncDrawTarget(holder.get());
+
+    return asyncDT.forget();
+  }
 
   return dt.forget();
 }
@@ -2542,4 +2631,10 @@ gfxPlatform::UpdateDeviceInitData()
   mozilla::dom::ContentChild::GetSingleton()->SendGetGraphicsDeviceInitData(&data);
 
   SetDeviceInitData(data);
+}
+
+mozilla::gfx::AsyncDrawTargetManager*
+gfxPlatform::GetAsyncDrawTargetManager()
+{
+  return mAsyncDrawTargetManager.get();
 }

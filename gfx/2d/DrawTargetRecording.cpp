@@ -11,6 +11,8 @@
 #include "Tools.h"
 #include "Filters.h"
 
+#include <utils/CallStack.h>
+
 namespace mozilla {
 namespace gfx {
 
@@ -127,10 +129,10 @@ public:
   FORWARD_SET_ATTRIBUTE(const Rect&, RECT);
   FORWARD_SET_ATTRIBUTE(const IntRect&, INTRECT);
   FORWARD_SET_ATTRIBUTE(const Point&, POINT);
+  FORWARD_SET_ATTRIBUTE(const Matrix&, MATRIX);
   FORWARD_SET_ATTRIBUTE(const Matrix5x4&, MATRIX5X4);
   FORWARD_SET_ATTRIBUTE(const Point3D&, POINT3D);
   FORWARD_SET_ATTRIBUTE(const Color&, COLOR);
-
 #undef FORWARD_SET_ATTRIBUTE
 
   virtual void SetAttribute(uint32_t aIndex, const Float* aFloat, uint32_t aSize) override {
@@ -224,6 +226,14 @@ DrawTargetRecording::DrawTargetRecording(DrawEventRecorder *aRecorder, DrawTarge
   : mRecorder(static_cast<DrawEventRecorderPrivate*>(aRecorder))
   , mFinalDT(aDT)
 {
+  if (Factory::dumpFlag) {
+//    android::CallStack stack;
+//    stack.update();
+//    stack.log("bignose tile:");
+
+    printf_stderr("bignose tile: dtname:%s",aDT->typeName());
+  }
+
   RefPtr<SourceSurface> snapshot = aHasData ? mFinalDT->Snapshot() : nullptr;
   mRecorder->RecordEvent(RecordedDrawTargetCreation(this,
                                                     mFinalDT->GetBackendType(),
