@@ -125,6 +125,7 @@ class mozilla::gl::SkiaGLGlue : public GenericAtomicRefCounted {
 #include "mozilla/dom/ContentChild.h"
 
 #include "mozilla/gfx/AsyncDrawTarget.h"
+#include "cutils/properties.h"
 
 namespace mozilla {
 namespace layers {
@@ -181,7 +182,7 @@ public:
   virtual void Lock() override
   {
     if (mTextureClient) {
-      mTextureClient->Lock(OpenMode::OPEN_READ_WRITE);
+      mTextureClient->Lock(OpenMode::OPEN_READ_WRITE | OpenMode::OPEN_FLUSH_ASYNC);
     }
   }
 
@@ -1294,10 +1295,10 @@ gfxPlatform::CreateDrawTargetForData(unsigned char* aData,
 {
   RefPtr<DrawTarget> dt = CreateDrawTargetForData(aData, aSize, aStride, aFormat);
 
-  printf_stderr("bignose pid:%d, mUseAsyncDrawTarget:%d mAsyncDrawTargetManager:%p",
-      getpid(),(bool)mUseAsyncDrawTarget,mAsyncDrawTargetManager.get());
+  char propValue[PROPERTY_VALUE_MAX];
+  property_get("bignose.test", propValue, "0");
 
-  if (mUseAsyncDrawTarget && mAsyncDrawTargetManager) {
+  if (mUseAsyncDrawTarget && mAsyncDrawTargetManager && atoi(propValue)) {
     printf_stderr("bignose generate async draw target for dt:%p",dt.get());
 
     RefPtr<TextureClientDrawTargetData> holder = new TextureClientDrawTargetData(aTextureClient);

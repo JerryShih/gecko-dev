@@ -89,6 +89,10 @@ class MessageChannel : HasResultCodes
 
     void CloseWithTimeout();
 
+    bool OnWorkerThread();
+
+    void PostTaskOnWorker(CancelableTask* aTask);
+
     void SetAbortOnError(bool abort)
     {
         mAbortOnError = abort;

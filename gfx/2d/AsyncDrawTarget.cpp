@@ -8,6 +8,35 @@
 #include "GeckoProfiler.h"
 #include "mozilla/dom/UnionMember.h"
 
+
+
+#ifndef ATRACE_TAG
+# define ATRACE_TAG ATRACE_TAG_ALWAYS
+#endif
+
+// We need HAVE_ANDROID_OS to be defined for Trace.h.
+// If its not set we will set it temporary and remove it.
+# ifndef HAVE_ANDROID_OS
+#  define HAVE_ANDROID_OS
+#  define REMOVE_HAVE_ANDROID_OS
+# endif
+
+// Android source code will include <cutils/trace.h> before this. There is no
+// HAVE_ANDROID_OS defined in Firefox OS build at that time. Enabled it globally
+// will cause other build break. So atrace_begin and atrace_end are not defined.
+// It will cause a build-break when we include <utils/Trace.h>. Use undef
+// _LIBS_CUTILS_TRACE_H will force <cutils/trace.h> to define atrace_begin and
+// atrace_end with defined HAVE_ANDROID_OS again. Then there is no build-break.
+# undef _LIBS_CUTILS_TRACE_H
+# include <utils/Trace.h>
+# ifdef REMOVE_HAVE_ANDROID_OS
+#  undef HAVE_ANDROID_OS
+#  undef REMOVE_HAVE_ANDROID_OS
+# endif
+
+
+
+
 namespace mozilla {
 namespace gfx {
 
@@ -130,6 +159,7 @@ private:
       }
       case PatternType::SURFACE: {
         SurfacePattern& surfPat = mData.mSurface.SetValue(*static_cast<const SurfacePattern*>(&aPattern));
+        ATRACE_NAME("AsyncDrawCommandPatternData::GuaranteePersistance");
         surfPat.mSurface->GuaranteePersistance();
         break;
       }
@@ -667,7 +697,7 @@ private:
 AsyncDrawTarget::AsyncDrawTarget(DrawTarget* aRefDT)
   : mRefDT(aRefDT)
 {
-  printf_stderr("bignose create async drawTarget for:%p",aRefDT);
+  //printf_stderr("bignose create async drawTarget for:%p",aRefDT);
 
   MOZ_ASSERT(mRefDT);
 
@@ -678,7 +708,9 @@ AsyncDrawTarget::AsyncDrawTarget(DrawTarget* aRefDT)
 
 AsyncDrawTarget::~AsyncDrawTarget()
 {
-  FlushPendingDrawCommand();
+  //printf_stderr("bignose ~AsyncDrawTarget, addr:%p, data:%p",this,mAsyncDrawTargetData.get());
+
+  //FlushPendingDrawCommand();
 
   //PL_FinishArenaPool(&mPool);
 }
@@ -715,7 +747,10 @@ AsyncDrawTarget::DrawSurface(SourceSurface *aSurface,
                              const DrawSurfaceOptions &aSurfOptions,
                              const DrawOptions &aOptions)
 {
+  {
+  ATRACE_NAME("AsyncDrawTarget::DrawSurface::GuaranteePersistance");
   aSurface->GuaranteePersistance();
+  }
   AppendCommand(AsyncDrawSurfaceCommand)(aSurface, aDest, aSource, aSurfOptions, aOptions);
 }
 
@@ -738,7 +773,10 @@ AsyncDrawTarget::DrawSurfaceWithShadow(SourceSurface *aSurface,
                                        Float aSigma,
                                        CompositionOp aOperator)
 {
+  {
+  ATRACE_NAME("AsyncDrawTarget::DrawSurfaceWithShadow::GuaranteePersistance");
   aSurface->GuaranteePersistance();
+  }
   AppendCommand(AsyncDrawSurfaceWithShadowCommand)(aSurface, aDest, aColor, aOffset, aSigma, aOperator);
 }
 
@@ -760,7 +798,10 @@ AsyncDrawTarget::CopySurface(SourceSurface* aSurface,
                              const IntRect& aSourceRect,
                              const IntPoint& aDestination)
 {
+  {
+  ATRACE_NAME("AsyncDrawTarget::CopySurface::GuaranteePersistance");
   aSurface->GuaranteePersistance();
+  }
   AppendCommand(AsyncCopySurfaceCommand)(aSurface, aSourceRect, aDestination);
 }
 
@@ -832,7 +873,10 @@ AsyncDrawTarget::MaskSurface(const Pattern &aSource,
                              Point aOffset,
                              const DrawOptions &aOptions)
 {
+  {
+  ATRACE_NAME("AsyncDrawTarget::MaskSurface::GuaranteePersistance");
   aMask->GuaranteePersistance();
+  }
   AppendCommand(AsyncMaskSurfaceCommand)(aSource, aMask, aOffset, aOptions);
 }
 
@@ -967,14 +1011,15 @@ AsyncDrawTarget::InitWithGrContext(GrContext* aGrContext,
 void
 AsyncDrawTarget::FlushPendingDrawCommand()
 {
-  PROFILER_LABEL("AsyncDrawTarget", "FlushPendingDrawCommand",
-    js::ProfileEntry::Category::GRAPHICS);
+//  PROFILER_LABEL("AsyncDrawTarget", "FlushPendingDrawCommand",
+//    js::ProfileEntry::Category::GRAPHICS);
+  ATRACE_NAME("AsyncDrawTarget::FlushPendingDrawCommand");
 
-  printf_stderr("bignose asyncDrawTarget FlushPendingDrawCommand for:%p",mRefDT.get());
+  //printf_stderr("bignose asyncDrawTarget FlushPendingDrawCommand for:%p",mRefDT.get());
 
   auto num = mAsyncDrawTargetData->mPendingDrawCommand.size();
   for (decltype(num) i = 0 ; i<num ; ++i) {
-    printf_stderr("bignose asyncDrawTarget exec :%d", mAsyncDrawTargetData->mPendingDrawCommand[i]->GetType());
+    //printf_stderr("bignose asyncDrawTarget exec :%d", mAsyncDrawTargetData->mPendingDrawCommand[i]->GetType());
     mAsyncDrawTargetData->mPendingDrawCommand[i]->ExecuteOnDT(mRefDT.get());
   }
 
@@ -999,7 +1044,8 @@ AsyncDrawTargetManager::AppendAsyncDrawTarget(AsyncDrawTargetData * aAsyncDrawTa
 void
 AsyncDrawTargetManager::FlushPendingDrawCommand()
 {
-  printf_stderr("bignose AsyncDrawTargetManager::FlushPendingDrawCommand");
+  ATRACE_NAME("AsyncDrawTargetManager::FlushPendingDrawCommand");
+  //printf_stderr("bignose AsyncDrawTargetManager::FlushPendingDrawCommand");
 
   auto num = mAsyncDrawTargets.size();
 
@@ -1011,11 +1057,16 @@ AsyncDrawTargetManager::FlushPendingDrawCommand()
 
 AsyncDrawTargetData::AsyncDrawTargetData()
 {
+  ATRACE_NAME("AsyncDrawTargetData::AsyncDrawTargetData");
+
   PL_InitArenaPool(&mPool, "AsyncDrawTarget command", 1024, sizeof(double));
 }
 
 AsyncDrawTargetData::~AsyncDrawTargetData()
 {
+  ATRACE_NAME("AsyncDrawTargetData::~AsyncDrawTargetData");
+  //printf_stderr("bignose ~AsyncDrawTargetData, addr:%p",this);
+
   DiscardAllDrawCommand();
 
   PL_FinishArenaPool(&mPool);
@@ -1024,6 +1075,8 @@ AsyncDrawTargetData::~AsyncDrawTargetData()
 void
 AsyncDrawTargetData::DiscardAllDrawCommand()
 {
+  ATRACE_NAME("AsyncDrawTargetData::DiscardAllDrawCommand");
+
   auto num = mPendingDrawCommand.size();
   for (decltype(num) i = 0 ; i<num ; ++i) {
     mPendingDrawCommand[i]->AsyncDrawCommand::~AsyncDrawCommand();
@@ -1035,16 +1088,24 @@ AsyncDrawTargetData::DiscardAllDrawCommand()
 void
 AsyncDrawTargetData::ApplyDrawCommand()
 {
+  {
+  ATRACE_NAME("AsyncDrawTarget::Lock");
+
   Lock();
+  }
 
   DrawTarget* drawTarget = GetDrawTarget();
-  printf_stderr("bignose exec draw for dt:%p",drawTarget);
+  //printf_stderr("bignose exec draw for dt:%p",drawTarget);
 
   RefPtr<AsyncDrawTarget> asyncDT = new AsyncDrawTarget(drawTarget);
   asyncDT->SetAsyncDrawTargetData(this);
   asyncDT->FlushPendingDrawCommand();
 
+  {
+  ATRACE_NAME("AsyncDrawTarget::Unlock");
+
   Unlock();
+  }
 }
 
 } // namespace gfx

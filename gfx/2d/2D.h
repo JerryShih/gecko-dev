@@ -1140,7 +1140,7 @@ protected:
 
   SurfaceFormat mFormat;
 
-  AsyncDrawTargetData* mAsyncDrawTargetData;
+  RefPtr<AsyncDrawTargetData> mAsyncDrawTargetData;
 };
 
 class DrawTargetCapture : public DrawTarget

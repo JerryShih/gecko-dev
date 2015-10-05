@@ -489,6 +489,20 @@ MessageChannel::Open(MessageChannel *aTargetChan, MessageLoop *aTargetLoop, Side
     return (ChannelConnected == mChannelState);
 }
 
+bool
+MessageChannel::OnWorkerThread()
+{
+  return (mWorkerLoopID == MessageLoop::current()->id());
+}
+
+void
+MessageChannel::PostTaskOnWorker(CancelableTask* aTask)
+{
+    MOZ_ASSERT(mWorkerLoop);
+
+    mWorkerLoop->PostTask(FROM_HERE, aTask);
+}
+
 void
 MessageChannel::OnOpenAsSlave(MessageChannel *aTargetChan, Side aSide)
 {

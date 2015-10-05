@@ -121,11 +121,13 @@ GrallocTextureClientOGL::Lock(OpenMode aMode)
     return true;
   }
 
+  if (!(aMode & OpenMode::OPEN_FLUSH_ASYNC)) {
 #if defined(MOZ_WIDGET_GONK) && ANDROID_VERSION >= 21
-  WaitForBufferOwnership(false /* aWaitReleaseFence */);
+    WaitForBufferOwnership(false /* aWaitReleaseFence */);
 #else
-  WaitForBufferOwnership();
+    WaitForBufferOwnership();
 #endif
+  }
 
   uint32_t usage = 0;
   if (aMode & OpenMode::OPEN_READ) {

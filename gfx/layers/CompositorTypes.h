@@ -219,6 +219,7 @@ enum class OpenMode : uint8_t {
   OPEN_NONE        = 0,
   OPEN_READ        = 0x1,
   OPEN_WRITE       = 0x2,
+  OPEN_FLUSH_ASYNC = 0x4,
   OPEN_READ_WRITE  = OPEN_READ|OPEN_WRITE,
   OPEN_READ_ONLY   = OPEN_READ,
   OPEN_WRITE_ONLY  = OPEN_WRITE

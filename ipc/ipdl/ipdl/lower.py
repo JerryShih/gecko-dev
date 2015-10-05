@@ -5310,12 +5310,24 @@ class _GenerateProtocolActorCode(ipdl.ast.Visitor):
 
     def sendAsync(self, md, msgexpr, actor=None):
         sendok = ExprVar('sendok__')
+
+        threadCheck = StmtIf(ExprCall(ExprSelect(self.protocol.channelVar(actor),
+                                                 self.protocol.channelSel(),
+                                                 'OnWorkerThread')))
+        threadCheck.addifstmt(StmtExpr(ExprCall(ExprSelect(self.protocol.channelVar(actor),
+                                                  self.protocol.channelSel(),
+                                                  'bignoseOnWorker'))))
+        threadCheck.addelsestmt(StmtExpr(ExprCall(ExprSelect(self.protocol.channelVar(actor),
+                                                    self.protocol.channelSel(),
+                                                    'bignoseNotOnWorker'))))
+
         return (
             sendok,
             ([ Whitespace.NL,
                self.logMessage(md, msgexpr, 'Sending ', actor),
                self.profilerLabel('AsyncSend', md.decl.progname) ]
             + self.transition(md, 'out', actor)
+            #+ [ threadCheck ]
             + [ Whitespace.NL,
                 StmtDecl(Decl(Type.BOOL, sendok.name),
                          init=ExprCall(

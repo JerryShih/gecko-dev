@@ -327,6 +327,8 @@ ClientLayerManager::EndTransaction(DrawPaintedLayerCallback aCallback,
   ForwardTransaction(!(aFlags & END_NO_REMOTE_COMPOSITE));
 
   if (mRepeatTransaction) {
+    ATRACE_NAME("ClientLayerManager::Repeat EndTransaction");
+
     mRepeatTransaction = false;
     mIsRepeatTransaction = true;
     BeginTransaction();

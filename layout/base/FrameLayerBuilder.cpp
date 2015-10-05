@@ -3564,6 +3564,8 @@ PaintInactiveLayer(nsDisplayListBuilder* aBuilder,
                    gfxContext* aContext,
                    nsRenderingContext* aCtx)
 {
+  ATRACE_NAME("PaintInactiveLayer");
+
   // This item has an inactive layer. Render it to a PaintedLayer
   // using a temporary BasicLayerManager.
   BasicLayerManager* basic = static_cast<BasicLayerManager*>(aManager);
