@@ -414,7 +414,11 @@ vprintf_stderr(const char* aFmt, va_list aArgs)
     va_end(argsCpy);
   }
 
+  //vfprintf(stderr, aFmt, aArgs);
+
+  //for desktop new line
   vfprintf(stderr, aFmt, aArgs);
+  fprintf(stderr, "\n");
 }
 #endif
 
