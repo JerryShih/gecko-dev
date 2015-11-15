@@ -1283,7 +1283,7 @@ void nsBaseWidget::CreateCompositor(int aWidth, int aHeight)
   bool success = false;
   if (!backendHints.IsEmpty()) {
     shadowManager = mCompositorChild->SendPLayerTransactionConstructor(
-      backendHints, 0, &textureFactoryIdentifier, &success);
+      backendHints, rootLayerTreeId, &textureFactoryIdentifier, &success);
   }
 
   ShadowLayerForwarder* lf = lm->AsShadowForwarder();

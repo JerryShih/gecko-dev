@@ -1653,14 +1653,14 @@ CompositorParent::AllocPLayerTransactionParent(const nsTArray<LayersBackend>& aB
                                                TextureFactoryIdentifier* aTextureFactoryIdentifier,
                                                bool *aSuccess)
 {
-  MOZ_ASSERT(aId == 0);
+  //MOZ_ASSERT(aId == 0);
 
   InitializeLayerManager(aBackendHints);
 
   if (!mLayerManager) {
     NS_WARNING("Failed to initialise Compositor");
     *aSuccess = false;
-    LayerTransactionParent* p = new LayerTransactionParent(nullptr, this, 0);
+    LayerTransactionParent* p = new LayerTransactionParent(nullptr, this, aId);
     p->AddIPDLReference();
     return p;
   }
@@ -1669,7 +1669,7 @@ CompositorParent::AllocPLayerTransactionParent(const nsTArray<LayersBackend>& aB
   *aSuccess = true;
 
   *aTextureFactoryIdentifier = mCompositor->GetTextureFactoryIdentifier();
-  LayerTransactionParent* p = new LayerTransactionParent(mLayerManager, this, 0);
+  LayerTransactionParent* p = new LayerTransactionParent(mLayerManager, this, aId);
   p->AddIPDLReference();
   return p;
 }
