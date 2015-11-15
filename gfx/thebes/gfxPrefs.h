@@ -210,6 +210,9 @@ private:
   DECL_GFX_PREF(Live, "general.smoothScroll.mouseWheel.durationMinMS",
                 WheelSmoothScrollMinDurationMs, int32_t, 200);
 
+  // This is the pref for off-main content painting including off-main layerTransaction ipc.
+  DECL_GFX_PREF(Live, "gfx.content.off-main.painting",         ContentOffMainPainting, bool, false);
+
   DECL_GFX_PREF(Once, "gfx.android.rgb16.force",               AndroidRGB16Force, bool, false);
 #if defined(ANDROID)
   DECL_GFX_PREF(Once, "gfx.apitrace.enabled",                  UseApitrace, bool, false);
