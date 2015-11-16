@@ -257,7 +257,8 @@ public:
                       uint32_t aPaintSequenceNumber,
                       bool aIsRepeatTransaction,
                       const mozilla::TimeStamp& aTransactionStart,
-                      bool* aSent);
+                      bool* aSent,
+                      base::WaitableEvent* aWaitableEvent);
 
   /**
    * Set an actor through which layer updates will be pushed.
@@ -279,6 +280,9 @@ public:
   void Composite();
 
   virtual void SendPendingAsyncMessges() override;
+
+  void SendFlushPendingTransaction(uint64_t aLayerTreeID,
+                                   base::WaitableEvent* aWaitableEvent);
 
   /**
    * True if this is forwarding to a LayerManagerComposite.

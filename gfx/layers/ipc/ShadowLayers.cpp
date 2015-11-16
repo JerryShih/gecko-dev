@@ -32,6 +32,8 @@
 #include "nsXULAppAPI.h"                // for XRE_GetProcessType, etc
 #include "mozilla/ReentrantMonitor.h"
 
+#include "ImageBridgeChild.h"
+
 namespace mozilla {
 namespace ipc {
 class Shmem;
@@ -518,6 +520,24 @@ ShadowLayerForwarder::StorePluginWidgetConfigurations(const nsTArray<nsIWidget::
   }
 }
 
+void
+ShadowLayerForwarder::SendFlushPendingTransaction(uint64_t aLayerTreeID,
+                                                  base::WaitableEvent* aWaitableEvent)
+{
+  MOZ_ASSERT(InImageBridgeChildThread());
+
+  printf_stderr("bignose ShadowLayerForwarder::SendFlushPendingTransaction start");
+
+  ImageBridgeChild::GetSingleton()->SendFlushPendingTransaction(aLayerTreeID);
+
+  printf_stderr("bignose ShadowLayerForwarder::SendFlushPendingTransaction end");
+
+  if (aWaitableEvent) {
+    printf_stderr("bignose ShadowLayerForwarder::SendFlushPendingTransaction signal");
+    aWaitableEvent->Signal();
+  }
+}
+
 bool
 ShadowLayerForwarder::EndTransaction(InfallibleTArray<EditReply>* aReplies,
                                      const nsIntRegion& aRegionToClear,
@@ -526,7 +546,8 @@ ShadowLayerForwarder::EndTransaction(InfallibleTArray<EditReply>* aReplies,
                                      uint32_t aPaintSequenceNumber,
                                      bool aIsRepeatTransaction,
                                      const mozilla::TimeStamp& aTransactionStart,
-                                     bool* aSent)
+                                     bool* aSent,
+                                     base::WaitableEvent* aWaitableEvent)
 {
   *aSent = false;
 
@@ -685,17 +706,49 @@ ShadowLayerForwarder::EndTransaction(InfallibleTArray<EditReply>* aReplies,
       return false;
     }
   } else {
+//    // If we don't require a swap we can call SendUpdateNoSwap which
+//    // assumes that aReplies is empty (DEBUG assertion)
+//    MOZ_LAYERS_LOG(("[LayersForwarder] sending no swap transaction..."));
+//    RenderTraceScope rendertrace3("Forward NoSwap Transaction", "000093");
+//    if (!HasShadowManager() ||
+//        !mShadowManager->IPCOpen() ||
+//        !mShadowManager->SendUpdateNoSwap(cset, aId, targetConfig, mPluginWindowData,
+//                                          mIsFirstPaint, aScheduleComposite,
+//                                          aPaintSequenceNumber, aIsRepeatTransaction,
+//                                          aTransactionStart, mPaintSyncId, false)) {
+//      MOZ_LAYERS_LOG(("[LayersForwarder] WARNING: sending transaction failed!"));
+//      return false;
+//    }
+
     // If we don't require a swap we can call SendUpdateNoSwap which
     // assumes that aReplies is empty (DEBUG assertion)
     MOZ_LAYERS_LOG(("[LayersForwarder] sending no swap transaction..."));
     RenderTraceScope rendertrace3("Forward NoSwap Transaction", "000093");
-    if (!HasShadowManager() ||
-        !mShadowManager->IPCOpen() ||
-        !mShadowManager->SendUpdateNoSwap(cset, aId, targetConfig, mPluginWindowData,
-                                          mIsFirstPaint, aScheduleComposite,
-                                          aPaintSequenceNumber, aIsRepeatTransaction,
-                                          aTransactionStart, mPaintSyncId)) {
-      MOZ_LAYERS_LOG(("[LayersForwarder] WARNING: sending transaction failed!"));
+
+    bool offMainPainting = gfxPrefs::ContentOffMainPainting();
+
+    if (HasShadowManager() && mShadowManager->IPCOpen()) {
+      if (!mShadowManager->SendUpdateNoSwap(cset, aId, targetConfig, mPluginWindowData,
+                                           mIsFirstPaint, aScheduleComposite,
+                                           aPaintSequenceNumber, aIsRepeatTransaction,
+                                           aTransactionStart, mPaintSyncId, offMainPainting)) {
+        MOZ_LAYERS_LOG(("[LayersForwarder] WARNING: sending transaction failed!"));
+        return false;
+      }
+
+      if (offMainPainting) {
+        UniquePtr<base::WaitableEvent> waitObject(new base::WaitableEvent(false, false));
+
+        ImageBridgeChild::GetSingleton()->GetMessageLoop()->PostTask(FROM_HERE,
+            NewRunnableMethod(this,
+                              &ShadowLayerForwarder::SendFlushPendingTransaction,
+                              mShadowManager->GetId(),
+                              //aWaitableEvent));
+                              waitObject.get()));
+
+        waitObject->Wait();
+      }
+    } else {
       return false;
     }
   }

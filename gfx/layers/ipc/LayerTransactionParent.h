@@ -96,6 +96,8 @@ public:
 
   virtual void ReplyRemoveTexture(const OpReplyRemoveTexture& aReply) override;
 
+  void FlushPendingTransaction();
+
 protected:
   virtual bool RecvShutdown() override;
 
@@ -120,7 +122,8 @@ protected:
                                 const uint32_t& paintSequenceNumber,
                                 const bool& isRepeatTransaction,
                                 const mozilla::TimeStamp& aTransactionStart,
-                                const int32_t& aPaintSyncId) override;
+                                const int32_t& aPaintSyncId,
+                                const bool& aPendingUpdate) override;
 
   virtual bool RecvClearCachedResources() override;
   virtual bool RecvForceComposite() override;
@@ -171,6 +174,7 @@ protected:
     mIPCOpen = false;
     RELEASE_MANUALLY(this);
   }
+
   friend class CompositorParent;
   friend class CrossProcessCompositorParent;
   friend class layout::RenderFrameParent;
@@ -205,6 +209,33 @@ private:
   bool mDestroyed;
 
   bool mIPCOpen;
+
+  struct PendingTransactionMessage
+  {
+    PendingTransactionMessage(EditArray&& cset,
+                              const uint64_t& aTransactionId,
+                              const TargetConfig& targetConfig,
+                              PluginsArray&& aPlugins,
+                              const bool& isFirstPaint,
+                              const bool& scheduleComposite,
+                              const uint32_t& paintSequenceNumber,
+                              const bool& isRepeatTransaction,
+                              const mozilla::TimeStamp& aTransactionStart,
+                              const int32_t& aPaintSyncId);
+
+    EditArray mEdit;
+    uint64_t mTransactionId;
+    TargetConfig mTargetConfig;
+    PluginsArray mPlugins;
+    bool mIsFirstPaint;
+    bool mScheduleComposite;
+    uint32_t mPaintSequenceNumber;
+    bool mIsRepeatTransaction;
+    mozilla::TimeStamp mTransactionStart;
+    int32_t mPaintSyncId;
+  };
+
+  UniquePtr<PendingTransactionMessage> mPendingTransactionMessage;
 };
 
 } // namespace layers

@@ -27,6 +27,8 @@
 #include "mozilla/layers/TransactionIdAllocator.h"
 #include "nsIWidget.h"                  // For plugin window configuration information structs
 
+#include "base/waitable_event.h"
+
 namespace mozilla {
 namespace layers {
 
@@ -352,6 +354,8 @@ private:
   mozilla::TimeStamp mTransactionStart;
 
   RefPtr<MemoryPressureObserver> mMemoryPressureObserver;
+
+  base::WaitableEvent mWaitableEvent;
 };
 
 class ClientLayer : public ShadowableLayer

@@ -69,6 +69,7 @@ public:
   virtual bool RecvImageBridgeThreadId(const PlatformThreadId& aThreadId) override;
   virtual bool RecvUpdate(EditArray&& aEdits, EditReplyArray* aReply) override;
   virtual bool RecvUpdateNoSwap(EditArray&& aEdits) override;
+  virtual bool RecvFlushPendingTransaction(const uint64_t& aLayerTreeID) override;
 
   virtual bool IsAsync() const override { return true; }
 

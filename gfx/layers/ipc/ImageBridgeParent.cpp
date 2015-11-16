@@ -163,6 +163,19 @@ ImageBridgeParent::RecvUpdateNoSwap(EditArray&& aEdits)
   return success;
 }
 
+bool
+ImageBridgeParent::RecvFlushPendingTransaction(const uint64_t& aLayerTreeID)
+{
+  CompositorParent::LayerTreeState* state = CompositorParent::GetIndirectShadowTree(aLayerTreeID);
+  MOZ_ASSERT(state, "RecvFlushPendingTransaction: No matched layer tree.");
+
+  printf_stderr("bignose RecvFlushPendingTransaction layertree id:%lld", aLayerTreeID);
+
+  state->mLayerTree->FlushPendingTransaction();
+
+  return true;
+}
+
 static void
 ConnectImageBridgeInParentProcess(ImageBridgeParent* aBridge,
                                   Transport* aTransport,

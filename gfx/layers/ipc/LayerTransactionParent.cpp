@@ -183,8 +183,28 @@ LayerTransactionParent::Destroy()
   }
 }
 
+void
+LayerTransactionParent::FlushPendingTransaction()
+{
+  printf_stderr("bignose exec transaction, transaction id:%lld", mPendingTransactionMessage->mTransactionId);
+
+  RecvUpdate(Move(mPendingTransactionMessage->mEdit),
+             mPendingTransactionMessage->mTransactionId,
+             mPendingTransactionMessage->mTargetConfig,
+             Move(mPendingTransactionMessage->mPlugins),
+             mPendingTransactionMessage->mIsFirstPaint,
+             mPendingTransactionMessage->mScheduleComposite,
+             mPendingTransactionMessage->mPaintSequenceNumber,
+             mPendingTransactionMessage->mIsRepeatTransaction,
+             mPendingTransactionMessage->mTransactionStart,
+             mPendingTransactionMessage->mPaintSyncId,
+             nullptr);
+
+  mPendingTransactionMessage.reset(nullptr);
+}
+
 bool
-LayerTransactionParent::RecvUpdateNoSwap(InfallibleTArray<Edit>&& cset,
+LayerTransactionParent::RecvUpdateNoSwap(EditArray&& cset,
                                          const uint64_t& aTransactionId,
                                          const TargetConfig& targetConfig,
                                          PluginsArray&& aPlugins,
@@ -193,8 +213,30 @@ LayerTransactionParent::RecvUpdateNoSwap(InfallibleTArray<Edit>&& cset,
                                          const uint32_t& paintSequenceNumber,
                                          const bool& isRepeatTransaction,
                                          const mozilla::TimeStamp& aTransactionStart,
-                                         const int32_t& aPaintSyncId)
+                                         const int32_t& aPaintSyncId,
+                                         const bool& aPendingUpdate)
 {
+  PROFILER_LABEL("LayerTransactionParent", "RecvUpdateNoSwap",
+    js::ProfileEntry::Category::GRAPHICS);
+
+  if (aPendingUpdate) {
+    mPendingTransactionMessage.reset(
+        new PendingTransactionMessage(Move(cset),
+                                      aTransactionId,
+                                      targetConfig,
+                                      Move(aPlugins),
+                                      isFirstPaint,
+                                      scheduleComposite,
+                                      paintSequenceNumber,
+                                      isRepeatTransaction,
+                                      aTransactionStart,
+                                      aPaintSyncId));
+
+    printf_stderr("bignose save transaction msg, transaction id:%lld",aTransactionId);
+
+    return true;
+  }
+
   return RecvUpdate(Move(cset), aTransactionId, targetConfig, Move(aPlugins), isFirstPaint,
       scheduleComposite, paintSequenceNumber, isRepeatTransaction,
       aTransactionStart, aPaintSyncId, nullptr);
@@ -216,7 +258,7 @@ private:
 };
 
 bool
-LayerTransactionParent::RecvUpdate(InfallibleTArray<Edit>&& cset,
+LayerTransactionParent::RecvUpdate(EditArray&& cset,
                                    const uint64_t& aTransactionId,
                                    const TargetConfig& targetConfig,
                                    PluginsArray&& aPlugins,
@@ -1032,6 +1074,29 @@ LayerTransactionParent::ReplyRemoveTexture(const OpReplyRemoveTexture& aReply)
   InfallibleTArray<AsyncParentMessageData> messages;
   messages.AppendElement(aReply);
   mozilla::Unused << SendParentAsyncMessages(messages);
+}
+
+LayerTransactionParent::PendingTransactionMessage::PendingTransactionMessage(EditArray&& cset,
+                                                                             const uint64_t& aTransactionId,
+                                                                             const TargetConfig& targetConfig,
+                                                                             PluginsArray&& aPlugins,
+                                                                             const bool& isFirstPaint,
+                                                                             const bool& scheduleComposite,
+                                                                             const uint32_t& paintSequenceNumber,
+                                                                             const bool& isRepeatTransaction,
+                                                                             const mozilla::TimeStamp& aTransactionStart,
+                                                                             const int32_t& aPaintSyncId)
+  : mEdit(Move(cset))
+  , mTransactionId(aTransactionId)
+  , mTargetConfig(targetConfig)
+  , mPlugins(Move(aPlugins))
+  , mIsFirstPaint(isFirstPaint)
+  , mScheduleComposite(scheduleComposite)
+  , mPaintSequenceNumber(paintSequenceNumber)
+  , mIsRepeatTransaction(isRepeatTransaction)
+  , mTransactionStart(aTransactionStart)
+  , mPaintSyncId(aPaintSyncId)
+{
 }
 
 } // namespace layers

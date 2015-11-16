@@ -102,6 +102,7 @@ ClientLayerManager::ClientLayerManager(nsIWidget* aWidget)
   , mNeedsComposite(false)
   , mPaintSequenceNumber(0)
   , mForwarder(new ShadowLayerForwarder)
+  , mWaitableEvent(true, true)
 {
   MOZ_COUNT_CTOR(ClientLayerManager);
   mMemoryPressureObserver = new MemoryPressureObserver(this);
@@ -178,6 +179,14 @@ ClientLayerManager::CreateReadbackLayer()
 void
 ClientLayerManager::BeginTransactionWithTarget(gfxContext* aTarget)
 {
+  printf_stderr("bignose ClientLayerManager::BeginTransactionWithTarget, lm:%p", this);
+
+  if (gfxPrefs::ContentOffMainPainting()) {
+    //printf_stderr("bignose ClientLayerManager::BeginTransactionWithTarget, start wait lm:%p", this);
+    //MOZ_ALWAYS_TRUE(mWaitableEvent.Wait());
+    //printf_stderr("bignose ClientLayerManager::BeginTransactionWithTarget, end wait lm:%p", this);
+  }
+
   mInTransaction = true;
   mTransactionStart = TimeStamp::Now();
 
@@ -571,6 +580,8 @@ ClientLayerManager::StopFrameTimeRecording(uint32_t         aStartIndex,
 void
 ClientLayerManager::ForwardTransaction(bool aScheduleComposite)
 {
+  printf_stderr("bignose ClientLayerManager::ForwardTransaction, lm:%p", this);
+
   TimeStamp start = TimeStamp::Now();
 
   if (mForwarder->GetSyncObject()) {
@@ -592,7 +603,7 @@ ClientLayerManager::ForwardTransaction(bool aScheduleComposite)
   AutoInfallibleTArray<EditReply, 10> replies;
   if (mForwarder->EndTransaction(&replies, mRegionToClear,
         mLatestTransactionId, aScheduleComposite, mPaintSequenceNumber,
-        mIsRepeatTransaction, transactionStart, &sent)) {
+        mIsRepeatTransaction, transactionStart, &sent, &mWaitableEvent)) {
     for (nsTArray<EditReply>::size_type i = 0; i < replies.Length(); ++i) {
       const EditReply& reply = replies[i];
 
@@ -631,6 +642,7 @@ ClientLayerManager::ForwardTransaction(bool aScheduleComposite)
     mTransactionIdAllocator->RevokeTransactionId(mLatestTransactionId);
   }
 
+  printf_stderr("bignose clean holded resource and pending msg start");
   mForwarder->RemoveTexturesIfNecessary();
   mForwarder->SendPendingAsyncMessges();
   mPhase = PHASE_NONE;
@@ -638,6 +650,7 @@ ClientLayerManager::ForwardTransaction(bool aScheduleComposite)
   // this may result in Layers being deleted, which results in
   // PLayer::Send__delete__() and DeallocShmem()
   mKeepAlive.Clear();
+  printf_stderr("bignose clean holded resource and pending msg end");
 
   TabChild* window = mWidget->GetOwningTabChild();
   if (window) {

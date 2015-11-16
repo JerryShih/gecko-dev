@@ -64,6 +64,8 @@ parent:
   async PImageContainer();
 
   async ChildAsyncMessages(AsyncChildMessageData[] aMessages);
+
+  async FlushPendingTransaction(uint64_t aLayerTreeID);
 };
 
 

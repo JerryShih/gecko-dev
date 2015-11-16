@@ -68,7 +68,7 @@ parent:
                      PluginWindowData[] plugins, bool isFirstPaint,
                      bool scheduleComposite, uint32_t paintSequenceNumber,
                      bool isRepeatTransaction, TimeStamp transactionStart,
-                     int32_t paintSyncId);
+                     int32_t paintSyncId, bool pendingUpdate);
 
   // Testing APIs
 
