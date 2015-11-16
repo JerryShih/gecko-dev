@@ -38,6 +38,8 @@
 using namespace mozilla::tasktracer;
 #endif
 
+//#define IPC_MESSAGE_DEBUG_EXTRA 1
+
 namespace IPC {
 
 // IPC channels on Windows use named pipes (CreateNamedPipe()) with
@@ -790,6 +792,8 @@ bool Channel::ChannelImpl::ProcessOutgoingMessages() {
 #ifdef IPC_MESSAGE_DEBUG_EXTRA
       DLOG(INFO) << "sent message @" << msg << " on channel @" << this <<
                     " with type " << msg->type();
+      printf_stderr("bignose sending message @%p on channel@%p with type %lu",
+          msg, this, msg->type());
 #endif
       OutputQueuePop();
       delete msg;
@@ -803,6 +807,8 @@ bool Channel::ChannelImpl::Send(Message* message) {
   DLOG(INFO) << "sending message @" << message << " on channel @" << this
              << " with type " << message->type()
              << " (" << output_queue_.size() << " in queue)";
+  printf_stderr("bignose sending message @%p on channel@%p with type %d (%lu in queue)",
+      message, this, message->type(), output_queue_.size());
 #endif
 
 
