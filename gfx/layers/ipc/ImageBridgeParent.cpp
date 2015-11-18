@@ -167,7 +167,8 @@ bool
 ImageBridgeParent::RecvFlushPendingTransaction(const uint64_t& aLayerTreeID)
 {
   CompositorParent::LayerTreeState* state = CompositorParent::GetIndirectShadowTree(aLayerTreeID);
-  MOZ_ASSERT(state, "RecvFlushPendingTransaction: No matched layer tree.");
+  MOZ_ASSERT(state, "RecvFlushPendingTransaction: No matched layer tree id.");
+  MOZ_ASSERT(state->mLayerTree, "RecvFlushPendingTransaction: No matched layer tree LayerTransactionParent.");
 
   printf_stderr("bignose RecvFlushPendingTransaction layertree id:%lld", aLayerTreeID);
 

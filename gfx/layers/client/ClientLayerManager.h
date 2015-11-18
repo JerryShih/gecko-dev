@@ -28,6 +28,7 @@
 #include "nsIWidget.h"                  // For plugin window configuration information structs
 
 #include "base/waitable_event.h"
+#include <queue>
 
 namespace mozilla {
 namespace layers {
@@ -259,6 +260,8 @@ public:
 
   void SetNextPaintSyncId(int32_t aSyncId);
 
+  void DidLayerTransaction();
+
 protected:
   enum TransactionPhase {
     PHASE_NONE, PHASE_CONSTRUCTION, PHASE_DRAWING, PHASE_FORWARD
@@ -306,7 +309,7 @@ private:
                               void* aCallbackData,
                               EndTransactionFlags);
 
-  LayerRefArray mKeepAlive;
+  std::queue<LayerRefArray> mHoldedLayers;
 
   nsIWidget* mWidget;
   

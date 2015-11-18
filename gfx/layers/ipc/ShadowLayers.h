@@ -23,9 +23,12 @@
 #include "nsTArrayForwardDeclare.h"     // for InfallibleTArray
 #include "nsIWidget.h"
 
+#include <queue>
+
 namespace mozilla {
 namespace layers {
 
+class ClientLayerManager;
 class EditReply;
 class ImageContainer;
 class Layer;
@@ -38,7 +41,6 @@ class TextureClient;
 class ThebesBuffer;
 class ThebesBufferData;
 class Transaction;
-
 
 /**
  * We want to share layer trees across thread contexts and address
@@ -208,6 +210,18 @@ public:
   void SetMask(ShadowableLayer* aLayer,
                ShadowableLayer* aMaskLayer);
 
+  virtual void HoldUntilTransaction(TextureClient* aClient) override
+  {
+    if (aClient) {
+      mHoldedTextures.back().AppendElement(aClient);
+    }
+  }
+
+  virtual void RemoveTexturesIfNecessary() override
+  {
+    mHoldedTextures.pop();
+  }
+
   /**
    * See CompositableForwarder::UseTiledLayerBuffer
    */
@@ -354,7 +368,7 @@ public:
   static void PlatformSyncBeforeUpdate();
 
 protected:
-  ShadowLayerForwarder();
+  ShadowLayerForwarder(ClientLayerManager* aLayerManager);
 
 #ifdef DEBUG
   void CheckSurfaceDescriptor(const SurfaceDescriptor* aDescriptor) const;
@@ -367,14 +381,17 @@ protected:
   RefPtr<LayerTransactionChild> mShadowManager;
 
 private:
+  ClientLayerManager* mLayerManager;
 
   Transaction* mTxn;
-  std::vector<AsyncChildMessageData> mPendingAsyncMessages;
   DiagnosticTypes mDiagnosticTypes;
   bool mIsFirstPaint;
   bool mWindowOverlayChanged;
   int32_t mPaintSyncId;
   InfallibleTArray<PluginWindowData> mPluginWindowData;
+
+  std::queue<std::vector<AsyncChildMessageData>> mPendingAsyncMessages;
+  std::queue<nsTArray<RefPtr<TextureClient>>> mHoldedTextures;
 };
 
 class CompositableClient;

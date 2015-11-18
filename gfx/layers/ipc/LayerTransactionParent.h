@@ -17,6 +17,8 @@
 #include "nsAutoPtr.h"                  // for nsRefPtr
 #include "nsTArrayForwardDeclare.h"     // for InfallibleTArray
 
+#include <utility>
+
 namespace mozilla {
 
 namespace ipc {
@@ -235,7 +237,8 @@ private:
     int32_t mPaintSyncId;
   };
 
-  UniquePtr<PendingTransactionMessage> mPendingTransactionMessage;
+  std::queue<PendingTransactionMessage> mPendingTransactionMessage;
+  uint32_t mCompositionRequestCount;
 };
 
 } // namespace layers

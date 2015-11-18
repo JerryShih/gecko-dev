@@ -101,11 +101,14 @@ ClientLayerManager::ClientLayerManager(nsIWidget* aWidget)
   , mCompositorMightResample(false)
   , mNeedsComposite(false)
   , mPaintSequenceNumber(0)
-  , mForwarder(new ShadowLayerForwarder)
+  , mForwarder(new ShadowLayerForwarder(this))
   , mWaitableEvent(true, true)
 {
   MOZ_COUNT_CTOR(ClientLayerManager);
   mMemoryPressureObserver = new MemoryPressureObserver(this);
+
+  // Add the first layer array.
+  mHoldedLayers.push(LayerRefArray());
 }
 
 ClientLayerManager::~ClientLayerManager()
@@ -182,9 +185,12 @@ ClientLayerManager::BeginTransactionWithTarget(gfxContext* aTarget)
   printf_stderr("bignose ClientLayerManager::BeginTransactionWithTarget, lm:%p", this);
 
   if (gfxPrefs::ContentOffMainPainting()) {
-    //printf_stderr("bignose ClientLayerManager::BeginTransactionWithTarget, start wait lm:%p", this);
-    //MOZ_ALWAYS_TRUE(mWaitableEvent.Wait());
-    //printf_stderr("bignose ClientLayerManager::BeginTransactionWithTarget, end wait lm:%p", this);
+    printf_stderr("bignose ClientLayerManager::BeginTransactionWithTarget, start wait lm:%p, waitableEvent:%p",
+        this, &mWaitableEvent);
+    MOZ_ALWAYS_TRUE(mWaitableEvent.Wait());
+    printf_stderr("bignose ClientLayerManager::BeginTransactionWithTarget, end wait lm:%p, waitableEvent:%p",
+        this, &mWaitableEvent);
+    //DidLayerTransaction();
   }
 
   mInTransaction = true;
@@ -198,7 +204,7 @@ ClientLayerManager::BeginTransactionWithTarget(gfxContext* aTarget)
   NS_ASSERTION(!InTransaction(), "Nested transactions not allowed");
   mPhase = PHASE_CONSTRUCTION;
 
-  MOZ_ASSERT(mKeepAlive.IsEmpty(), "uncommitted txn?");
+  MOZ_ASSERT(mHoldedLayers.back().IsEmpty(), "uncommitted txn?");
   RefPtr<gfxContext> targetContext = aTarget;
 
   // If the last transaction was incomplete (a failed DoEmptyTransaction),
@@ -584,6 +590,9 @@ ClientLayerManager::ForwardTransaction(bool aScheduleComposite)
 
   TimeStamp start = TimeStamp::Now();
 
+  // Create another layer array for next transactoin.
+  mHoldedLayers.push(LayerRefArray());
+
   if (mForwarder->GetSyncObject()) {
     mForwarder->GetSyncObject()->FinalizeFrame();
   }
@@ -642,15 +651,11 @@ ClientLayerManager::ForwardTransaction(bool aScheduleComposite)
     mTransactionIdAllocator->RevokeTransactionId(mLatestTransactionId);
   }
 
-  printf_stderr("bignose clean holded resource and pending msg start");
-  mForwarder->RemoveTexturesIfNecessary();
-  mForwarder->SendPendingAsyncMessges();
-  mPhase = PHASE_NONE;
+  if (!gfxPrefs::ContentOffMainPainting()) {
+    DidLayerTransaction();
+  }
 
-  // this may result in Layers being deleted, which results in
-  // PLayer::Send__delete__() and DeallocShmem()
-  mKeepAlive.Clear();
-  printf_stderr("bignose clean holded resource and pending msg end");
+  mPhase = PHASE_NONE;
 
   TabChild* window = mWidget->GetOwningTabChild();
   if (window) {
@@ -668,7 +673,7 @@ ClientLayerManager::Hold(Layer* aLayer)
   ShadowableLayer* shadowable = ClientLayer::ToClientLayer(aLayer);
   MOZ_ASSERT(shadowable, "trying to remote an unshadowable layer");
 
-  mKeepAlive.AppendElement(aLayer);
+  mHoldedLayers.back().AppendElement(aLayer);
   return shadowable;
 }
 
@@ -828,6 +833,21 @@ void
 ClientLayerManager::SetNextPaintSyncId(int32_t aSyncId)
 {
   mForwarder->SetPaintSyncId(aSyncId);
+}
+
+void
+ClientLayerManager::DidLayerTransaction()
+{
+  printf_stderr("bignose clean holded resource and pending msg start");
+  mForwarder->RemoveTexturesIfNecessary();
+  mForwarder->SendPendingAsyncMessges();
+
+  // Clear the layer array.
+  // This may result in Layers being deleted, which results in
+  // PLayer::Send__delete__() and DeallocShmem()
+  mHoldedLayers.pop();
+
+  printf_stderr("bignose clean holded resource and pending msg end");
 }
 
 ClientLayer::~ClientLayer()

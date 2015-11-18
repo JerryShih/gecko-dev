@@ -155,7 +155,7 @@ class LayerUserData;
  * root layer, and each container layer holds a reference to its children.
  */
 class LayerManager {
-  NS_INLINE_DECL_REFCOUNTING(LayerManager)
+  NS_INLINE_DECL_THREADSAFE_REFCOUNTING(LayerManager)
 
 protected:
   typedef mozilla::gfx::DrawTarget DrawTarget;

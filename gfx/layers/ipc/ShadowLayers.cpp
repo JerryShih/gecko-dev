@@ -165,13 +165,18 @@ CompositableForwarder::IdentifyTextureHost(const TextureFactoryIdentifier& aIden
   mSyncObject = SyncObject::CreateSyncObject(aIdentifier.mSyncHandle);
 }
 
-ShadowLayerForwarder::ShadowLayerForwarder()
- : mDiagnosticTypes(DiagnosticTypes::NO_DIAGNOSTIC)
+ShadowLayerForwarder::ShadowLayerForwarder(ClientLayerManager* aLayerManager)
+ : mLayerManager(aLayerManager)
+ , mDiagnosticTypes(DiagnosticTypes::NO_DIAGNOSTIC)
  , mIsFirstPaint(false)
  , mWindowOverlayChanged(false)
  , mPaintSyncId(0)
 {
   mTxn = new Transaction();
+
+  // Add the first data for queue.
+  mPendingAsyncMessages.push(std::vector<AsyncChildMessageData>());
+  mHoldedTextures.push(nsTArray<RefPtr<TextureClient>>());
 }
 
 ShadowLayerForwarder::~ShadowLayerForwarder()
@@ -448,10 +453,10 @@ ShadowLayerForwarder::RemoveTextureFromCompositableAsync(AsyncTransactionTracker
   MOZ_ASSERT(aCompositable->IsConnected());
   MOZ_ASSERT(aTexture->GetIPDLActor());
 #ifdef MOZ_WIDGET_GONK
-  mPendingAsyncMessages.push_back(OpRemoveTextureAsync(CompositableClient::GetTrackersHolderId(aCompositable->GetIPDLActor()),
-                                  aAsyncTransactionTracker->GetId(),
-                                  nullptr, aCompositable->GetIPDLActor(),
-                                  nullptr, aTexture->GetIPDLActor()));
+  mPendingAsyncMessages.back().push_back(OpRemoveTextureAsync(CompositableClient::GetTrackersHolderId(aCompositable->GetIPDLActor()),
+                                            aAsyncTransactionTracker->GetId(),
+                                            nullptr, aCompositable->GetIPDLActor(),
+                                            nullptr, aTexture->GetIPDLActor()));
 #else
   if (mTxn->Opened() && aCompositable->IsConnected()) {
     mTxn->AddEdit(OpRemoveTextureAsync(CompositableClient::GetTrackersHolderId(aCompositable->GetIPDLActor()),
@@ -526,14 +531,22 @@ ShadowLayerForwarder::SendFlushPendingTransaction(uint64_t aLayerTreeID,
 {
   MOZ_ASSERT(InImageBridgeChildThread());
 
-  printf_stderr("bignose ShadowLayerForwarder::SendFlushPendingTransaction start");
+  printf_stderr("bignose ShadowLayerForwarder::SendFlushPendingTransaction start, treeid:%lld, WaitableEvent:%p",
+      aLayerTreeID, aWaitableEvent);
 
   ImageBridgeChild::GetSingleton()->SendFlushPendingTransaction(aLayerTreeID);
 
-  printf_stderr("bignose ShadowLayerForwarder::SendFlushPendingTransaction end");
+  printf_stderr("bignose ShadowLayerForwarder::SendFlushPendingTransaction end, treeid:%lld, WaitableEvent:%p",
+      aLayerTreeID, aWaitableEvent);
+
+  MOZ_ASSERT(mLayerManager);
+//  NS_DispatchToMainThread(NS_NewRunnableMethod(mLayerManager,
+//                                               &ClientLayerManager::DidLayerTransaction));
 
   if (aWaitableEvent) {
-    printf_stderr("bignose ShadowLayerForwarder::SendFlushPendingTransaction signal");
+    printf_stderr("bignose ShadowLayerForwarder::SendFlushPendingTransaction signal, treeid:%lld, WaitableEvent:%p",
+      aLayerTreeID, aWaitableEvent);
+
     aWaitableEvent->Signal();
   }
 }
@@ -559,6 +572,9 @@ ShadowLayerForwarder::EndTransaction(InfallibleTArray<EditReply>* aReplies,
   RenderTraceScope rendertrace("Foward Transaction", "000091");
   MOZ_ASSERT(HasShadowManager(), "no manager to forward to");
   MOZ_ASSERT(!mTxn->Finished(), "forgot BeginTransaction?");
+
+  mPendingAsyncMessages.push(std::vector<AsyncChildMessageData>());
+  mHoldedTextures.push(nsTArray<RefPtr<TextureClient>>());
 
   DiagnosticTypes diagnostics = gfxPlatform::GetPlatform()->GetLayerDiagnosticTypes();
   if (mDiagnosticTypes != diagnostics) {
@@ -728,25 +744,31 @@ ShadowLayerForwarder::EndTransaction(InfallibleTArray<EditReply>* aReplies,
     bool offMainPainting = gfxPrefs::ContentOffMainPainting();
 
     if (HasShadowManager() && mShadowManager->IPCOpen()) {
+      printf_stderr("bignose SendUpdateNoSwap begin, layertree id:%lld, transaction id:%lld",
+          mShadowManager->GetId(), aId);
+
       if (!mShadowManager->SendUpdateNoSwap(cset, aId, targetConfig, mPluginWindowData,
-                                           mIsFirstPaint, aScheduleComposite,
-                                           aPaintSequenceNumber, aIsRepeatTransaction,
-                                           aTransactionStart, mPaintSyncId, offMainPainting)) {
+                                            mIsFirstPaint, aScheduleComposite,
+                                            aPaintSequenceNumber, aIsRepeatTransaction,
+                                            aTransactionStart, mPaintSyncId, offMainPainting)) {
         MOZ_LAYERS_LOG(("[LayersForwarder] WARNING: sending transaction failed!"));
         return false;
       }
 
+      printf_stderr("bignose SendUpdateNoSwap end, layertree id:%lld, transaction id:%lld",
+          mShadowManager->GetId(), aId);
+
       if (offMainPainting) {
-        UniquePtr<base::WaitableEvent> waitObject(new base::WaitableEvent(false, false));
+        //UniquePtr<base::WaitableEvent> waitObject(new base::WaitableEvent(false, false));
 
         ImageBridgeChild::GetSingleton()->GetMessageLoop()->PostTask(FROM_HERE,
             NewRunnableMethod(this,
                               &ShadowLayerForwarder::SendFlushPendingTransaction,
                               mShadowManager->GetId(),
-                              //aWaitableEvent));
-                              waitObject.get()));
+                              aWaitableEvent));
+                              //waitObject.get()));
 
-        waitObject->Wait();
+        //waitObject->Wait();
       }
     } else {
       return false;
@@ -932,22 +954,24 @@ void ShadowLayerForwarder::Composite()
 
 void ShadowLayerForwarder::SendPendingAsyncMessges()
 {
+  std::vector<AsyncChildMessageData>& previousPendingMsg = mPendingAsyncMessages.front();
+
   if (!HasShadowManager() ||
       !mShadowManager->IPCOpen()) {
-    mPendingAsyncMessages.clear();
+    previousPendingMsg.clear();
     return;
   }
 
-  if (mPendingAsyncMessages.empty()) {
+  if (previousPendingMsg.empty()) {
     return;
   }
 
   InfallibleTArray<AsyncChildMessageData> replies;
   // Prepare pending messages.
-  for (size_t i = 0; i < mPendingAsyncMessages.size(); i++) {
-    replies.AppendElement(mPendingAsyncMessages[i]);
+  for (size_t i = 0; i < previousPendingMsg.size(); i++) {
+    replies.AppendElement(previousPendingMsg[i]);
   }
-  mPendingAsyncMessages.clear();
+  mPendingAsyncMessages.pop();
   mShadowManager->SendChildAsyncMessages(replies);
 }
 

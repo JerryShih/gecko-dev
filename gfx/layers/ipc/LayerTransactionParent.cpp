@@ -155,6 +155,7 @@ LayerTransactionParent::LayerTransactionParent(LayerManagerComposite* aManager,
   , mPendingTransaction(0)
   , mDestroyed(false)
   , mIPCOpen(false)
+  , mCompositionRequestCount(0)
 {
   MOZ_COUNT_CTOR(LayerTransactionParent);
 }
@@ -186,21 +187,31 @@ LayerTransactionParent::Destroy()
 void
 LayerTransactionParent::FlushPendingTransaction()
 {
-  printf_stderr("bignose exec transaction, transaction id:%lld", mPendingTransactionMessage->mTransactionId);
+  if (mPendingTransactionMessage.empty()) {
+    ++mCompositionRequestCount;
 
-  RecvUpdate(Move(mPendingTransactionMessage->mEdit),
-             mPendingTransactionMessage->mTransactionId,
-             mPendingTransactionMessage->mTargetConfig,
-             Move(mPendingTransactionMessage->mPlugins),
-             mPendingTransactionMessage->mIsFirstPaint,
-             mPendingTransactionMessage->mScheduleComposite,
-             mPendingTransactionMessage->mPaintSequenceNumber,
-             mPendingTransactionMessage->mIsRepeatTransaction,
-             mPendingTransactionMessage->mTransactionStart,
-             mPendingTransactionMessage->mPaintSyncId,
+    printf_stderr("bignose exec transaction, tree id:%lld, waiting for the actually msg, pending count:%d", mId, mCompositionRequestCount);
+
+    return;
+  }
+
+  PendingTransactionMessage& msg = mPendingTransactionMessage.front();
+
+  printf_stderr("bignose exec transaction, tree id:%lld transaction id:%lld", mId, msg.mTransactionId);
+
+  RecvUpdate(Move(msg.mEdit),
+             msg.mTransactionId,
+             msg.mTargetConfig,
+             Move(msg.mPlugins),
+             msg.mIsFirstPaint,
+             msg.mScheduleComposite,
+             msg.mPaintSequenceNumber,
+             msg.mIsRepeatTransaction,
+             msg.mTransactionStart,
+             msg.mPaintSyncId,
              nullptr);
 
-  mPendingTransactionMessage.reset(nullptr);
+  mPendingTransactionMessage.pop();
 }
 
 bool
@@ -220,21 +231,26 @@ LayerTransactionParent::RecvUpdateNoSwap(EditArray&& cset,
     js::ProfileEntry::Category::GRAPHICS);
 
   if (aPendingUpdate) {
-    mPendingTransactionMessage.reset(
-        new PendingTransactionMessage(Move(cset),
-                                      aTransactionId,
-                                      targetConfig,
-                                      Move(aPlugins),
-                                      isFirstPaint,
-                                      scheduleComposite,
-                                      paintSequenceNumber,
-                                      isRepeatTransaction,
-                                      aTransactionStart,
-                                      aPaintSyncId));
+    if (!mCompositionRequestCount) {
+      mPendingTransactionMessage.push(PendingTransactionMessage(Move(cset),
+                                                                aTransactionId,
+                                                                targetConfig,
+                                                                Move(aPlugins),
+                                                                isFirstPaint,
+                                                                scheduleComposite,
+                                                                paintSequenceNumber,
+                                                                isRepeatTransaction,
+                                                                aTransactionStart,
+                                                                aPaintSyncId));
 
-    printf_stderr("bignose save transaction msg, transaction id:%lld",aTransactionId);
+      printf_stderr("bignose save transaction msg, tree id:%lld transaction id:%lld", mId, aTransactionId);
 
-    return true;
+      return true;
+    } else {
+      --mCompositionRequestCount;
+
+      printf_stderr("bignose exe RecvUpdateNoSwap directly, pendingRequest:%d, tree id:%lld, transaction id:%lld", mCompositionRequestCount, mId, aTransactionId);
+    }
   }
 
   return RecvUpdate(Move(cset), aTransactionId, targetConfig, Move(aPlugins), isFirstPaint,
@@ -953,7 +969,7 @@ LayerTransactionParent::DeallocPLayerParent(PLayerParent* actor)
 {
   delete actor;
 
-  //printf_stderr("bignose delete PLayerParent addr:%p", actor);
+  printf_stderr("bignose delete PLayerParent addr:%p", actor);
 
   return true;
 }
