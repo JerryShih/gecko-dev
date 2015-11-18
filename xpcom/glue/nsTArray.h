@@ -2090,7 +2090,8 @@ public:
 
   nsTArray() {}
   explicit nsTArray(size_type aCapacity) : base_type(aCapacity) {}
-  explicit nsTArray(const nsTArray& aOther) : base_type(aOther) {}
+  //explicit nsTArray(const nsTArray& aOther) : base_type(aOther) {}
+  MOZ_IMPLICIT nsTArray(const nsTArray& aOther) : base_type(aOther) {}
   MOZ_IMPLICIT nsTArray(nsTArray&& aOther) : base_type(mozilla::Move(aOther)) {}
 
   template<class Allocator>
