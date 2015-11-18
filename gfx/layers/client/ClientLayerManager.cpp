@@ -184,14 +184,14 @@ ClientLayerManager::BeginTransactionWithTarget(gfxContext* aTarget)
 {
   printf_stderr("bignose ClientLayerManager::BeginTransactionWithTarget, lm:%p", this);
 
-  if (gfxPrefs::ContentOffMainPainting()) {
-    printf_stderr("bignose ClientLayerManager::BeginTransactionWithTarget, start wait lm:%p, waitableEvent:%p",
-        this, &mWaitableEvent);
-    MOZ_ALWAYS_TRUE(mWaitableEvent.Wait());
-    printf_stderr("bignose ClientLayerManager::BeginTransactionWithTarget, end wait lm:%p, waitableEvent:%p",
-        this, &mWaitableEvent);
-    //DidLayerTransaction();
-  }
+//  if (gfxPrefs::ContentOffMainPainting()) {
+//    printf_stderr("bignose ClientLayerManager::BeginTransactionWithTarget, start wait lm:%p, waitableEvent:%p",
+//        this, &mWaitableEvent);
+//    MOZ_ALWAYS_TRUE(mWaitableEvent.Wait());
+//    printf_stderr("bignose ClientLayerManager::BeginTransactionWithTarget, end wait lm:%p, waitableEvent:%p",
+//        this, &mWaitableEvent);
+//    //DidLayerTransaction();
+//  }
 
   mInTransaction = true;
   mTransactionStart = TimeStamp::Now();
@@ -360,6 +360,15 @@ ClientLayerManager::EndTransaction(DrawPaintedLayerCallback aCallback,
 bool
 ClientLayerManager::EndEmptyTransaction(EndTransactionFlags aFlags)
 {
+  if (gfxPrefs::ContentOffMainPainting()) {
+    printf_stderr("bignose ClientLayerManager::EndEmptyTransaction, start wait lm:%p, waitableEvent:%p",
+        this, &mWaitableEvent);
+    MOZ_ALWAYS_TRUE(mWaitableEvent.Wait());
+    printf_stderr("bignose ClientLayerManager::EndEmptyTransaction, end wait lm:%p, waitableEvent:%p",
+        this, &mWaitableEvent);
+    //DidLayerTransaction();
+  }
+
   mInTransaction = false;
 
   if (!mRoot) {
