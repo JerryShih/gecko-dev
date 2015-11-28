@@ -180,7 +180,7 @@ LayerTransactionParent::Destroy()
 }
 
 bool
-LayerTransactionParent::RecvUpdateNoSwap(InfallibleTArray<Edit>&& cset,
+LayerTransactionParent::RecvUpdateNoSwap(EditArray&& cset,
                                          InfallibleTArray<OpDestroy>&& aToDestroy,
                                          const uint64_t& aFwdTransactionId,
                                          const uint64_t& aTransactionId,
@@ -229,7 +229,7 @@ private:
 };
 
 bool
-LayerTransactionParent::RecvUpdate(InfallibleTArray<Edit>&& cset,
+LayerTransactionParent::RecvUpdate(EditArray&& cset,
                                    InfallibleTArray<OpDestroy>&& aToDestroy,
                                    const uint64_t& aFwdTransactionId,
                                    const uint64_t& aTransactionId,
