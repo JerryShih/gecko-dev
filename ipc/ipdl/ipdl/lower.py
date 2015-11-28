@@ -3403,6 +3403,16 @@ class _GenerateProtocolActorCode(ipdl.ast.Visitor):
             ])
             self.cls.addstmts([ getdump, Whitespace.NL ])
 
+        ## bignose
+        ## IsChildSide()
+        checkChildActor = MethodDefn(
+            MethodDecl('IsChildSide', ret=Type.BOOL))
+        if (self.side == 'child'):
+            checkChildActor.addstmt(StmtReturn.TRUE)
+        else:
+            checkChildActor.addstmt(StmtReturn.FALSE)
+        self.cls.addstmts([ checkChildActor, Whitespace.NL ])
+
         ## private methods
         self.cls.addstmt(Label.PRIVATE)
 

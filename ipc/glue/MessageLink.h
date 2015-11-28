@@ -111,6 +111,8 @@ class MessageListener
     // FIXME/bug 792652: this doesn't really belong here, but a
     // large refactoring is needed to put it where it belongs.
     virtual int32_t GetProtocolTypeId() = 0;
+
+    virtual bool IsChildSide() = 0;
 };
 
 class MessageLink
