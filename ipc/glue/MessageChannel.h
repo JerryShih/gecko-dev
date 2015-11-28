@@ -176,6 +176,11 @@ class MessageChannel : HasResultCodes
         sIsPumpingMessages = aIsPumping;
     }
 
+    // These functions can be used at any thread, but they only work for child
+    // side actor.
+    bool StartPendingMessage();
+    bool EndPendingMessage();
+
 #ifdef MOZ_NUWA_PROCESS
     void Block() {
         MOZ_ASSERT(mLink);
@@ -430,6 +435,8 @@ class MessageChannel : HasResultCodes
     bool ShouldDeferMessage(const Message& aMsg);
     void OnMessageReceivedFromLink(const Message& aMsg);
     void OnChannelErrorFromLink();
+
+    bool IsPendingMessage(const Message& aMsg);
 
   private:
     // Run on the not current thread.
@@ -751,6 +758,9 @@ class MessageChannel : HasResultCodes
     RefPtr<RefCountedTask> mOnChannelConnectedTask;
     DebugOnly<bool> mPeerPidSet;
     int32_t mPeerPid;
+
+    bool mInPending;
+    MessageQueue mIPCPendingMessage;
 };
 
 void

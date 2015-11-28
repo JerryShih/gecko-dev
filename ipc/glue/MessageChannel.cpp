@@ -300,6 +300,65 @@ private:
 
 } // namespace
 
+class CancelMessage : public IPC::Message
+{
+public:
+    CancelMessage() :
+        IPC::Message(MSG_ROUTING_NONE, CANCEL_MESSAGE_TYPE, PRIORITY_NORMAL)
+    {
+    }
+
+    static bool Read(const Message* msg)
+    {
+        return true;
+    }
+
+    void Log(const std::string& aPrefix, FILE* aOutf) const
+    {
+        fputs("(special `Cancel' message)", aOutf);
+    }
+};
+
+// Special async message.
+class GoodbyeMessage : public IPC::Message
+{
+public:
+    GoodbyeMessage() :
+        IPC::Message(MSG_ROUTING_NONE, GOODBYE_MESSAGE_TYPE, PRIORITY_NORMAL)
+    {
+    }
+
+    static bool Read(const Message* msg)
+    {
+        return true;
+    }
+
+    void Log(const std::string& aPrefix, FILE* aOutf) const
+    {
+        fputs("(special `Goodbye' message)", aOutf);
+    }
+};
+
+// Special async message for message deferring.
+class MessageDeferringMessage : public IPC::Message
+{
+public:
+    MessageDeferringMessage(msgid_t type) :
+        IPC::Message(MSG_ROUTING_NONE, type, PRIORITY_NORMAL)
+    {
+    }
+
+    static bool Read(const Message* msg)
+    {
+        return true;
+    }
+
+    void Log(const std::string& aPrefix, FILE* aOutf) const
+    {
+        fputs("(special `Deferring' message)", aOutf);
+    }
+};
+
 MessageChannel::MessageChannel(MessageListener *aListener)
   : mListener(aListener),
     mChannelState(ChannelClosed),
@@ -328,7 +387,8 @@ MessageChannel::MessageChannel(MessageListener *aListener)
     mBlockScripts(false),
     mFlags(REQUIRE_DEFAULT),
     mPeerPidSet(false),
-    mPeerPid(-1)
+    mPeerPid(-1),
+    mInPending(false)
 {
     MOZ_COUNT_CTOR(ipc::MessageChannel);
 
@@ -562,21 +622,6 @@ MessageChannel::Send(Message* aMsg)
     return true;
 }
 
-class CancelMessage : public IPC::Message
-{
-public:
-    CancelMessage() :
-        IPC::Message(MSG_ROUTING_NONE, CANCEL_MESSAGE_TYPE, PRIORITY_NORMAL)
-    {
-    }
-    static bool Read(const Message* msg) {
-        return true;
-    }
-    void Log(const std::string& aPrefix, FILE* aOutf) const {
-        fputs("(special `Cancel' message)", aOutf);
-    }
-};
-
 bool
 MessageChannel::MaybeInterceptSpecialIOMessage(const Message& aMsg)
 {
@@ -654,11 +699,38 @@ public:
     }
 };
 
+bool
+MessageChannel::IsPendingMessage(const Message& aMsg)
+{
+  if (aMsg.routing_id() == MSG_ROUTING_NONE &&
+      (aMsg.type() == MESSAGE_DEFERRING_START_MESSAGE_TYPE ||
+       aMsg.type() == MESSAGE_DEFERRING_END_MESSAGE_TYPE)) {
+    return true;
+  }
+
+  return false;
+}
+
 void
 MessageChannel::OnMessageReceivedFromLink(const Message& aMsg)
 {
     AssertLinkThread();
     mMonitor->AssertCurrentThreadOwns();
+
+    if (IsPendingMessage(aMsg)) {
+      bool inPending = (aMsg.type() == MESSAGE_DEFERRING_START_MESSAGE_TYPE);
+
+      if (mInPending) {
+        mIPCPendingMessage.push_back(aMsg);
+        return;
+      } else {
+        for (size_t i = 0; i < mIPCPendingMessage.size(); ++i) {
+          OnMessageReceivedFromLink(mIPCPendingMessage[i]);
+        }
+        mIPCPendingMessage.clear();
+        return;
+      }
+    }
 
     if (MaybeInterceptSpecialIOMessage(aMsg))
         return;
@@ -874,6 +946,11 @@ MessageChannel::Send(Message* aMsg, Message* aReply)
         return false;
     }
 
+    if (!Connected()) {
+        ReportConnectionError("MessageChannel::SendAndWait", msg);
+        return false;
+    }
+
     if (mCurrentTransaction &&
         (msg->priority() < DispatchingSyncMessagePriority() ||
          mAwaitingSyncReplyPriority > msg->priority()))
@@ -895,11 +972,6 @@ MessageChannel::Send(Message* aMsg, Message* aReply)
 
     IPC_ASSERT(DispatchingAsyncMessagePriority() != IPC::Message::PRIORITY_URGENT,
                "not allowed to send messages while dispatching urgent messages");
-
-    if (!Connected()) {
-        ReportConnectionError("MessageChannel::SendAndWait", msg);
-        return false;
-    }
 
     msg->set_seqno(NextSeqno());
 
@@ -1833,22 +1905,6 @@ MessageChannel::PostErrorNotifyTask()
     mWorkerLoop->PostTask(FROM_HERE, mChannelErrorTask);
 }
 
-// Special async message.
-class GoodbyeMessage : public IPC::Message
-{
-public:
-    GoodbyeMessage() :
-        IPC::Message(MSG_ROUTING_NONE, GOODBYE_MESSAGE_TYPE, PRIORITY_NORMAL)
-    {
-    }
-    static bool Read(const Message* msg) {
-        return true;
-    }
-    void Log(const std::string& aPrefix, FILE* aOutf) const {
-        fputs("(special `Goodbye' message)", aOutf);
-    }
-};
-
 void
 MessageChannel::SynchronouslyClose()
 {
@@ -2051,6 +2107,56 @@ MessageChannel::CancelCurrentTransaction()
         CancelCurrentTransactionInternal();
         mLink->SendMessage(new CancelMessage());
     }
+}
+
+bool
+MessageChannel::StartPendingMessage()
+{
+  MOZ_ASSERT(mMonitor);
+  MOZ_ASSERT(mLink);
+  MOZ_ASSERT(mListener);
+  MOZ_ASSERT(mListener->IsChildSide());
+  MOZ_ASSERT(!mInPending);
+
+  nsAutoPtr<Message> msg(new MessageDeferringMessage(MESSAGE_DEFERRING_START_MESSAGE_TYPE));
+  mMonitor->AssertNotCurrentThreadOwns();
+
+  MonitorAutoLock lock(*mMonitor);
+
+  if (!Connected()) {
+      ReportConnectionError("MessageChannel", msg);
+      return false;
+  }
+
+  mInPending = true;
+  mLink->SendMessageInternal(msg.forget());
+
+  return true;
+}
+
+bool
+MessageChannel::EndPendingMessage()
+{
+  MOZ_ASSERT(mMonitor);
+  MOZ_ASSERT(mLink);
+  MOZ_ASSERT(mListener);
+  MOZ_ASSERT(mListener->IsChildSide());
+  MOZ_ASSERT(mInPending);
+
+  nsAutoPtr<Message> msg(new MessageDeferringMessage(MESSAGE_DEFERRING_END_MESSAGE_TYPE));
+  mMonitor->AssertNotCurrentThreadOwns();
+
+  MonitorAutoLock lock(*mMonitor);
+
+  if (!Connected()) {
+      ReportConnectionError("MessageChannel", msg);
+      return false;
+  }
+
+  mInPending = false;
+  mLink->SendMessageInternal(msg.forget());
+
+  return true;
 }
 
 void
