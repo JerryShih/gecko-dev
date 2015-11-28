@@ -19,6 +19,9 @@
  *  - Computed values (e.g. 50 * 1024) don't work.
  */
 
+pref("gfx.content.off-main.painting", true);
+pref("gfx.content.layerTransaction.deferring", true);
+
 pref("keyword.enabled", false);
 pref("general.useragent.locale", "chrome://global/locale/intl.properties");
 pref("general.useragent.compatMode.firefox", false);
