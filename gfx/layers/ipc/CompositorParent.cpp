@@ -1629,6 +1629,12 @@ CompositorParent::AllocPLayerTransactionParent(const nsTArray<LayersBackend>& aB
     *aSuccess = false;
     LayerTransactionParent* p = new LayerTransactionParent(nullptr, this, aId);
     p->AddIPDLReference();
+
+    {
+      MonitorAutoLock lock(*sIndirectLayerTreesLock);
+      sIndirectLayerTrees[aId].mLayerTree = p;
+    }
+
     return p;
   }
 
@@ -1638,6 +1644,12 @@ CompositorParent::AllocPLayerTransactionParent(const nsTArray<LayersBackend>& aB
   *aTextureFactoryIdentifier = mCompositor->GetTextureFactoryIdentifier();
   LayerTransactionParent* p = new LayerTransactionParent(mLayerManager, this, aId);
   p->AddIPDLReference();
+
+  {
+    MonitorAutoLock lock(*sIndirectLayerTreesLock);
+    sIndirectLayerTrees[aId].mLayerTree = p;
+  }
+
   return p;
 }
 
