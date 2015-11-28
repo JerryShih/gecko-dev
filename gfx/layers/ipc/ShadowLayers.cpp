@@ -32,6 +32,8 @@
 #include "nsXULAppAPI.h"                // for XRE_GetProcessType, etc
 #include "mozilla/ReentrantMonitor.h"
 
+#include "ImageBridgeChild.h"
+
 namespace mozilla {
 namespace ipc {
 class Shmem;
@@ -168,6 +170,8 @@ ShadowLayerForwarder::ShadowLayerForwarder()
  , mIsFirstPaint(false)
  , mWindowOverlayChanged(false)
  , mPaintSyncId(0)
+ , mWaitableEvent(false, true)
+ , mIsDeferring(false)
 {
   mTxn = new Transaction();
 }
@@ -518,6 +522,21 @@ ShadowLayerForwarder::StorePluginWidgetConfigurations(const nsTArray<nsIWidget::
   }
 }
 
+void
+ShadowLayerForwarder::FlushPendingDrawCommand(base::WaitableEvent* aWaitableEvent,
+                                              RefPtr<LayerTransactionChild>&& aActor)
+{
+  MOZ_ASSERT(InImageBridgeChildThread());
+
+  // draw call here
+  // .....
+
+  aActor->GetIPCChannel()->EndPendingMessage();
+  if (aWaitableEvent) {
+    aWaitableEvent->Signal();
+  }
+}
+
 bool
 ShadowLayerForwarder::EndTransaction(InfallibleTArray<EditReply>* aReplies,
                                      const nsIntRegion& aRegionToClear,
@@ -673,6 +692,11 @@ ShadowLayerForwarder::EndTransaction(InfallibleTArray<EditReply>* aReplies,
   }
 
   profiler_tracing("Paint", "Rasterize", TRACING_INTERVAL_END);
+
+  if (mIsDeferring && gfxPrefs::ContentLayerTransactionDeferring()) {
+    MOZ_ALWAYS_TRUE(mWaitableEvent.Wait());
+  }
+
   if (mTxn->mSwapRequired) {
     MOZ_LAYERS_LOG(("[LayersForwarder] sending transaction..."));
     RenderTraceScope rendertrace3("Forward Transaction", "000093");
@@ -685,19 +709,41 @@ ShadowLayerForwarder::EndTransaction(InfallibleTArray<EditReply>* aReplies,
       MOZ_LAYERS_LOG(("[LayersForwarder] WARNING: sending transaction failed!"));
       return false;
     }
+    mIsDeferring = false;
   } else {
+    bool layerTransactionDeferring = gfxPrefs::ContentLayerTransactionDeferring();
+
     // If we don't require a swap we can call SendUpdateNoSwap which
     // assumes that aReplies is empty (DEBUG assertion)
     MOZ_LAYERS_LOG(("[LayersForwarder] sending no swap transaction..."));
     RenderTraceScope rendertrace3("Forward NoSwap Transaction", "000093");
-    if (!HasShadowManager() ||
-        !mShadowManager->IPCOpen() ||
-        !mShadowManager->SendUpdateNoSwap(cset, aId, targetConfig, mPluginWindowData,
-                                          mIsFirstPaint, aScheduleComposite,
-                                          aPaintSequenceNumber, aIsRepeatTransaction,
-                                          aTransactionStart, mPaintSyncId)) {
-      MOZ_LAYERS_LOG(("[LayersForwarder] WARNING: sending transaction failed!"));
-      return false;
+
+    if (HasShadowManager() && mShadowManager->IPCOpen()) {
+      if (layerTransactionDeferring && !mShadowManager->GetIPCChannel()->StartPendingMessage()) {
+        MOZ_LAYERS_LOG(("[LayersForwarder] WARNING: call StartPendingMessage() failed!"));
+
+        return false;
+      }
+
+      if (!mShadowManager->SendUpdateNoSwap(cset, aId, targetConfig, mPluginWindowData,
+                                            mIsFirstPaint, aScheduleComposite,
+                                            aPaintSequenceNumber, aIsRepeatTransaction,
+                                            aTransactionStart, mPaintSyncId)) {
+        MOZ_LAYERS_LOG(("[LayersForwarder] WARNING: sending transaction failed!"));
+
+        mShadowManager->GetIPCChannel()->EndPendingMessage();
+
+        return false;
+      }
+    }
+
+    if (layerTransactionDeferring) {
+      mIsDeferring = true;
+      ImageBridgeChild::GetSingleton()->GetMessageLoop()->PostTask(FROM_HERE,
+          NewRunnableMethod(this,
+                            &ShadowLayerForwarder::FlushPendingDrawCommand,
+                            &mWaitableEvent,
+                            mShadowManager));
     }
   }
 

@@ -23,6 +23,8 @@
 #include "nsTArrayForwardDeclare.h"     // for InfallibleTArray
 #include "nsIWidget.h"
 
+#include "base/waitable_event.h"
+
 namespace mozilla {
 namespace layers {
 
@@ -119,6 +121,8 @@ class ShadowLayerForwarder final : public CompositableForwarder
 
 public:
   virtual ~ShadowLayerForwarder();
+
+  void FlushPendingDrawCommand(base::WaitableEvent* aWaitableEvent, RefPtr<LayerTransactionChild>&& aActor);
 
   /**
    * Setup the IPDL actor for aCompositable to be part of layers
@@ -371,6 +375,9 @@ private:
   bool mWindowOverlayChanged;
   int32_t mPaintSyncId;
   InfallibleTArray<PluginWindowData> mPluginWindowData;
+
+  base::WaitableEvent mWaitableEvent;
+  bool mIsDeferring;
 };
 
 class CompositableClient;
