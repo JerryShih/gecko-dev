@@ -191,6 +191,8 @@ ShadowLayerForwarder::BeginTransaction(const gfx::IntRect& aTargetBounds,
                                        ScreenRotation aRotation,
                                        dom::ScreenOrientationInternal aOrientation)
 {
+  printf_stderr("bignose ShadowLayerForwarder::BeginTransaction");
+
   MOZ_ASSERT(HasShadowManager(), "no manager to forward to");
   MOZ_ASSERT(mTxn->Finished(), "uncommitted txn?");
   mTxn->Begin(aTargetBounds, aRotation, aOrientation);
@@ -528,11 +530,21 @@ ShadowLayerForwarder::FlushPendingDrawCommand(base::WaitableEvent* aWaitableEven
 {
   MOZ_ASSERT(InImageBridgeChildThread());
 
+  printf_stderr("bignose pseudo draw start, treeid:%lld, WaitableEvent:%p",
+      aActor->GetId(), aWaitableEvent);
+
   // draw call here
   // .....
 
+  printf_stderr("bignose pseudo draw end, treeid:%lld, WaitableEvent:%p",
+      aActor->GetId(), aWaitableEvent);
+
   aActor->GetIPCChannel()->EndPendingMessage();
+
   if (aWaitableEvent) {
+    printf_stderr("bignose pseudo draw signal, treeid:%lld, WaitableEvent:%p",
+        aActor->GetId(), aWaitableEvent);
+
     aWaitableEvent->Signal();
   }
 }
@@ -694,7 +706,11 @@ ShadowLayerForwarder::EndTransaction(InfallibleTArray<EditReply>* aReplies,
   profiler_tracing("Paint", "Rasterize", TRACING_INTERVAL_END);
 
   if (mIsDeferring && gfxPrefs::ContentLayerTransactionDeferring()) {
+    printf_stderr("bignose ShadowLayerForwarder::EndTransaction, start wait addr:%p, waitableEvent:%p",
+        this, &mWaitableEvent);
     MOZ_ALWAYS_TRUE(mWaitableEvent.Wait());
+    printf_stderr("bignose ShadowLayerForwarder::EndTransaction, end wait addr:%p, waitableEvent:%p",
+        this, &mWaitableEvent);
   }
 
   if (mTxn->mSwapRequired) {
@@ -713,6 +729,9 @@ ShadowLayerForwarder::EndTransaction(InfallibleTArray<EditReply>* aReplies,
   } else {
     bool layerTransactionDeferring = gfxPrefs::ContentLayerTransactionDeferring();
 
+    printf_stderr("bignose SendUpdateNoSwap begin, layertree id:%lld, transaction id:%lld",
+        mShadowManager->GetId(), aId);
+
     // If we don't require a swap we can call SendUpdateNoSwap which
     // assumes that aReplies is empty (DEBUG assertion)
     MOZ_LAYERS_LOG(("[LayersForwarder] sending no swap transaction..."));
@@ -721,6 +740,9 @@ ShadowLayerForwarder::EndTransaction(InfallibleTArray<EditReply>* aReplies,
     if (HasShadowManager() && mShadowManager->IPCOpen()) {
       if (layerTransactionDeferring && !mShadowManager->GetIPCChannel()->StartPendingMessage()) {
         MOZ_LAYERS_LOG(("[LayersForwarder] WARNING: call StartPendingMessage() failed!"));
+
+        printf_stderr("bignose StartPendingMessage error, layertree id:%lld, transaction id:%lld",
+                      mShadowManager->GetId(), aId);
 
         return false;
       }
@@ -733,9 +755,15 @@ ShadowLayerForwarder::EndTransaction(InfallibleTArray<EditReply>* aReplies,
 
         mShadowManager->GetIPCChannel()->EndPendingMessage();
 
+        printf_stderr("bignose SendUpdateNoSwap error, layertree id:%lld, transaction id:%lld",
+                      mShadowManager->GetId(), aId);
+
         return false;
       }
     }
+
+    printf_stderr("bignose SendUpdateNoSwap end, layertree id:%lld, transaction id:%lld",
+        mShadowManager->GetId(), aId);
 
     if (layerTransactionDeferring) {
       mIsDeferring = true;

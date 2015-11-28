@@ -178,6 +178,8 @@ ClientLayerManager::CreateReadbackLayer()
 void
 ClientLayerManager::BeginTransactionWithTarget(gfxContext* aTarget)
 {
+  printf_stderr("bignose ClientLayerManager::BeginTransactionWithTarget, lm:%p", this);
+
   mInTransaction = true;
   mTransactionStart = TimeStamp::Now();
 
@@ -572,6 +574,8 @@ ClientLayerManager::StopFrameTimeRecording(uint32_t         aStartIndex,
 void
 ClientLayerManager::ForwardTransaction(bool aScheduleComposite)
 {
+  printf_stderr("bignose ClientLayerManager::ForwardTransaction, lm:%p", this);
+
   TimeStamp start = TimeStamp::Now();
 
   if (mForwarder->GetSyncObject()) {

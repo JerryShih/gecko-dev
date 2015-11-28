@@ -919,6 +919,9 @@ bool
 LayerTransactionParent::DeallocPLayerParent(PLayerParent* actor)
 {
   delete actor;
+
+  printf_stderr("bignose delete PLayerParent addr:%p", actor);
+
   return true;
 }
 
