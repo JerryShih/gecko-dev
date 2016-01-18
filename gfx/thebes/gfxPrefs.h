@@ -218,6 +218,7 @@ private:
                 SmoothScrollStopDecelerationWeighting, float, 0.4f);
 
   // This is the pref for off-main content painting and off-main layerTransaction ipc.
+  DECL_GFX_PREF(Live, "bignose.flush.at.main",                 FlushAtMain, bool, false);
   DECL_GFX_PREF(Live, "gfx.content.off-main.painting",         ContentOffMainPainting, bool, false);
   DECL_GFX_PREF(Live, "gfx.content.layerTransaction.deferring",ContentLayerTransactionDeferring, bool, false);
 
