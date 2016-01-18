@@ -63,6 +63,8 @@ class TextureClientPool;
 #endif
 class KeepAlive;
 
+class TextureClientAsyncPaintData;
+
 /**
  * TextureClient is the abstraction that allows us to share data between the
  * content and the compositor side.
@@ -232,6 +234,11 @@ public:
 #endif
 };
 
+enum class TextureClientRenderingMode : uint8_t {
+  NORMAL           = 0,
+  DEFERRING        = 0x1,
+};
+
 /**
  * TextureClient is a thin abstraction over texture data that need to be shared
  * between the content process and the compositor process. It is the
@@ -262,6 +269,9 @@ public:
   explicit TextureClient(TextureData* aData, TextureFlags aFlags, ISurfaceAllocator* aAllocator);
 
   virtual ~TextureClient();
+
+  static void SetRenderingMode(TextureClientRenderingMode aMode);
+  static TextureClientRenderingMode GetRenderingMode();
 
   static already_AddRefed<TextureClient>
   CreateWithData(TextureData* aData, TextureFlags aFlags, ISurfaceAllocator* aAllocator);
@@ -601,6 +611,10 @@ protected:
    */
   bool ToSurfaceDescriptor(SurfaceDescriptor& aDescriptor);
 
+  // For internal usage.
+  bool LockForAsyncPainting(OpenMode aMode);
+  void UnlockForAsyncPainting();
+  gfx::DrawTarget* BorrowDrawTargetForAsyncPainting();
 
   RefPtr<ISurfaceAllocator> mAllocator;
   RefPtr<TextureChild> mActor;
@@ -625,6 +639,8 @@ protected:
 
   RefPtr<TextureReadbackSink> mReadbackSink;
 
+  friend class TextureClientAsyncPaintData;
+
   friend class TextureChild;
   friend class RemoveTextureFromCompositableTracker;
   friend void TestTextureClientSurface(TextureClient*, gfxImageSurface*);
@@ -635,6 +651,10 @@ public:
   // Pointer to the pool this tile came from.
   TextureClientPool* mPoolTracker;
 #endif
+
+  bool mInOffMainPainting;
+
+  static TextureClientRenderingMode mRenderingMode;
 };
 
 /**
@@ -654,6 +674,21 @@ public:
 
 private:
     RefPtr<TextureClient> mTextureClient;
+};
+
+// The helper class to set and restore TextureClient::mRenderingMode
+// rendering mode at main thread.
+class MOZ_RAII TextureClientRenderingAutoMode
+{
+public:
+  TextureClientRenderingAutoMode(TextureClientRenderingMode aMode
+                                 MOZ_GUARD_OBJECT_NOTIFIER_PARAM);
+  ~TextureClientRenderingAutoMode();
+
+private:
+  TextureClientRenderingMode mPreviousMode;
+
+  MOZ_DECL_USE_GUARD_OBJECT_NOTIFIER;
 };
 
 // Automatically lock and unlock a texture. Since texture locking is fallible,

@@ -30,6 +30,8 @@
 #include "BufferTexture.h"
 #include "gfxPrefs.h"
 
+#include "mozilla/gfx/DrawTargetAsync.h"
+
 #ifdef XP_WIN
 #include "mozilla/layers/TextureD3D9.h"
 #include "mozilla/layers/TextureD3D11.h"
@@ -68,6 +70,86 @@ namespace layers {
 using namespace mozilla::ipc;
 using namespace mozilla::gl;
 using namespace mozilla::gfx;
+
+class TextureClientAsyncPaintData final : public mozilla::gfx::AsyncPaintData
+{
+public:
+  explicit TextureClientAsyncPaintData(TextureClient* aTextureClient, DrawTarget* aRefDrawTarget)
+    : mTextureClient(aTextureClient)
+    , mRefDrawTarget(aRefDrawTarget)
+    , mLockedForAsyncDT(false)
+  {
+    MOZ_ASSERT(mTextureClient);
+    MOZ_ASSERT(mTextureClient->CanExposeDrawTarget());
+    MOZ_ASSERT(mTextureClient->IsLocked());
+    MOZ_ASSERT(aRefDrawTarget);
+    MOZ_ASSERT(!aRefDrawTarget->IsAsyncDrawTarget());
+    mOpenMode = mTextureClient->mOpenMode;
+  }
+
+  virtual ~TextureClientAsyncPaintData()
+  {
+    //bignose
+    if (!NS_IsMainThread()) {
+      MOZ_ASSERT(mTextureClient && !mTextureClient->IsLocked());
+    }
+
+    mRefDrawTarget = nullptr;
+  }
+
+  virtual DrawTarget* GetDrawTarget() override
+  {
+    return mRefDrawTarget;
+  }
+
+  virtual void LockForAsyncPainting() override
+  {
+    // If we are at main thread, there are two situation.
+    // a) we call drawTarget.flush() during recording. In this case, we has
+    //    already borrowed the drawTarget, so we can skip the lock.
+    // b) we handle the pending draw command at main. we should lock the TC
+    //    here.
+    // If we require lock here, we should remember to call unlock.
+    if (NS_IsMainThread()) {
+      if (!mTextureClient->IsLocked()) {
+        MOZ_ALWAYS_TRUE(mTextureClient->LockForAsyncPainting(mOpenMode));
+        mLockedForAsyncDT = true;
+      } else {
+        mLockedForAsyncDT = false;
+      }
+    } else {
+      MOZ_ASSERT(!mTextureClient->IsLocked());
+      MOZ_ALWAYS_TRUE(mTextureClient->LockForAsyncPainting(mOpenMode));
+      mLockedForAsyncDT = true;
+    }
+  }
+
+  virtual void UnlockForAsyncPainting() override
+  {
+    if (mLockedForAsyncDT) {
+      mTextureClient->UnlockForAsyncPainting();
+      mLockedForAsyncDT = false;
+    }
+  }
+
+  virtual DrawTarget* GetDrawTargetForAsyncPainting() override
+  {
+    MOZ_ASSERT(mTextureClient);
+
+    DrawTarget* drawTarget = mTextureClient->BorrowDrawTargetForAsyncPainting();
+    MOZ_ASSERT(drawTarget);
+    MOZ_ASSERT(!drawTarget->IsAsyncDrawTarget());
+
+    return drawTarget;
+  }
+
+private:
+  RefPtr<TextureClient> mTextureClient;
+  RefPtr<DrawTarget> mRefDrawTarget;
+
+  OpenMode mOpenMode;
+  bool mLockedForAsyncDT;
+};
 
 struct TextureDeallocParams
 {
@@ -362,8 +444,11 @@ TextureClient::DestroyFallback(PTextureChild* aActor)
 bool
 TextureClient::Lock(OpenMode aMode)
 {
+  MOZ_ASSERT(!mInOffMainPainting);
+
   MOZ_ASSERT(IsValid());
   MOZ_ASSERT(!mIsLocked);
+
   if (mIsLocked) {
     return mOpenMode == aMode;
   }
@@ -397,9 +482,32 @@ TextureClient::Lock(OpenMode aMode)
   return mIsLocked;
 }
 
+bool
+TextureClient::LockForAsyncPainting(OpenMode aMode)
+{
+  //MOZ_ASSERT(!NS_IsMainThread());
+  MOZ_ASSERT(IsValid());
+  MOZ_ASSERT(!mIsLocked);
+  // We already wait the waiter and fence in the first lock() at main thread.
+  MOZ_ASSERT(!mRemoveFromCompositableWaiter);
+
+  mInOffMainPainting = true;
+
+  if (mIsLocked) {
+    return mOpenMode == aMode;
+  }
+
+  mIsLocked = mData->Lock(aMode, nullptr);
+  mOpenMode = aMode;
+
+  return mIsLocked;
+}
+
 void
 TextureClient::Unlock()
 {
+  MOZ_ASSERT(!mInOffMainPainting);
+
   MOZ_ASSERT(IsValid());
   MOZ_ASSERT(mIsLocked);
   if (!mIsLocked) {
@@ -407,9 +515,27 @@ TextureClient::Unlock()
   }
 
   if (mBorrowedDrawTarget) {
+    // Only main thread could borrow drawTarget.
+    MOZ_ASSERT(NS_IsMainThread());
     MOZ_ASSERT(mBorrowedDrawTarget->refCount() <= mExpectedDtRefs);
+
     if (mOpenMode & OpenMode::OPEN_WRITE) {
+      //TODO: bignose
+      // If we have ReadbackSink, flush the drawTarget even though we use async
+      // mode. Then we go through a slower path.
+      if (mReadbackSink && mBorrowedDrawTarget->IsAsyncDrawTarget()) {
+        static_cast<DrawTargetAsync*>(mBorrowedDrawTarget.get())->ApplyPendingDrawCommand();
+      }
+
+      // bignose test
+      // If this is a asyncDT, flush the internal dt if needs.
       mBorrowedDrawTarget->Flush();
+
+//      if (GetRenderingMode() != TextureClientRenderingMode::DEFERRING) {
+//        mBorrowedDrawTarget->Flush();
+//      }
+
+
       if (mReadbackSink && !mData->ReadBack(mReadbackSink)) {
         // Fallback implementation for reading back, because mData does not
         // have a backend-specific implementation and returned false.
@@ -417,6 +543,39 @@ TextureClient::Unlock()
         RefPtr<DataSourceSurface> dataSurf = snapshot->GetDataSurface();
         mReadbackSink->ProcessReadback(dataSurf);
       }
+    }
+    mBorrowedDrawTarget = nullptr;
+  }
+
+  mData->Unlock();
+  mIsLocked = false;
+  mOpenMode = OpenMode::OPEN_NONE;
+}
+
+void
+TextureClient::UnlockForAsyncPainting()
+{
+  //MOZ_ASSERT(!NS_IsMainThread());
+  MOZ_ASSERT(IsValid());
+  MOZ_ASSERT(mIsLocked);
+  // We don't return DrawTargetAsync when we have ReadbackSink.
+  MOZ_ASSERT(!mReadbackSink);
+
+  mInOffMainPainting = false;
+
+  printf_stderr("bignose call TextureClient::UnlockForAsyncPainting");
+
+  if (!mIsLocked) {
+    return;
+  }
+
+  if (mBorrowedDrawTarget) {
+    MOZ_ASSERT(!mBorrowedDrawTarget->IsAsyncDrawTarget());
+
+    int count = mBorrowedDrawTarget->refCount();
+    MOZ_ASSERT(count <= mExpectedDtRefs);
+    if (mOpenMode & OpenMode::OPEN_WRITE) {
+      mBorrowedDrawTarget->Flush();
     }
     mBorrowedDrawTarget = nullptr;
   }
@@ -500,6 +659,48 @@ TextureClient::CreateSimilar(TextureFlags aFlags, TextureAllocationFlags aAllocF
 gfx::DrawTarget*
 TextureClient::BorrowDrawTarget()
 {
+  printf_stderr("bignose %s %s %d",__FILE__, __FUNCTION__, __LINE__);
+
+  MOZ_ASSERT(!mInOffMainPainting);
+
+  MOZ_ASSERT(IsValid());
+  MOZ_ASSERT(mIsLocked);
+  // TODO- We can't really assert that at the moment because there is code that Borrows
+  // the DrawTarget, just to get a snapshot, which is legit in term of OpenMode
+  // but we should have a way to get a SourceSurface directly instead.
+  //MOZ_ASSERT(mOpenMode & OpenMode::OPEN_WRITE);
+
+  if (!NS_IsMainThread()) {
+    return nullptr;
+  }
+
+  if (!mIsLocked) {
+    return nullptr;
+  }
+
+  if (!mBorrowedDrawTarget) {
+    // bignose
+    // TODO: maybe the mReadbackSink could be handled async.
+    if (!mReadbackSink && GetRenderingMode() == TextureClientRenderingMode::DEFERRING) {
+      RefPtr<DrawTarget> drawTarget = mData->BorrowDrawTarget();
+      mBorrowedDrawTarget = new DrawTargetAsync(new TextureClientAsyncPaintData(this, drawTarget.get()));
+    } else {
+      mBorrowedDrawTarget = mData->BorrowDrawTarget();
+    }
+
+#ifdef DEBUG
+    mExpectedDtRefs = mBorrowedDrawTarget ? mBorrowedDrawTarget->refCount() : 0;
+#endif
+  }
+
+  return mBorrowedDrawTarget;
+}
+
+gfx::DrawTarget* TextureClient::BorrowDrawTargetForAsyncPainting()
+{
+  printf_stderr("bignose %s %s %d",__FILE__, __FUNCTION__, __LINE__);
+
+  //MOZ_ASSERT(!NS_IsMainThread());
   MOZ_ASSERT(IsValid());
   MOZ_ASSERT(mIsLocked);
   // TODO- We can't really assert that at the moment because there is code that Borrows
@@ -511,15 +712,18 @@ TextureClient::BorrowDrawTarget()
     return nullptr;
   }
 
-  if (!NS_IsMainThread()) {
-    return nullptr;
-  }
-
   if (!mBorrowedDrawTarget) {
     mBorrowedDrawTarget = mData->BorrowDrawTarget();
+
 #ifdef DEBUG
     mExpectedDtRefs = mBorrowedDrawTarget ? mBorrowedDrawTarget->refCount() : 0;
 #endif
+  }
+  else if (mBorrowedDrawTarget->IsAsyncDrawTarget()){
+    DrawTarget* refDrawTarget = static_cast<DrawTargetAsync*>(mBorrowedDrawTarget.get())->GetInternalDrawTarget();
+    MOZ_ASSERT(refDrawTarget);
+
+    return refDrawTarget;
   }
 
   return mBorrowedDrawTarget;
@@ -909,6 +1113,7 @@ TextureClient::TextureClient(TextureData* aData, TextureFlags aFlags, ISurfaceAl
 #ifdef GFX_DEBUG_TRACK_CLIENTS_IN_POOL
 , mPoolTracker(nullptr)
 #endif
+, mInOffMainPainting(false)
 {
   mFlags |= mData->GetTextureFlags();
 }
@@ -1072,6 +1277,45 @@ MappedYCbCrChannelData::CopyInto(MappedYCbCrChannelData& aDst)
     }
   }
   return true;
+}
+
+/*static*/ void
+TextureClient::SetRenderingMode(TextureClientRenderingMode aMode)
+{
+  MOZ_ASSERT(NS_IsMainThread());
+
+  mRenderingMode = aMode;
+}
+
+/*static*/ TextureClientRenderingMode TextureClient::GetRenderingMode()
+{
+  if (NS_IsMainThread()) {
+    return mRenderingMode;
+  }
+
+  return TextureClientRenderingMode::NORMAL;
+}
+
+/*static*/ TextureClientRenderingMode TextureClient::mRenderingMode;
+
+TextureClientRenderingAutoMode::TextureClientRenderingAutoMode(TextureClientRenderingMode aMode
+                                                               MOZ_GUARD_OBJECT_NOTIFIER_PARAM_IN_IMPL)
+{
+  MOZ_GUARD_OBJECT_NOTIFIER_INIT;
+
+  if (gfxPrefs::ContentOffMainPainting() && NS_IsMainThread()) {
+    mPreviousMode = TextureClient::GetRenderingMode();
+    TextureClient::SetRenderingMode(aMode);
+  } else {
+    mPreviousMode = TextureClientRenderingMode::NORMAL;
+  }
+}
+
+TextureClientRenderingAutoMode::~TextureClientRenderingAutoMode()
+{
+  if (NS_IsMainThread()) {
+    TextureClient::SetRenderingMode(mPreviousMode);
+  }
 }
 
 } // namespace layers
