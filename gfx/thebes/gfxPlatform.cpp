@@ -564,6 +564,9 @@ gfxPlatform::Init()
     cfg.mMaxAllocSize = gfxPrefs::MaxAllocSize();
 
     gfx::Factory::Init(cfg);
+    if (gfxPrefs::ContentOffMainPainting()) {
+      gfx::Factory::InitAsyncDrawTargetManager();
+    }
 
     gGfxPlatformPrefsLock = new Mutex("gfxPlatform::gGfxPlatformPrefsLock");
 
