@@ -457,7 +457,7 @@ class MessageChannel : HasResultCodes
     void OnMessageReceivedFromLink(const Message& aMsg);
     void OnChannelErrorFromLink();
 
-    bool IsPendingMessage(const Message& aMsg);
+    bool MaybeInterceptSpecialPendingMessage(const Message& aMsg);
 
   private:
     // Run on the not current thread.
@@ -796,8 +796,15 @@ class MessageChannel : HasResultCodes
     DebugOnly<bool> mPeerPidSet;
     int32_t mPeerPid;
 
-    bool mInPending;
     MessageQueue mIPCPendingMessage;
+    // Used at parent side. If the child side turns on the pending mode, all
+    // message(including sync and async message) will be push into mIPCPendingMessage.
+    // Then, be processed when the child side exit pending mode.
+    bool mRecordIncomingMessage;
+
+    // Used at child side. If the channel is in pending mode, all message will
+    // be process until the child side exit pending mode.
+    bool mInPending;
 };
 
 void

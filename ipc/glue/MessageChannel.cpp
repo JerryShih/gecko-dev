@@ -396,6 +396,7 @@ MessageChannel::MessageChannel(MessageListener *aListener)
     mFlags(REQUIRE_DEFAULT),
     mPeerPidSet(false),
     mPeerPid(-1),
+    mRecordIncomingMessage(false),
     mInPending(false)
 {
     MOZ_COUNT_CTOR(ipc::MessageChannel);
@@ -709,11 +710,31 @@ public:
 };
 
 bool
-MessageChannel::IsPendingMessage(const Message& aMsg)
+MessageChannel::MaybeInterceptSpecialPendingMessage(const Message& aMsg)
 {
-  if (aMsg.routing_id() == MSG_ROUTING_NONE &&
-      (aMsg.type() == MESSAGE_DEFERRING_START_MESSAGE_TYPE ||
-       aMsg.type() == MESSAGE_DEFERRING_END_MESSAGE_TYPE)) {
+  bool isStartMessage;
+  bool isEndMessage;
+
+  if (aMsg.routing_id() == MSG_ROUTING_NONE) {
+    if (aMsg.type() == MESSAGE_DEFERRING_START_MESSAGE_TYPE) {
+      mRecordIncomingMessage = true;
+
+      return true;
+    } else if (aMsg.type() == MESSAGE_DEFERRING_END_MESSAGE_TYPE) {
+      mRecordIncomingMessage = false;
+
+      for (size_t i = 0; i < mIPCPendingMessage.size(); ++i) {
+        OnMessageReceivedFromLink(mIPCPendingMessage[i]);
+      }
+      mIPCPendingMessage.clear();
+
+      return true;
+    }
+  }
+
+  if (mRecordIncomingMessage) {
+    mIPCPendingMessage.push_back(aMsg);
+
     return true;
   }
 
@@ -726,23 +747,13 @@ MessageChannel::OnMessageReceivedFromLink(const Message& aMsg)
     AssertLinkThread();
     mMonitor->AssertCurrentThreadOwns();
 
-    if (IsPendingMessage(aMsg)) {
-      bool inPending = (aMsg.type() == MESSAGE_DEFERRING_START_MESSAGE_TYPE);
-
-      if (mInPending) {
-        mIPCPendingMessage.push_back(aMsg);
+    if (MaybeInterceptSpecialPendingMessage(aMsg)) {
         return;
-      } else {
-        for (size_t i = 0; i < mIPCPendingMessage.size(); ++i) {
-          OnMessageReceivedFromLink(mIPCPendingMessage[i]);
-        }
-        mIPCPendingMessage.clear();
-        return;
-      }
     }
 
-    if (MaybeInterceptSpecialIOMessage(aMsg))
+    if (MaybeInterceptSpecialIOMessage(aMsg)) {
         return;
+    }
 
     // Regardless of the Interrupt stack, if we're awaiting a sync reply,
     // we know that it needs to be immediately handled to unblock us.
