@@ -198,6 +198,8 @@ LayerTransactionParent::RecvUpdateNoSwap(EditArray&& cset,
                                          const mozilla::TimeStamp& aTransactionStart,
                                          const int32_t& aPaintSyncId)
 {
+  printf_stderr("bignose parent ipc LayerTransactionParent::RecvUpdateNoSwap id:%lld",aTransactionId);
+
   return RecvUpdate(Move(cset), Move(aToDestroy),
       aTransactionId, targetConfig, Move(aPlugins), isFirstPaint,
       scheduleComposite, paintSequenceNumber, isRepeatTransaction,
