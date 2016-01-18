@@ -122,7 +122,7 @@ class ShadowLayerForwarder final : public CompositableForwarder
 public:
   virtual ~ShadowLayerForwarder();
 
-  void FlushPendingDrawCommand(base::WaitableEvent* aWaitableEvent, RefPtr<LayerTransactionChild>&& aActor);
+  void ApplyPendingDrawCommand(base::WaitableEvent* aWaitableEvent, RefPtr<LayerTransactionChild>&& aActor);
 
   /**
    * Setup the IPDL actor for aCompositable to be part of layers
@@ -263,6 +263,8 @@ public:
                       bool aIsRepeatTransaction,
                       const mozilla::TimeStamp& aTransactionStart,
                       bool* aSent);
+
+  void WaitOffMainPainting();
 
   /**
    * Set an actor through which layer updates will be pushed.
