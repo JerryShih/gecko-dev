@@ -1938,6 +1938,18 @@ BorrowedCairoContext::BorrowCairoContextFromDrawTarget(DrawTarget* aDT)
       aDT->IsTiledDrawTarget()) {
     return nullptr;
   }
+
+  // bignose
+  // If this is a DrawTargetAsync, handle the draw command and return the
+  // internal DT here.
+  if (aDT->IsAsyncDrawTarget()) {
+    DrawTargetAsync* asyncDT = static_cast<DrawTargetAsync*>(aDT);
+    // Apply pending draw command before getting the internal DrawTargetCairo.
+    asyncDT->ApplyPendingDrawCommand();
+    aDT = asyncDT->GetInternalDrawTarget();
+    MOZ_ASSERT(!aDT->IsAsyncDrawTarget());
+  }
+
   DrawTargetCairo* cairoDT = static_cast<DrawTargetCairo*>(aDT);
 
   cairoDT->WillChange();
@@ -1961,6 +1973,13 @@ BorrowedCairoContext::ReturnCairoContextToDrawTarget(DrawTarget* aDT,
       aDT->IsTiledDrawTarget()) {
     return;
   }
+  // bignose
+  // If this is a DrawTargetAsync, get the internal DrawTarget before returning.
+  if (aDT->IsAsyncDrawTarget()) {
+    aDT = static_cast<DrawTargetAsync*>(aDT)->GetInternalDrawTarget();
+    MOZ_ASSERT(!aDT->IsAsyncDrawTarget());
+  }
+
   DrawTargetCairo* cairoDT = static_cast<DrawTargetCairo*>(aDT);
 
   cairo_restore(aCairo);
@@ -1981,6 +2000,18 @@ BorrowedXlibDrawable::Init(DrawTarget* aDT)
       aDT->IsDualDrawTarget() ||
       aDT->IsTiledDrawTarget()) {
     return false;
+  }
+
+  // bignose
+  // If this is a DrawTargetAsync, handle the draw command and return the
+  // internal DT here.
+  if (aDT->IsAsyncDrawTarget()) {
+    DrawTargetAsync* asyncDT = static_cast<DrawTargetAsync*>(aDT);
+    // Apply pending draw command before getting the internal DrawTargetCairo.
+    asyncDT->ApplyPendingDrawCommand();
+    aDT = asyncDT->GetInternalDrawTarget();
+    MOZ_ASSERT(!aDT->IsAsyncDrawTarget());
+    mDT = aDT;
   }
 
   DrawTargetCairo* cairoDT = static_cast<DrawTargetCairo*>(aDT);

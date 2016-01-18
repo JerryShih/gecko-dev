@@ -22,6 +22,8 @@
 #include "mozilla/Types.h" // for decltype
 #include "mozilla/Vector.h"
 
+#include "DrawTargetAsync.h"
+
 using namespace std;
 
 //CG_EXTERN void CGContextSetCompositeOperation (CGContextRef, PrivateCGCompositeMode);
@@ -2060,6 +2062,17 @@ BorrowedCGContext::BorrowCGContextFromDrawTarget(DrawTarget *aDT)
   if ((aDT->GetBackendType() == BackendType::COREGRAPHICS ||
        aDT->GetBackendType() == BackendType::COREGRAPHICS_ACCELERATED) &&
       !aDT->IsTiledDrawTarget() && !aDT->IsDualDrawTarget()) {
+    // bignose
+    // If this is a DrawTargetAsync, handle the draw command and return the
+    // internal DT here.
+    if (aDT->IsAsyncDrawTarget()) {
+      DrawTargetAsync* asyncDT = static_cast<DrawTargetAsync*>(aDT);
+      // Apply pending draw command before getting the internal DrawTargetCG.
+      asyncDT->ApplyPendingDrawCommand();
+      aDT = asyncDT->GetInternalDrawTarget();
+      MOZ_ASSERT(!aDT->IsAsyncDrawTarget());
+    }
+
     DrawTargetCG* cgDT = static_cast<DrawTargetCG*>(aDT);
     cgDT->Flush();
     cgDT->MarkChanged();
@@ -2082,6 +2095,14 @@ BorrowedCGContext::BorrowCGContextFromDrawTarget(DrawTarget *aDT)
 void
 BorrowedCGContext::ReturnCGContextToDrawTarget(DrawTarget *aDT, CGContextRef cg)
 {
+  MOZ_ASSERT(!aDT->IsTiledDrawTarget() && !aDT->IsDualDrawTarget());
+  // bignose
+  // If this is a DrawTargetAsync, get the internal DrawTarget before returning.
+  if (aDT->IsAsyncDrawTarget()) {
+    aDT = static_cast<DrawTargetAsync*>(aDT)->GetInternalDrawTarget();
+    MOZ_ASSERT(!aDT->IsAsyncDrawTarget());
+  }
+
   DrawTargetCG* cgDT = static_cast<DrawTargetCG*>(aDT);
 
   CGContextRestoreGState(cg);
