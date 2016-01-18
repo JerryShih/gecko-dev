@@ -195,6 +195,8 @@ BufferTextureData::SupportsMoz2D() const
 already_AddRefed<gfx::DrawTarget>
 BufferTextureData::BorrowDrawTarget()
 {
+  printf_stderr("bignose %s %s %d",__FILE__, __FUNCTION__, __LINE__);
+
   if (mDrawTarget) {
     mDrawTarget->SetTransform(gfx::Matrix());
     RefPtr<gfx::DrawTarget> dt = mDrawTarget;

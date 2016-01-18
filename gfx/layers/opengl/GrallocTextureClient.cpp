@@ -206,6 +206,8 @@ GrallocTextureData::Unlock()
 already_AddRefed<gfx::DrawTarget>
 GrallocTextureData::BorrowDrawTarget()
 {
+  printf_stderr("bignose %s %s %d",__FILE__, __FUNCTION__, __LINE__);
+
   MOZ_ASSERT(mMappedBuffer);
   if (!mMappedBuffer) {
     return nullptr;
