@@ -602,6 +602,10 @@ DrawTargetCairo::DrawTargetCairo()
 
 DrawTargetCairo::~DrawTargetCairo()
 {
+  // bignose
+  // Make the exist SourceSurface snapshot independent before this destroy.
+  WillChange();
+
   cairo_destroy(mContext);
   if (mSurface) {
     cairo_surface_destroy(mSurface);
