@@ -913,7 +913,10 @@ void
 nsTraceRefcnt::WalkTheStack(FILE* aStream)
 {
 #ifdef MOZ_STACKWALKING
-  MozStackWalk(PrintStackFrame, /* skipFrames */ 2, /* maxFrames */ 0, aStream,
+//  MozStackWalk(PrintStackFrame, /* skipFrames */ 2, /* maxFrames */ 0, aStream,
+//               0, nullptr);
+
+  MozStackWalk(PrintStackFrame, /* skipFrames */ 2, /* maxFrames */ 15, aStream,
                0, nullptr);
 #endif
 }
