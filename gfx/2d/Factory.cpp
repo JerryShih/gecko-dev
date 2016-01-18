@@ -42,6 +42,7 @@
 #include "HelpersD2D.h"
 #endif
 
+#include "DrawTargetAsync.h"
 #include "DrawTargetDual.h"
 #include "DrawTargetTiled.h"
 #include "DrawTargetRecording.h"
@@ -167,6 +168,8 @@ ID2D1Device *Factory::mD2D1Device;
 
 DrawEventRecorder *Factory::mRecorder;
 
+RefPtr<AsyncDrawTargetManager> Factory::mAsyncDrawTargetManager;
+
 mozilla::gfx::Config* Factory::sConfig = nullptr;
 
 void
@@ -188,11 +191,23 @@ Factory::Init(const Config& aConfig)
 }
 
 void
+Factory::InitAsyncDrawTargetManager()
+{
+  MOZ_ASSERT(!mAsyncDrawTargetManager);
+
+  mAsyncDrawTargetManager = new AsyncDrawTargetManager();
+}
+
+void
 Factory::ShutDown()
 {
   if (sConfig) {
     delete sConfig;
     sConfig = nullptr;
+  }
+
+  if (mAsyncDrawTargetManager) {
+    mAsyncDrawTargetManager = nullptr;
   }
 }
 
@@ -1034,6 +1049,13 @@ Factory::SetGlobalEventRecorder(DrawEventRecorder *aRecorder)
 }
 
 // static
+AsyncDrawTargetManager*
+Factory::GetAsyncDrawTargetManager()
+{
+  return mAsyncDrawTargetManager.get();
+}
+
+// static
 void
 Factory::SetLogForwarder(LogForwarder* aLogFwd) {
   sConfig->mLogForwarder = aLogFwd;
@@ -1058,6 +1080,16 @@ CriticalLogger::CrashAction(LogReason aReason)
   if (Factory::GetLogForwarder()) {
     Factory::GetLogForwarder()->CrashAction(aReason);
   }
+}
+
+DrawTarget::DrawTarget()
+  : mTransformDirty(false)
+  , mPermitSubpixelAA(false)
+{
+}
+
+DrawTarget::~DrawTarget()
+{
 }
 
 } // namespace gfx
