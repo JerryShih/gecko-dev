@@ -2138,6 +2138,8 @@ MessageChannel::StartPendingMessage()
       return false;
   }
 
+  printf_stderr("bignose messagechannel child StartPendingMessage");
+
   mInPending = true;
   mLink->SendMessageInternal(msg.forget());
 
@@ -2162,6 +2164,8 @@ MessageChannel::EndPendingMessage()
       ReportConnectionError("MessageChannel", msg);
       return false;
   }
+
+  printf_stderr("bignose messagechannel child EndPendingMessage");
 
   mInPending = false;
   mLink->SendMessageInternal(msg.forget());
