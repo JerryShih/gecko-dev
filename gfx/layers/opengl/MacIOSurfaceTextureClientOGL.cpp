@@ -13,6 +13,7 @@ namespace layers {
 MacIOSurfaceTextureData::MacIOSurfaceTextureData(MacIOSurface* aSurface)
 : mSurface(aSurface)
 {
+  printf_stderr("#########bignose create MAC io surface######");
   MOZ_ASSERT(mSurface);
 }
 
@@ -27,6 +28,9 @@ MacIOSurfaceTextureData::Create(MacIOSurface* aSurface)
   if (!aSurface) {
     return nullptr;
   }
+
+  printf_stderr("bignose create MacIOSurfaceTextureData");
+
   return new MacIOSurfaceTextureData(aSurface);
 }
 
