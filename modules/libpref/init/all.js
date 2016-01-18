@@ -18,6 +18,7 @@
  *  - The first character after a period must be alphabetic.
  *  - Computed values (e.g. 50 * 1024) don't work.
  */
+pref("bignose.flush.at.main", false);
 
 pref("gfx.content.off-main.painting", true);
 pref("gfx.content.layerTransaction.deferring", true);
