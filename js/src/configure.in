@@ -1192,12 +1192,16 @@ if test "$GNU_CC"; then
     # -Wempty-body - catches bugs, e.g. "if (c); foo();", few false positives
     # -Wignored-qualifiers - catches return types with qualifiers like const
     # -Wpointer-arith - catches pointer arithmetic using NULL or sizeof(void)
+    # -Wreturn-type - catches missing returns, zero false positives
     # -Wtype-limits - catches overflow bugs, few false positives
     _WARNINGS_CFLAGS="${_WARNINGS_CFLAGS} -Wall"
     _WARNINGS_CFLAGS="${_WARNINGS_CFLAGS} -Wempty-body"
     _WARNINGS_CFLAGS="${_WARNINGS_CFLAGS} -Wignored-qualifiers"
     _WARNINGS_CFLAGS="${_WARNINGS_CFLAGS} -Wpointer-arith"
     _WARNINGS_CFLAGS="${_WARNINGS_CFLAGS} -Wtype-limits"
+
+    # Treat some warnings as errors.
+    _WARNINGS_CFLAGS="${_WARNINGS_CFLAGS} -Werror=return-type"
 
     # -Wclass-varargs - catches objects passed by value to variadic functions.
     # -Wnon-literal-null-conversion - catches expressions used as a null pointer constant
@@ -1273,6 +1277,7 @@ if test "$GNU_CXX"; then
     # -Wignored-qualifiers - catches return types with qualifiers like const
     # -Woverloaded-virtual - function declaration hides virtual function from base class
     # -Wpointer-arith - catches pointer arithmetic using NULL or sizeof(void)
+    # -Wreturn-type - catches missing returns, zero false positives
     # -Wtype-limits - catches overflow bugs, few false positives
     _WARNINGS_CXXFLAGS="${_WARNINGS_CXXFLAGS} -Wall"
     _WARNINGS_CXXFLAGS="${_WARNINGS_CXXFLAGS} -Wempty-body"
@@ -1280,6 +1285,9 @@ if test "$GNU_CXX"; then
     _WARNINGS_CXXFLAGS="${_WARNINGS_CXXFLAGS} -Woverloaded-virtual"
     _WARNINGS_CXXFLAGS="${_WARNINGS_CXXFLAGS} -Wpointer-arith"
     _WARNINGS_CXXFLAGS="${_WARNINGS_CXXFLAGS} -Wtype-limits"
+
+    # Treat some warnings as errors.
+    _WARNINGS_CXXFLAGS="${_WARNINGS_CXXFLAGS} -Werror=return-type"
 
     # -Wclass-varargs - catches objects passed by value to variadic functions.
     # -Wnon-literal-null-conversion - catches expressions used as a null pointer constant
