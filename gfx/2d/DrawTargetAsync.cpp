@@ -1164,6 +1164,7 @@ AsyncDrawTargetManager::ClearResource()
 }
 
 AsyncPaintData::AsyncPaintData()
+  : mIsPoolReady(false)
 {
 }
 
