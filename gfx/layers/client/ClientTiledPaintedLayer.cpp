@@ -406,6 +406,8 @@ ClientTiledPaintedLayer::EndPaint()
 void
 ClientTiledPaintedLayer::RenderLayer()
 {
+  printf_stderr("bignose ClientTiledPaintedLayer::RenderLayer");
+
   TextureClientRenderingAutoMode renderingMode(TextureClientRenderingMode::DEFERRING);
 
   LayerManager::DrawPaintedLayerCallback callback =
@@ -519,6 +521,8 @@ ClientTiledPaintedLayer::RenderLayer()
     mContentClient->UpdatedBuffer(TiledContentClient::TILED_BUFFER);
 
     if (!mPaintData.mPaintFinished) {
+      printf_stderr("bignose SetRepeatTransaction in updatedHighPrecision");
+
       // There is still more high-res stuff to paint, so we're not
       // done yet. A subsequent transaction will take care of this.
       ClientManager()->SetRepeatTransaction();
@@ -532,15 +536,38 @@ ClientTiledPaintedLayer::RenderLayer()
     return;
   }
 
+//  if (updatedHighPrecision) {
+//    // If there are low precision updates, but we just did some high-precision
+//    // updates, then mark the paint as unfinished and request a repeat transaction.
+//    // This is so that we don't perform low-precision updates in the same transaction
+//    // as high-precision updates.
+//    TILING_LOG("TILING %p: Scheduling repeat transaction for low-precision painting\n", this);
+//    TILING_LOG("TILING %p: Low-precision repeat transaction invalid region %s\n", this, Stringify(lowPrecisionInvalidRegion).c_str());
+//
+//    ClientManager()->SetRepeatTransaction();
+//    mPaintData.mLowPrecisionPaintCount = 1;
+//    mPaintData.mPaintFinished = false;
+//    return;
+//  }
+
+  // bignose
+  // just perform low-precision updates in the same transaction.
   if (updatedHighPrecision) {
     // If there are low precision updates, but we just did some high-precision
     // updates, then mark the paint as unfinished and request a repeat transaction.
     // This is so that we don't perform low-precision updates in the same transaction
     // as high-precision updates.
     TILING_LOG("TILING %p: Scheduling repeat transaction for low-precision painting\n", this);
-    ClientManager()->SetRepeatTransaction();
+    TILING_LOG("TILING %p: Low-precision repeat transaction invalid region %s\n", this, Stringify(lowPrecisionInvalidRegion).c_str());
+
+    //ClientManager()->SetRepeatTransaction();
     mPaintData.mLowPrecisionPaintCount = 1;
     mPaintData.mPaintFinished = false;
+
+    TILING_LOG("TILING %p: bignose performance Low-precision region %s draw\n", this, Stringify(lowPrecisionInvalidRegion).c_str());
+
+    RenderLayer();
+
     return;
   }
 

@@ -1149,7 +1149,7 @@ AsyncDrawTargetManager::ApplyPendingDrawCommand()
 
   auto num = mPendingDrawData.size();
 
-  printf_stderr("!!!!bignose AsyncDrawTargetManager::ApplyPendingDrawCommand, target num:%lu",num);
+  printf_stderr("!!!!bignose AsyncDrawTargetManager::ApplyPendingDrawCommand, target num:%u",num);
 
   for (decltype(num) i = 0 ; i<num ; ++i) {
     mPendingDrawData[i]->ApplyPendingDrawCommand();
@@ -1164,6 +1164,7 @@ AsyncDrawTargetManager::ClearResource()
 }
 
 AsyncPaintData::AsyncPaintData()
+  : mIsPoolReady(false)
 {
 }
 

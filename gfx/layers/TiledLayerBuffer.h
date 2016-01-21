@@ -35,7 +35,7 @@ namespace layers {
 
 // You can enable all the TILING_LOG print statements by
 // changing the 0 to a 1 in the following #define.
-#define ENABLE_TILING_LOG 0
+#define ENABLE_TILING_LOG 1
 
 #if ENABLE_TILING_LOG
 #  define TILING_LOG(...) printf_stderr(__VA_ARGS__);

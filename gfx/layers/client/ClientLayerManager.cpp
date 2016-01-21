@@ -282,7 +282,13 @@ ClientLayerManager::EndTransactionInternal(DrawPaintedLayerCallback aCallback,
 
   mForwarder->WaitOffMainPainting();
 
-  root->RenderLayer();
+  {
+    PROFILER_LABEL("ClientLayerManager", "EndTransactionInternal-RenderLayer",
+      js::ProfileEntry::Category::GRAPHICS);
+
+    root->RenderLayer();
+  }
+
   if (!mRepeatTransaction && !GetRoot()->GetInvalidRegion().IsEmpty()) {
     GetRoot()->Mutated();
   }
@@ -322,6 +328,9 @@ ClientLayerManager::EndTransaction(DrawPaintedLayerCallback aCallback,
                                    void* aCallbackData,
                                    EndTransactionFlags aFlags)
 {
+  PROFILER_LABEL("ClientLayerManager", "EndTransaction",
+    js::ProfileEntry::Category::GRAPHICS);
+
   if (mWidget) {
     mWidget->PrepareWindowEffects();
   }
@@ -329,6 +338,9 @@ ClientLayerManager::EndTransaction(DrawPaintedLayerCallback aCallback,
   ForwardTransaction(!(aFlags & END_NO_REMOTE_COMPOSITE));
 
   if (mRepeatTransaction) {
+    PROFILER_LABEL("ClientLayerManager", "EndTransaction-RepeatTransaction",
+      js::ProfileEntry::Category::GRAPHICS);
+
     mRepeatTransaction = false;
     mIsRepeatTransaction = true;
     BeginTransaction();
@@ -346,9 +358,21 @@ ClientLayerManager::EndTransaction(DrawPaintedLayerCallback aCallback,
   mTransactionStart = TimeStamp();
 }
 
+void
+ClientLayerManager::SetRepeatTransaction()
+{
+  PROFILER_LABEL("ClientLayerManager", "SetRepeatTransaction",
+    js::ProfileEntry::Category::GRAPHICS);
+
+  mRepeatTransaction = true;
+}
+
 bool
 ClientLayerManager::EndEmptyTransaction(EndTransactionFlags aFlags)
 {
+  PROFILER_LABEL("ClientLayerManager", "EndEmptyTransaction",
+    js::ProfileEntry::Category::GRAPHICS);
+
   mInTransaction = false;
 
   if (!mRoot) {

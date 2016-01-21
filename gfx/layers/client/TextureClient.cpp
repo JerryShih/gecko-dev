@@ -570,9 +570,8 @@ TextureClient::UnlockForAsyncPainting()
 
   if (mBorrowedDrawTarget) {
     MOZ_ASSERT(!mBorrowedDrawTarget->IsAsyncDrawTarget());
+    MOZ_ASSERT(mBorrowedDrawTarget->refCount() <= mExpectedDtRefs);
 
-    int count = mBorrowedDrawTarget->refCount();
-    MOZ_ASSERT(count <= mExpectedDtRefs);
     if (mOpenMode & OpenMode::OPEN_WRITE) {
       mBorrowedDrawTarget->Flush();
     }

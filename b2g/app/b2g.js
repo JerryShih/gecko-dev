@@ -4,6 +4,13 @@
 
 #filter substitution
 
+pref("bignose.flush.at.main", false);
+
+pref("gfx.content.off-main.painting", true);
+pref("gfx.content.layerTransaction.deferring", true);
+
+
+
 // For the all MOZ_MULET ifdef conditions in this file: see bug 1174234
 
 #ifndef MOZ_MULET
@@ -121,7 +128,7 @@ pref("layers.enable-tiles", true);
 #endif
 pref("layers.low-precision-buffer", true);
 pref("layers.low-precision-opacity", "0.5");
-pref("layers.progressive-paint", true);
+pref("layers.progressive-paint", false);
 
 /* download manager (don't show the window or alert) */
 pref("browser.download.useDownloadDir", true);

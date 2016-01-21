@@ -703,9 +703,6 @@ public:
 bool
 MessageChannel::MaybeInterceptSpecialPendingMessage(const Message& aMsg)
 {
-  bool isStartMessage;
-  bool isEndMessage;
-
   if (aMsg.routing_id() == MSG_ROUTING_NONE) {
     if (aMsg.type() == MESSAGE_DEFERRING_START_MESSAGE_TYPE) {
       mRecordIncomingMessage = true;

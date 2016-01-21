@@ -138,7 +138,7 @@ public:
 
   void HandleMemoryPressure();
 
-  void SetRepeatTransaction() { mRepeatTransaction = true; }
+  void SetRepeatTransaction();
   bool GetRepeatTransaction() { return mRepeatTransaction; }
 
   bool IsRepeatTransaction() { return mIsRepeatTransaction; }

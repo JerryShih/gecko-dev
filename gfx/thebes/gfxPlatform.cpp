@@ -2204,7 +2204,8 @@ gfxPlatform::AsyncPanZoomEnabled()
 /*virtual*/ bool
 gfxPlatform::UseProgressivePaint()
 {
-  return gfxPrefs::ProgressivePaintDoNotUseDirectly();
+  return false;
+  //return gfxPrefs::ProgressivePaintDoNotUseDirectly();
 }
 
 /*static*/ bool

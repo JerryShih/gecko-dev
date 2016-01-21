@@ -25,6 +25,10 @@
 
 #include "base/waitable_event.h"
 
+namespace base {
+class Thread;
+}
+
 namespace mozilla {
 namespace layers {
 
@@ -121,6 +125,9 @@ class ShadowLayerForwarder final : public CompositableForwarder
 
 public:
   virtual ~ShadowLayerForwarder();
+
+  void InitPaintintThread();
+  MessageLoop* GetPaintingMessageLoop();
 
   void ApplyPendingDrawCommand(base::WaitableEvent* aWaitableEvent, RefPtr<LayerTransactionChild>&& aActor);
 
@@ -381,6 +388,8 @@ private:
 
   base::WaitableEvent mWaitableEvent;
   bool mIsDeferring;
+
+  static base::Thread* sOffManPaintingThread;
 };
 
 class CompositableClient;
