@@ -406,6 +406,8 @@ ClientTiledPaintedLayer::EndPaint()
 void
 ClientTiledPaintedLayer::RenderLayer()
 {
+  printf_stderr("bignose ClientTiledPaintedLayer::RenderLayer");
+
   TextureClientRenderingAutoMode renderingMode(TextureClientRenderingMode::DEFERRING);
 
   LayerManager::DrawPaintedLayerCallback callback =
