@@ -36,7 +36,7 @@
 #include "ImageBridgeChild.h"
 
 #include "gfxPrefs.h"
-
+#include "base/thread.h"
 #include "mozilla/gfx/DrawTargetAsync.h"
 
 namespace mozilla {
@@ -56,6 +56,8 @@ typedef nsTArray<SurfaceDescriptor> BufferArray;
 typedef std::vector<Edit> EditVector;
 typedef std::set<ShadowableLayer*> ShadowableLayerSet;
 typedef nsTArray<OpDestroy> OpDestroyVector;
+
+base::Thread* ShadowLayerForwarder::sOffManPaintingThread = nullptr;
 
 class Transaction
 {
@@ -203,6 +205,8 @@ ShadowLayerForwarder::ShadowLayerForwarder()
  , mIsDeferring(false)
 {
   mTxn = new Transaction();
+
+  InitPaintintThread();
 }
 
 ShadowLayerForwarder::~ShadowLayerForwarder()
@@ -216,6 +220,21 @@ ShadowLayerForwarder::~ShadowLayerForwarder()
     mShadowManager->SetForwarder(nullptr);
     mShadowManager->Destroy();
   }
+}
+
+void
+ShadowLayerForwarder::InitPaintintThread()
+{
+  if (!sOffManPaintingThread) {
+    sOffManPaintingThread = new base::Thread("OffMainPaintingThread");
+    MOZ_ALWAYS_TRUE(sOffManPaintingThread->Start());
+  }
+}
+
+MessageLoop*
+ShadowLayerForwarder::GetPaintingMessageLoop()
+{
+  return sOffManPaintingThread ? sOffManPaintingThread->message_loop() : nullptr;
 }
 
 void
@@ -563,6 +582,9 @@ ShadowLayerForwarder::ApplyPendingDrawCommand(base::WaitableEvent* aWaitableEven
   // bignose test
   if (!gfxPrefs::FlushAtMain()) {
     if (Factory::GetAsyncDrawTargetManager()) {
+      PROFILER_LABEL("ClientLayerManager", "Off-Main ApplyPendingDrawCommand",
+        js::ProfileEntry::Category::GRAPHICS);
+
       printf_stderr("bignose off-main painting start");
       Factory::GetAsyncDrawTargetManager()->ApplyPendingDrawCommand();
       printf_stderr("bignose off-main painting end");
@@ -589,6 +611,9 @@ ShadowLayerForwarder::ApplyPendingDrawCommand(base::WaitableEvent* aWaitableEven
 void
 ShadowLayerForwarder::WaitOffMainPainting()
 {
+  PROFILER_LABEL("ShadowLayerForwarder", "WaitOffMainPainting",
+    js::ProfileEntry::Category::GRAPHICS);
+
   if (mIsDeferring && !gfxPrefs::FlushAtMain()) {
     if (mIsDeferring && gfxPrefs::ContentLayerTransactionDeferring()) {
       printf_stderr("bignose ShadowLayerForwarder::EndTransaction, start wait addr:%p, waitableEvent:%p",
@@ -828,7 +853,7 @@ ShadowLayerForwarder::EndTransaction(InfallibleTArray<EditReply>* aReplies,
 
     if (layerTransactionDeferring) {
       mIsDeferring = true;
-      ImageBridgeChild::GetSingleton()->GetMessageLoop()->PostTask(FROM_HERE,
+      GetPaintingMessageLoop()->PostTask(FROM_HERE,
           NewRunnableMethod(this,
                             &ShadowLayerForwarder::ApplyPendingDrawCommand,
                             &mWaitableEvent,
