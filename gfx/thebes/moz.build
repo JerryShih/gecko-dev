@@ -7,6 +7,7 @@
 EXPORTS += [
     'ContextStateTracker.h',
     'DrawMode.h',
+    'DrawTargetAsyncManager.h',
     'gfx2DGlue.h',
     'gfxAlphaRecovery.h',
     'gfxASurface.h',
@@ -211,6 +212,7 @@ SOURCES += [
 
 UNIFIED_SOURCES += [
     'CJKCompatSVS.cpp',
+    'DrawTargetAsyncManager.cpp',
     'gfxAlphaRecovery.cpp',
     'gfxBaseSharedMemorySurface.cpp',
     'gfxBlur.cpp',

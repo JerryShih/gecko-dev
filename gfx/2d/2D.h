@@ -62,8 +62,6 @@ class DrawEventRecorder;
 class FilterNode;
 class LogForwarder;
 
-class AsyncDrawTargetManager;
-
 struct NativeSurface {
   NativeSurfaceType mType;
   SurfaceFormat mFormat;
@@ -341,7 +339,6 @@ public:
                                        or an empty rect if none has been specified. */
 };
 
-class AsyncDrawTargetManager;
 class DrawTargetAsync;
 class StoredPattern;
 class DrawTargetCaptureImpl;
@@ -1249,7 +1246,6 @@ class GFX2D_API Factory
 {
 public:
   static void Init(const Config& aConfig);
-  static void InitAsyncDrawTargetManager();
 
   static void ShutDown();
 
@@ -1272,8 +1268,6 @@ public:
    * within 8k limit.  The 8k value is chosen a bit randomly.
    */
   static bool ReasonableSurfaceSize(const IntSize &aSize);
-
-  static AsyncDrawTargetManager* GetAsyncDrawTargetManager();
 
   static bool AllowedSurfaceSize(const IntSize &aSize);
 
@@ -1430,8 +1424,6 @@ private:
 #endif
 
   static DrawEventRecorder *mRecorder;
-
-  static RefPtr<AsyncDrawTargetManager> mAsyncDrawTargetManager;
 };
 
 } // namespace gfx

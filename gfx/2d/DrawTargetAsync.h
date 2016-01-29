@@ -24,23 +24,6 @@ class DrawTargetAsync;
 class DrawTargetCairo;
 class DrawTargetCG;
 
-class AsyncDrawTargetManager final : public RefCounted<AsyncDrawTargetManager>
-{
-public:
-  MOZ_DECLARE_REFCOUNTED_VIRTUAL_TYPENAME(AsyncDrawTargetManager);
-
-  AsyncDrawTargetManager();
-  ~AsyncDrawTargetManager();
-
-  void AppendAsyncPaintData(RefPtr<AsyncPaintData>& aAsyncPaintData);
-
-  void ApplyPendingDrawCommand();
-  void ClearResource();
-
-private:
-  std::vector<RefPtr<AsyncPaintData>> mPendingDrawData;
-};
-
 class AsyncPaintData : public RefCounted<AsyncPaintData>
 {
   friend class AsyncDrawTargetManager;

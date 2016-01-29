@@ -2326,7 +2326,6 @@ MessageChannel::StartPendingMessage()
   MOZ_ASSERT(mLink);
   MOZ_ASSERT(mListener);
   MOZ_ASSERT(mListener->IsChildSide());
-  MOZ_ASSERT(!mInPending);
 
   nsAutoPtr<Message> msg(new MessageDeferringMessage(MESSAGE_DEFERRING_START_MESSAGE_TYPE));
   mMonitor->AssertNotCurrentThreadOwns();
@@ -2340,6 +2339,7 @@ MessageChannel::StartPendingMessage()
 
   printf_stderr("bignose messagechannel child StartPendingMessage");
 
+  MOZ_ASSERT(!mInPending);
   mInPending = true;
   mLink->SendMessageInternal(msg.forget());
 
@@ -2353,7 +2353,6 @@ MessageChannel::EndPendingMessage()
   MOZ_ASSERT(mLink);
   MOZ_ASSERT(mListener);
   MOZ_ASSERT(mListener->IsChildSide());
-  MOZ_ASSERT(mInPending);
 
   nsAutoPtr<Message> msg(new MessageDeferringMessage(MESSAGE_DEFERRING_END_MESSAGE_TYPE));
   mMonitor->AssertNotCurrentThreadOwns();
@@ -2367,6 +2366,7 @@ MessageChannel::EndPendingMessage()
 
   printf_stderr("bignose messagechannel child EndPendingMessage");
 
+  MOZ_ASSERT(mInPending);
   mInPending = false;
   mLink->SendMessageInternal(msg.forget());
 

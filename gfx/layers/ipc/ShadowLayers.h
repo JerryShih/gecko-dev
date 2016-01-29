@@ -24,6 +24,7 @@
 #include "nsIWidget.h"
 
 #include "base/waitable_event.h"
+#include "mozilla/UniquePtr.h"
 
 namespace base {
 class Thread;
@@ -32,6 +33,7 @@ class Thread;
 namespace mozilla {
 namespace layers {
 
+class ClientLayerManager;
 class EditReply;
 class ImageContainer;
 class Layer;
@@ -125,11 +127,6 @@ class ShadowLayerForwarder final : public CompositableForwarder
 
 public:
   virtual ~ShadowLayerForwarder();
-
-  void InitPaintintThread();
-  MessageLoop* GetPaintingMessageLoop();
-
-  void ApplyPendingDrawCommand(base::WaitableEvent* aWaitableEvent, RefPtr<LayerTransactionChild>&& aActor);
 
   /**
    * Setup the IPDL actor for aCompositable to be part of layers
@@ -271,8 +268,6 @@ public:
                       const mozilla::TimeStamp& aTransactionStart,
                       bool* aSent);
 
-  void WaitOffMainPainting();
-
   /**
    * Set an actor through which layer updates will be pushed.
    */
@@ -364,7 +359,7 @@ public:
   static void PlatformSyncBeforeUpdate();
 
 protected:
-  ShadowLayerForwarder();
+  ShadowLayerForwarder(ClientLayerManager* aClientLayerManager);
 
 #ifdef DEBUG
   void CheckSurfaceDescriptor(const SurfaceDescriptor* aDescriptor) const;
@@ -377,6 +372,7 @@ protected:
   RefPtr<LayerTransactionChild> mShadowManager;
 
 private:
+  ClientLayerManager* mClientLayerManager;
 
   Transaction* mTxn;
   std::vector<AsyncChildMessageData> mPendingAsyncMessages;
@@ -385,11 +381,6 @@ private:
   bool mWindowOverlayChanged;
   int32_t mPaintSyncId;
   InfallibleTArray<PluginWindowData> mPluginWindowData;
-
-  base::WaitableEvent mWaitableEvent;
-  bool mIsDeferring;
-
-  static base::Thread* sOffManPaintingThread;
 };
 
 class CompositableClient;

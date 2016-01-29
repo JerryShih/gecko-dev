@@ -31,6 +31,7 @@
 #include "gfxPrefs.h"
 
 #include "mozilla/gfx/DrawTargetAsync.h"
+#include "DrawTargetAsyncManager.h"
 
 #ifdef XP_WIN
 #include "mozilla/layers/TextureD3D9.h"
@@ -85,6 +86,9 @@ public:
     MOZ_ASSERT(aRefDrawTarget);
     MOZ_ASSERT(!aRefDrawTarget->IsAsyncDrawTarget());
     mOpenMode = mTextureClient->mOpenMode;
+
+    MOZ_ASSERT(gfxPlatform::GetPlatform()->GetDrawTargetAsyncManager());
+    gfxPlatform::GetPlatform()->GetDrawTargetAsyncManager()->AppendAsyncPaintData(this);
   }
 
   virtual ~TextureClientAsyncPaintData()
@@ -682,6 +686,7 @@ TextureClient::BorrowDrawTarget()
     // TODO: maybe the mReadbackSink could be handled async.
     if (!mReadbackSink && GetRenderingMode() == TextureClientRenderingMode::DEFERRING) {
       RefPtr<DrawTarget> drawTarget = mData->BorrowDrawTarget();
+
       mBorrowedDrawTarget = new DrawTargetAsync(new TextureClientAsyncPaintData(this, drawTarget.get()));
     } else {
       mBorrowedDrawTarget = mData->BorrowDrawTarget();

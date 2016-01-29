@@ -169,8 +169,6 @@ ID2D1Device *Factory::mD2D1Device;
 
 DrawEventRecorder *Factory::mRecorder;
 
-RefPtr<AsyncDrawTargetManager> Factory::mAsyncDrawTargetManager;
-
 mozilla::gfx::Config* Factory::sConfig = nullptr;
 
 void
@@ -192,23 +190,11 @@ Factory::Init(const Config& aConfig)
 }
 
 void
-Factory::InitAsyncDrawTargetManager()
-{
-  MOZ_ASSERT(!mAsyncDrawTargetManager);
-
-  mAsyncDrawTargetManager = new AsyncDrawTargetManager();
-}
-
-void
 Factory::ShutDown()
 {
   if (sConfig) {
     delete sConfig;
     sConfig = nullptr;
-  }
-
-  if (mAsyncDrawTargetManager) {
-    mAsyncDrawTargetManager = nullptr;
   }
 }
 
@@ -1062,13 +1048,6 @@ void
 Factory::SetGlobalEventRecorder(DrawEventRecorder *aRecorder)
 {
   mRecorder = aRecorder;
-}
-
-// static
-AsyncDrawTargetManager*
-Factory::GetAsyncDrawTargetManager()
-{
-  return mAsyncDrawTargetManager.get();
 }
 
 // static

@@ -37,7 +37,7 @@
 
 #include "gfxPrefs.h"
 #include "base/thread.h"
-#include "mozilla/gfx/DrawTargetAsync.h"
+#include "DrawTargetAsyncManager.h"
 
 namespace mozilla {
 namespace ipc {
@@ -57,7 +57,7 @@ typedef std::vector<Edit> EditVector;
 typedef std::set<ShadowableLayer*> ShadowableLayerSet;
 typedef nsTArray<OpDestroy> OpDestroyVector;
 
-base::Thread* ShadowLayerForwarder::sOffManPaintingThread = nullptr;
+//base::Thread* ShadowLayerForwarder::sOffManPaintingThread = nullptr;
 
 class Transaction
 {
@@ -196,17 +196,18 @@ CompositableForwarder::IdentifyTextureHost(const TextureFactoryIdentifier& aIden
   mSyncObject = SyncObject::CreateSyncObject(aIdentifier.mSyncHandle);
 }
 
-ShadowLayerForwarder::ShadowLayerForwarder()
- : mDiagnosticTypes(DiagnosticTypes::NO_DIAGNOSTIC)
+ShadowLayerForwarder::ShadowLayerForwarder(ClientLayerManager* aClientLayerManager)
+ : mClientLayerManager(aClientLayerManager)
+ , mDiagnosticTypes(DiagnosticTypes::NO_DIAGNOSTIC)
  , mIsFirstPaint(false)
  , mWindowOverlayChanged(false)
  , mPaintSyncId(0)
- , mWaitableEvent(false, true)
- , mIsDeferring(false)
 {
+  MOZ_ASSERT(mClientLayerManager);
+
   mTxn = new Transaction();
 
-  InitPaintintThread();
+  //InitPaintintThread();
 }
 
 ShadowLayerForwarder::~ShadowLayerForwarder()
@@ -222,20 +223,29 @@ ShadowLayerForwarder::~ShadowLayerForwarder()
   }
 }
 
-void
-ShadowLayerForwarder::InitPaintintThread()
-{
-  if (!sOffManPaintingThread) {
-    sOffManPaintingThread = new base::Thread("OffMainPaintingThread");
-    MOZ_ALWAYS_TRUE(sOffManPaintingThread->Start());
-  }
-}
-
-MessageLoop*
-ShadowLayerForwarder::GetPaintingMessageLoop()
-{
-  return sOffManPaintingThread ? sOffManPaintingThread->message_loop() : nullptr;
-}
+//void
+//ShadowLayerForwarder::InitPaintintThread()
+//{
+//  MOZ_ASSERT(NS_IsMainThread());
+//
+//  if (!sOffManPaintingThread) {
+//    sOffManPaintingThread = new base::Thread("OffMainPaintingThread");
+//    MOZ_ALWAYS_TRUE(sOffManPaintingThread->Start());
+//  }
+//}
+//
+//bool
+//ShadowLayerForwarder::InPaintingThread()
+//{
+//  return sOffManPaintingThread &&
+//      sOffManPaintingThread->thread_id() == PlatformThread::CurrentId();
+//}
+//
+//MessageLoop*
+//ShadowLayerForwarder::GetPaintingMessageLoop()
+//{
+//  return sOffManPaintingThread ? sOffManPaintingThread->message_loop() : nullptr;
+//}
 
 void
 ShadowLayerForwarder::BeginTransaction(const gfx::IntRect& aTargetBounds,
@@ -246,6 +256,7 @@ ShadowLayerForwarder::BeginTransaction(const gfx::IntRect& aTargetBounds,
 
   MOZ_ASSERT(HasShadowManager(), "no manager to forward to");
   MOZ_ASSERT(mTxn->Finished(), "uncommitted txn?");
+
   mTxn->Begin(aTargetBounds, aRotation, aOrientation);
 }
 
@@ -569,66 +580,6 @@ ShadowLayerForwarder::StorePluginWidgetConfigurations(const nsTArray<nsIWidget::
   }
 }
 
-void
-ShadowLayerForwarder::ApplyPendingDrawCommand(base::WaitableEvent* aWaitableEvent,
-                                              RefPtr<LayerTransactionChild>&& aActor)
-{
-  MOZ_ASSERT(InImageBridgeChildThread());
-
-  printf_stderr("bignose pseudo draw start, treeid:%lld, WaitableEvent:%p",
-      aActor->GetId(), aWaitableEvent);
-
-  // draw call here
-  // bignose test
-  if (!gfxPrefs::FlushAtMain()) {
-    if (Factory::GetAsyncDrawTargetManager()) {
-      PROFILER_LABEL("ClientLayerManager", "Off-Main ApplyPendingDrawCommand",
-        js::ProfileEntry::Category::GRAPHICS);
-
-      printf_stderr("bignose off-main painting start");
-      Factory::GetAsyncDrawTargetManager()->ApplyPendingDrawCommand();
-      printf_stderr("bignose off-main painting end");
-    }
-  }
-
-  printf_stderr("bignose pseudo draw end, treeid:%lld, WaitableEvent:%p",
-      aActor->GetId(), aWaitableEvent);
-
-  if (!gfxPrefs::FlushAtMain()) {
-    printf_stderr("bignose EndPendingMessage start 2");
-    aActor->GetIPCChannel()->EndPendingMessage();
-    printf_stderr("bignose EndPendingMessage end 2");
-  }
-
-  if (aWaitableEvent) {
-    printf_stderr("bignose pseudo draw signal, treeid:%lld, WaitableEvent:%p",
-        aActor->GetId(), aWaitableEvent);
-
-    aWaitableEvent->Signal();
-  }
-}
-
-void
-ShadowLayerForwarder::WaitOffMainPainting()
-{
-  PROFILER_LABEL("ShadowLayerForwarder", "WaitOffMainPainting",
-    js::ProfileEntry::Category::GRAPHICS);
-
-  if (mIsDeferring && !gfxPrefs::FlushAtMain()) {
-    if (mIsDeferring && gfxPrefs::ContentLayerTransactionDeferring()) {
-      printf_stderr("bignose ShadowLayerForwarder::EndTransaction, start wait addr:%p, waitableEvent:%p",
-          this, &mWaitableEvent);
-      MOZ_ALWAYS_TRUE(mWaitableEvent.Wait());
-      printf_stderr("bignose ShadowLayerForwarder::EndTransaction, end wait addr:%p, waitableEvent:%p",
-          this, &mWaitableEvent);
-    }
-  }
-
-  if (Factory::GetAsyncDrawTargetManager()) {
-    Factory::GetAsyncDrawTargetManager()->ClearResource();
-  }
-}
-
 bool
 ShadowLayerForwarder::EndTransaction(InfallibleTArray<EditReply>* aReplies,
                                      const nsIntRegion& aRegionToClear,
@@ -648,7 +599,6 @@ ShadowLayerForwarder::EndTransaction(InfallibleTArray<EditReply>* aReplies,
 
   RenderTraceScope rendertrace("Foward Transaction", "000091");
 
-  mIsDeferring = false;
   *aSent = false;
 
   DiagnosticTypes diagnostics = gfxPlatform::GetPlatform()->GetLayerDiagnosticTypes();
@@ -664,6 +614,12 @@ ShadowLayerForwarder::EndTransaction(InfallibleTArray<EditReply>* aReplies,
 
   if (mTxn->Empty() && !mTxn->RotationChanged()) {
     MOZ_LAYERS_LOG(("[LayersForwarder] 0-length cset (?) and no rotation event, skipping Update()"));
+
+    // Apply last transaction before return
+    if (gfxPrefs::ContentOffMainPainting()) {
+      gfxPlatform::GetPlatform()->GetDrawTargetAsyncManager()->ApplyLastTransaction();
+    }
+
     return true;
   }
 
@@ -787,11 +743,12 @@ ShadowLayerForwarder::EndTransaction(InfallibleTArray<EditReply>* aReplies,
   profiler_tracing("Paint", "Rasterize", TRACING_INTERVAL_END);
 
   if (mTxn->mSwapRequired) {
-    // If we use sync update, flush all draw command before that.
-    if (Factory::GetAsyncDrawTargetManager()) {
-      printf_stderr("bignose flush at main start");
-      Factory::GetAsyncDrawTargetManager()->ApplyPendingDrawCommand();
-      printf_stderr("bignose flush at main end");
+    printf_stderr("bignose SendUpdateSwap begin, layertree id:%lld, transaction id:%lld",
+        mShadowManager->GetId(), aId);
+
+    // If we use sync update, apply pending transaction before sending.
+    if (gfxPrefs::ContentOffMainPainting()) {
+      gfxPlatform::GetPlatform()->GetDrawTargetAsyncManager()->ApplyLastTransaction();
     }
 
     MOZ_LAYERS_LOG(("[LayersForwarder] sending transaction..."));
@@ -807,9 +764,10 @@ ShadowLayerForwarder::EndTransaction(InfallibleTArray<EditReply>* aReplies,
       mTxn->FallbackDestroyActors();
       return false;
     }
-  } else {
-    bool layerTransactionDeferring = gfxPrefs::ContentLayerTransactionDeferring();
 
+    printf_stderr("bignose SendUpdateSwap end, layertree id:%lld, transaction id:%lld",
+        mShadowManager->GetId(), aId);
+  } else {
     printf_stderr("bignose SendUpdateNoSwap begin, layertree id:%lld, transaction id:%lld",
         mShadowManager->GetId(), aId);
 
@@ -819,13 +777,14 @@ ShadowLayerForwarder::EndTransaction(InfallibleTArray<EditReply>* aReplies,
     RenderTraceScope rendertrace3("Forward NoSwap Transaction", "000093");
 
     if (HasShadowManager() && mShadowManager->IPCOpen()) {
-      if (layerTransactionDeferring && !mShadowManager->GetIPCChannel()->StartPendingMessage()) {
-        MOZ_LAYERS_LOG(("[LayersForwarder] WARNING: call StartPendingMessage() failed!"));
-
-        printf_stderr("bignose StartPendingMessage error, layertree id:%lld, transaction id:%lld",
-                      mShadowManager->GetId(), aId);
-
-        return false;
+      if (gfxPrefs::ContentOffMainPainting()) {
+        //bignose
+        //test, flush at main thread.
+        if (gfxPrefs::FlushAtMain()) {
+          gfxPlatform::GetPlatform()->GetDrawTargetAsyncManager()->ApplyLastTransaction();
+        } else {
+          gfxPlatform::GetPlatform()->GetDrawTargetAsyncManager()->PostApplyLastTransaction(mShadowManager->GetIPCChannel());
+        }
       }
 
       if (!mShadowManager->SendUpdateNoSwap(cset, mTxn->mDestroyedActors,
@@ -834,10 +793,6 @@ ShadowLayerForwarder::EndTransaction(InfallibleTArray<EditReply>* aReplies,
                                             aPaintSequenceNumber, aIsRepeatTransaction,
                                             aTransactionStart, mPaintSyncId)) {
         MOZ_LAYERS_LOG(("[LayersForwarder] WARNING: sending transaction failed!"));
-
-        printf_stderr("bignose EndPendingMessage start 3");
-        mShadowManager->GetIPCChannel()->EndPendingMessage();
-        printf_stderr("bignose EndPendingMessage end 3");
 
         mTxn->FallbackDestroyActors();
 
@@ -850,37 +805,6 @@ ShadowLayerForwarder::EndTransaction(InfallibleTArray<EditReply>* aReplies,
 
     printf_stderr("bignose SendUpdateNoSwap end, layertree id:%lld, transaction id:%lld",
         mShadowManager->GetId(), aId);
-
-    if (layerTransactionDeferring) {
-      mIsDeferring = true;
-      GetPaintingMessageLoop()->PostTask(FROM_HERE,
-          NewRunnableMethod(this,
-                            &ShadowLayerForwarder::ApplyPendingDrawCommand,
-                            &mWaitableEvent,
-                            mShadowManager));
-    }
-  }
-
-  // bignose test
-  if (mIsDeferring && gfxPrefs::FlushAtMain()) {
-    // flush async draw call before sending transaction
-    if (Factory::GetAsyncDrawTargetManager()) {
-      printf_stderr("bignose flush at main start");
-      Factory::GetAsyncDrawTargetManager()->ApplyPendingDrawCommand();
-      printf_stderr("bignose flush at main end");
-    }
-
-    printf_stderr("bignose EndPendingMessage start 1");
-    mShadowManager->GetIPCChannel()->EndPendingMessage();
-    printf_stderr("bignose EndPendingMessage end 1");
-
-    if (mIsDeferring && gfxPrefs::ContentLayerTransactionDeferring()) {
-      printf_stderr("bignose ShadowLayerForwarder::EndTransaction, start wait addr:%p, waitableEvent:%p",
-          this, &mWaitableEvent);
-      MOZ_ALWAYS_TRUE(mWaitableEvent.Wait());
-      printf_stderr("bignose ShadowLayerForwarder::EndTransaction, end wait addr:%p, waitableEvent:%p",
-          this, &mWaitableEvent);
-    }
   }
 
   *aSent = true;

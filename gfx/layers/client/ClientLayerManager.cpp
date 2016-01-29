@@ -39,6 +39,8 @@
 #include "gfxWindowsPlatform.h"
 #endif
 
+#include "DrawTargetAsyncManager.h"
+
 namespace mozilla {
 namespace layers {
 
@@ -101,10 +103,11 @@ ClientLayerManager::ClientLayerManager(nsIWidget* aWidget)
   , mCompositorMightResample(false)
   , mNeedsComposite(false)
   , mPaintSequenceNumber(0)
-  , mForwarder(new ShadowLayerForwarder)
 {
   MOZ_COUNT_CTOR(ClientLayerManager);
   mMemoryPressureObserver = new MemoryPressureObserver(this);
+
+  mForwarder = new ShadowLayerForwarder(this);
 }
 
 ClientLayerManager::~ClientLayerManager()
@@ -280,13 +283,27 @@ ClientLayerManager::EndTransactionInternal(DrawPaintedLayerCallback aCallback,
 
   GetRoot()->ComputeEffectiveTransforms(Matrix4x4());
 
-  mForwarder->WaitOffMainPainting();
+//  if (!mRepeatTransaction) {
+//    mForwarder->WaitPendingTransaction();
+//  }
+
+  if (gfxPrefs::ContentOffMainPainting()) {
+    gfxPlatform::GetPlatform()->GetDrawTargetAsyncManager()->WaitAllTransaction();
+  }
+
+  if (gfxPrefs::ContentOffMainPainting()) {
+    gfxPlatform::GetPlatform()->GetDrawTargetAsyncManager()->BeginTransaction();
+  }
 
   {
     PROFILER_LABEL("ClientLayerManager", "EndTransactionInternal-RenderLayer",
       js::ProfileEntry::Category::GRAPHICS);
 
     root->RenderLayer();
+  }
+
+  if (gfxPrefs::ContentOffMainPainting()) {
+    gfxPlatform::GetPlatform()->GetDrawTargetAsyncManager()->EndTransaction();
   }
 
   if (!mRepeatTransaction && !GetRoot()->GetInvalidRegion().IsEmpty()) {

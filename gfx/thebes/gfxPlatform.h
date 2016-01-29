@@ -52,6 +52,8 @@ class DrawEventRecorder;
 class VsyncSource;
 class DeviceInitData;
 
+class DrawTargetAsyncManager;
+
 inline uint32_t
 BackendTypeBit(BackendType b)
 {
@@ -173,6 +175,10 @@ public:
 
     static void InitLayersIPC();
     static void ShutdownLayersIPC();
+
+    // bignose
+    void InitDrawTargetAsyncManager();
+    mozilla::gfx::DrawTargetAsyncManager* GetDrawTargetAsyncManager();
 
     /**
      * Create an offscreen surface of the given dimensions
@@ -797,6 +803,8 @@ private:
 
     int32_t mScreenDepth;
     mozilla::gfx::IntSize mScreenSize;
+
+    RefPtr<mozilla::gfx::DrawTargetAsyncManager> mDrawTargetAsyncManager;
 };
 
 #endif /* GFX_PLATFORM_H */

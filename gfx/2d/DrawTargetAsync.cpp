@@ -753,9 +753,6 @@ DrawTargetAsync::DrawTargetAsync(AsyncPaintData* aAsyncPaintData)
   MOZ_ASSERT(aAsyncPaintData);
   //printf_stderr("bignose create DrawTargetAsync for:%p", mDrawTarget);
 
-  MOZ_ASSERT(Factory::GetAsyncDrawTargetManager());
-  Factory::GetAsyncDrawTargetManager()->AppendAsyncPaintData(mAsyncPaintData);
-
   mFormat = mAsyncPaintData->GetDrawTarget()->GetFormat();
 }
 
@@ -1124,44 +1121,6 @@ DrawTargetAsync::InitWithGrContext(GrContext* aGrContext,
   return mAsyncPaintData->GetDrawTarget()->InitWithGrContext(aGrContext, aSize, aFormat);
 }
 #endif
-
-AsyncDrawTargetManager::AsyncDrawTargetManager()
-{
-
-}
-AsyncDrawTargetManager::~AsyncDrawTargetManager()
-{
-
-}
-
-void
-AsyncDrawTargetManager::AppendAsyncPaintData(RefPtr<AsyncPaintData>& aAsyncPaintData)
-{
-  mPendingDrawData.push_back(aAsyncPaintData);
-}
-
-void
-AsyncDrawTargetManager::ApplyPendingDrawCommand()
-{
-#ifdef PROFILE_DRAW_COMMAND
-  ATRACE_NAME("AsyncDrawTargetManager::ApplyPendingDrawCommand");
-#endif
-
-  auto num = mPendingDrawData.size();
-
-  printf_stderr("!!!!bignose AsyncDrawTargetManager::ApplyPendingDrawCommand, target num:%u",num);
-
-  for (decltype(num) i = 0 ; i<num ; ++i) {
-    mPendingDrawData[i]->ApplyPendingDrawCommand();
-  }
-  mPendingDrawData.clear();
-}
-
-void
-AsyncDrawTargetManager::ClearResource()
-{
-  //ATRACE_NAME("AsyncDrawTargetManager::ClearResource");
-}
 
 AsyncPaintData::AsyncPaintData()
   : mIsPoolReady(false)

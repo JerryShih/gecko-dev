@@ -135,6 +135,8 @@ class mozilla::gl::SkiaGLGlue : public GenericAtomicRefCounted {
 #include "gfxVR.h"
 #include "VRManagerChild.h"
 
+#include "DrawTargetAsyncManager.h"
+
 namespace mozilla {
 namespace layers {
 #ifdef MOZ_WIDGET_GONK
@@ -564,9 +566,6 @@ gfxPlatform::Init()
     cfg.mMaxAllocSize = gfxPrefs::MaxAllocSize();
 
     gfx::Factory::Init(cfg);
-    if (gfxPrefs::ContentOffMainPainting()) {
-      gfx::Factory::InitAsyncDrawTargetManager();
-    }
 
     gGfxPlatformPrefsLock = new Mutex("gfxPlatform::gGfxPlatformPrefsLock");
 
@@ -605,6 +604,10 @@ gfxPlatform::Init()
 
     InitLayersAccelerationPrefs();
     InitLayersIPC();
+
+    if (gfxPrefs::ContentOffMainPainting()) {
+      gPlatform->InitDrawTargetAsyncManager();
+    }
 
     gPlatform->PopulateScreenInfo();
     gPlatform->ComputeTileSize();
@@ -817,26 +820,47 @@ gfxPlatform::ShutdownLayersIPC()
 	}
 }
 
+void
+gfxPlatform::InitDrawTargetAsyncManager()
+{
+  MOZ_ASSERT(NS_IsMainThread());
+  MOZ_ASSERT(!mDrawTargetAsyncManager);
+
+  if (!mDrawTargetAsyncManager) {
+    mDrawTargetAsyncManager = new DrawTargetAsyncManager();
+  }
+}
+
+mozilla::gfx::DrawTargetAsyncManager*
+gfxPlatform::GetDrawTargetAsyncManager()
+{
+  return mDrawTargetAsyncManager.get();
+}
+
 gfxPlatform::~gfxPlatform()
 {
-    mScreenReferenceSurface = nullptr;
-    mScreenReferenceDrawTarget = nullptr;
+  if (mDrawTargetAsyncManager) {
+    mDrawTargetAsyncManager = nullptr;
+  }
 
-    // The cairo folks think we should only clean up in debug builds,
-    // but we're generally in the habit of trying to shut down as
-    // cleanly as possible even in production code, so call this
-    // cairo_debug_* function unconditionally.
-    //
-    // because cairo can assert and thus crash on shutdown, don't do this in release builds
+  mScreenReferenceSurface = nullptr;
+  mScreenReferenceDrawTarget = nullptr;
+
+  // The cairo folks think we should only clean up in debug builds,
+  // but we're generally in the habit of trying to shut down as
+  // cleanly as possible even in production code, so call this
+  // cairo_debug_* function unconditionally.
+  //
+  // because cairo can assert and thus crash on shutdown, don't do this in release builds
 #ifdef NS_FREE_PERMANENT_DATA
 #ifdef USE_SKIA
-    // must do Skia cleanup before Cairo cleanup, because Skia may be referencing
-    // Cairo objects e.g. through SkCairoFTTypeface
-    SkGraphics::PurgeFontCache();
+  // must do Skia cleanup before Cairo cleanup, because Skia may be referencing
+  // Cairo objects e.g. through SkCairoFTTypeface
+  SkGraphics::PurgeFontCache();
 #endif
 
 #if MOZ_TREE_CAIRO
-    cairo_debug_reset_static_data();
+  cairo_debug_reset_static_data();
 #endif
 #endif
 }
