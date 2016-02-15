@@ -177,6 +177,13 @@ void
 ProcessLink::SendMessage(Message *msg)
 {
     mChan->AssertWorkerThread();
+
+    SendMessageInternal(msg);
+}
+
+void
+ProcessLink::SendMessageInternal(Message *msg)
+{
     mChan->mMonitor->AssertCurrentThreadOwns();
 
 #ifdef MOZ_NUWA_PROCESS
@@ -279,11 +286,19 @@ void
 ThreadLink::SendMessage(Message *msg)
 {
     mChan->AssertWorkerThread();
-    mChan->mMonitor->AssertCurrentThreadOwns();
 
-    if (mTargetChan)
-        mTargetChan->OnMessageReceivedFromLink(*msg);
-    delete msg;
+    SendMessageInternal(msg);
+}
+
+void
+ThreadLink::SendMessageInternal(Message *msg)
+{
+  mChan->mMonitor->AssertCurrentThreadOwns();
+
+  if (mTargetChan) {
+      mTargetChan->OnMessageReceivedFromLink(*msg);
+  }
+  delete msg;
 }
 
 void
@@ -320,7 +335,6 @@ ThreadLink::Unsound_NumQueuedMessages() const
 //
 // The methods below run in the context of the IO thread
 //
-
 void
 ProcessLink::OnMessageReceived(const Message& msg)
 {
