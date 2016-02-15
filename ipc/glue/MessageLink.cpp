@@ -134,6 +134,15 @@ ProcessLink::EchoMessage(Message *msg)
 void
 ProcessLink::SendMessage(Message *msg)
 {
+    mChan->AssertWorkerThread();
+
+    SendMessageInternal(msg);}
+
+void
+ProcessLink::SendMessageInternal(Message *msg)
+{
+    mChan->mMonitor->AssertCurrentThreadOwns();
+
     if (msg->size() > IPC::Channel::kMaximumMessageSize) {
 #ifdef MOZ_CRASHREPORTER
       CrashReporter::AnnotateCrashReport(NS_LITERAL_CSTRING("IPCMessageName"), nsDependentCString(msg->name()));
@@ -141,9 +150,6 @@ ProcessLink::SendMessage(Message *msg)
 #endif
       MOZ_CRASH("IPC message size is too large");
     }
-
-    mChan->AssertWorkerThread();
-    mChan->mMonitor->AssertCurrentThreadOwns();
 
     mIOLoop->PostTask(NewNonOwningRunnableMethod<Message*>(mTransport, &Transport::Send, msg));
 }
@@ -206,6 +212,13 @@ void
 ThreadLink::SendMessage(Message *msg)
 {
     mChan->AssertWorkerThread();
+
+    SendMessageInternal(msg);
+}
+
+void
+ThreadLink::SendMessageInternal(Message *msg)
+{
     mChan->mMonitor->AssertCurrentThreadOwns();
 
     if (mTargetChan)
@@ -247,7 +260,6 @@ ThreadLink::Unsound_NumQueuedMessages() const
 //
 // The methods below run in the context of the IO thread
 //
-
 void
 ProcessLink::OnMessageReceived(Message&& msg)
 {

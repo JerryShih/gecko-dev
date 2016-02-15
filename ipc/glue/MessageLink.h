@@ -148,6 +148,8 @@ class MessageListener
 
 class MessageLink
 {
+    friend class MessageChannel;
+
   public:
     typedef IPC::Message Message;
 
@@ -164,6 +166,8 @@ class MessageLink
     virtual uint32_t Unsound_NumQueuedMessages() const = 0;
 
   protected:
+    virtual void SendMessageInternal(Message *msg) = 0;
+
     MessageChannel *mChan;
 };
 
@@ -211,6 +215,8 @@ class ProcessLink
     virtual uint32_t Unsound_NumQueuedMessages() const override;
 
   protected:
+    virtual void SendMessageInternal(Message *msg) override;
+
     Transport* mTransport;
     MessageLoop* mIOLoop;       // thread where IO happens
     Transport::Listener* mExistingListener; // channel's previous listener
@@ -230,6 +236,8 @@ class ThreadLink : public MessageLink
     virtual uint32_t Unsound_NumQueuedMessages() const override;
 
   protected:
+    virtual void SendMessageInternal(Message *msg) override;
+
     MessageChannel* mTargetChan;
 };
 
