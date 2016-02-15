@@ -280,6 +280,67 @@ private:
     CxxStackFrame& operator=(const CxxStackFrame&) = delete;
 };
 
+// Special cancel message.
+class CancelMessage : public IPC::Message
+{
+public:
+    explicit CancelMessage(int transaction) :
+        IPC::Message(MSG_ROUTING_NONE, CANCEL_MESSAGE_TYPE, PRIORITY_NORMAL)
+    {
+        set_transaction_id(transaction);
+    }
+
+    static bool Read(const Message* msg)
+    {
+        return true;
+    }
+
+    void Log(const std::string& aPrefix, FILE* aOutf) const
+    {
+        fputs("(special `Cancel' message)", aOutf);
+    }
+};
+
+// Special async message.
+class GoodbyeMessage : public IPC::Message
+{
+public:
+    GoodbyeMessage() :
+        IPC::Message(MSG_ROUTING_NONE, GOODBYE_MESSAGE_TYPE, PRIORITY_NORMAL)
+    {
+    }
+
+    static bool Read(const Message* msg)
+    {
+        return true;
+    }
+
+    void Log(const std::string& aPrefix, FILE* aOutf) const
+    {
+        fputs("(special `Goodbye' message)", aOutf);
+    }
+};
+
+// Special async message for message deferring.
+class DeferMessage : public IPC::Message
+{
+public:
+    DeferMessage(msgid_t type) :
+        IPC::Message(MSG_ROUTING_NONE, type, PRIORITY_NORMAL)
+    {
+    }
+
+    static bool Read(const Message* msg)
+    {
+        return true;
+    }
+
+    void Log(const std::string& aPrefix, FILE* aOutf) const
+    {
+        fputs("(special `Deferring' message)", aOutf);
+    }
+};
+
 class AutoEnterTransaction
 {
 public:
@@ -786,22 +847,6 @@ MessageChannel::Send(Message* aMsg)
     mLink->SendMessage(msg.forget());
     return true;
 }
-
-class CancelMessage : public IPC::Message
-{
-public:
-    explicit CancelMessage(int transaction) :
-        IPC::Message(MSG_ROUTING_NONE, CANCEL_MESSAGE_TYPE, PRIORITY_NORMAL)
-    {
-        set_transaction_id(transaction);
-    }
-    static bool Read(const Message* msg) {
-        return true;
-    }
-    void Log(const std::string& aPrefix, FILE* aOutf) const {
-        fputs("(special `Cancel' message)", aOutf);
-    }
-};
 
 bool
 MessageChannel::MaybeInterceptSpecialIOMessage(const Message& aMsg)
@@ -2128,22 +2173,6 @@ MessageChannel::PostErrorNotifyTask()
     RefPtr<Runnable> task = mChannelErrorTask;
     mWorkerLoop->PostTask(task.forget());
 }
-
-// Special async message.
-class GoodbyeMessage : public IPC::Message
-{
-public:
-    GoodbyeMessage() :
-        IPC::Message(MSG_ROUTING_NONE, GOODBYE_MESSAGE_TYPE, PRIORITY_NORMAL)
-    {
-    }
-    static bool Read(const Message* msg) {
-        return true;
-    }
-    void Log(const std::string& aPrefix, FILE* aOutf) const {
-        fputs("(special `Goodbye' message)", aOutf);
-    }
-};
 
 void
 MessageChannel::SynchronouslyClose()
