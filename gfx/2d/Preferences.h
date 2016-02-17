@@ -21,11 +21,15 @@ public:
 
   static int32_t RegisterLivePref(const char* aName, int32_t* aVar,
                                   int32_t aDefault);
+  static bool RegisterLivePref(const char* aName, bool* aVar,
+                               bool aDefault);
+
 protected:
   // This should connect the variable aVar to be updated whenever a preference
   // aName is modified.  aDefault would be used if the preference is undefined,
   // so that we always get the valid value for aVar.
   virtual void LivePref(const char* aName, int32_t* aVar, int32_t aDefault) = 0;
+  virtual void LivePref(const char* aName, bool* aVar, bool aDefault) = 0;
 };
 
 } // namespace gfx

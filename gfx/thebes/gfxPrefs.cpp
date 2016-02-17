@@ -19,6 +19,7 @@ class PreferenceAccessImpl : public mozilla::gfx::PreferenceAccess
 public:
   virtual ~PreferenceAccessImpl();
   virtual void LivePref(const char* aName, int32_t* aVar, int32_t aDefault) override;
+  virtual void LivePref(const char* aName, bool* aVar, bool aDefault) override;
 };
 
 PreferenceAccessImpl::~PreferenceAccessImpl()
@@ -30,6 +31,13 @@ void PreferenceAccessImpl::LivePref(const char* aName,
                                     int32_t aDefault)
 {
   Preferences::AddIntVarCache(aVar, aName, aDefault);
+}
+
+void PreferenceAccessImpl::LivePref(const char* aName,
+                                    bool* aVar,
+                                    bool aDefault)
+{
+  Preferences::AddBoolVarCache(aVar, aName, aDefault);
 }
 
 void
