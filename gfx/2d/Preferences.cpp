@@ -20,10 +20,22 @@ struct Int32Pref
   int32_t* varPtr;
 };
 
+struct BoolPref
+{
+  const char* name;
+  bool* varPtr;
+};
+
 static Vector<Int32Pref>& Int32Prefs()
 {
   static Vector<Int32Pref>* sInt32Prefs = new Vector<Int32Pref>();
   return *sInt32Prefs;
+}
+
+static Vector<BoolPref>& BoolPrefs()
+{
+  static Vector<BoolPref>* sBoolPrefs = new Vector<BoolPref>();
+  return *sBoolPrefs;
 }
 
 /* static */
@@ -32,6 +44,17 @@ PreferenceAccess::RegisterLivePref(const char* aName, int32_t* aVar,
                                    int32_t aDefault)
 {
   if (!Int32Prefs().append(Int32Pref{ aName, aVar })) {
+    MOZ_CRASH();
+  }
+  return aDefault;
+}
+
+/* static */
+bool
+PreferenceAccess::RegisterLivePref(const char* aName, bool* aVar,
+                                   bool aDefault)
+{
+  if (!BoolPrefs().append(BoolPref{ aName, aVar })) {
     MOZ_CRASH();
   }
   return aDefault;
@@ -56,6 +79,11 @@ PreferenceAccess::SetAccess(PreferenceAccess* aAccess)
     sAccess->LivePref(pref.name, pref.varPtr, *pref.varPtr);
   }
   Int32Prefs().clearAndFree();
+
+  for (BoolPref pref : BoolPrefs()) {
+    sAccess->LivePref(pref.name, pref.varPtr, *pref.varPtr);
+  }
+  BoolPrefs().clearAndFree();
 }
 
 } // namespace gfx
