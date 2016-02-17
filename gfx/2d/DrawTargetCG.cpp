@@ -22,6 +22,10 @@
 #include "mozilla/Types.h" // for decltype
 #include "mozilla/Vector.h"
 
+#ifdef MOZ_OFF_MAIN_PAINTING
+#include "DrawTargetAsync.h"
+#endif
+
 using namespace std;
 
 //CG_EXTERN void CGContextSetCompositeOperation (CGContextRef, PrivateCGCompositeMode);
@@ -2060,6 +2064,23 @@ BorrowedCGContext::BorrowCGContextFromDrawTarget(DrawTarget *aDT)
   if ((aDT->GetBackendType() == BackendType::COREGRAPHICS ||
        aDT->GetBackendType() == BackendType::COREGRAPHICS_ACCELERATED) &&
       !aDT->IsTiledDrawTarget() && !aDT->IsDualDrawTarget()) {
+#ifdef MOZ_OFF_MAIN_PAINTING
+    // bignose
+    // If this is a DrawTargetAsync, flush pending draw commands and return the
+    // internal DrawTargetCG here.
+    if (aDT->IsAsyncDrawTarget()) {
+      DrawTargetAsync* asyncDT = static_cast<DrawTargetAsync*>(aDT);
+      // Apply pending draw command before getting the internal DrawTargetCG.
+      asyncDT->ApplyPendingDrawCommand();
+      aDT = asyncDT->GetInternalDrawTarget();
+
+      MOZ_ASSERT(aDT);
+      MOZ_ASSERT(!aDT->IsAsyncDrawTarget());
+      MOZ_ASSERT(aDT->GetBackendType() == BackendType::COREGRAPHICS ||
+                 aDT->GetBackendType() == BackendType::COREGRAPHICS_ACCELERATED);
+    }
+#endif
+
     DrawTargetCG* cgDT = static_cast<DrawTargetCG*>(aDT);
     cgDT->Flush();
     cgDT->MarkChanged();
@@ -2082,6 +2103,20 @@ BorrowedCGContext::BorrowCGContextFromDrawTarget(DrawTarget *aDT)
 void
 BorrowedCGContext::ReturnCGContextToDrawTarget(DrawTarget *aDT, CGContextRef cg)
 {
+  MOZ_ASSERT(!aDT->IsTiledDrawTarget() && !aDT->IsDualDrawTarget());
+#ifdef MOZ_OFF_MAIN_PAINTING
+  // bignose
+  // If this is a DrawTargetAsync, get the internal DrawTargetCG here.
+  if (aDT->IsAsyncDrawTarget()) {
+    aDT = static_cast<DrawTargetAsync*>(aDT)->GetInternalDrawTarget();
+
+    MOZ_ASSERT(aDT);
+    MOZ_ASSERT(!aDT->IsAsyncDrawTarget());
+    MOZ_ASSERT(aDT->GetBackendType() == BackendType::COREGRAPHICS ||
+               aDT->GetBackendType() == BackendType::COREGRAPHICS_ACCELERATED);
+  }
+#endif
+
   DrawTargetCG* cgDT = static_cast<DrawTargetCG*>(aDT);
 
   CGContextRestoreGState(cg);
