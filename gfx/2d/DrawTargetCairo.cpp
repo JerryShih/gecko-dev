@@ -23,6 +23,10 @@
 #include "Logging.h"
 #include "Tools.h"
 
+#ifdef MOZ_OFF_MAIN_PAINTING
+#include "DrawTargetAsync.h"
+#endif
+
 #ifdef CAIRO_HAS_QUARTZ_SURFACE
 #include "cairo-quartz.h"
 #ifdef MOZ_WIDGET_COCOA
@@ -606,6 +610,10 @@ DrawTargetCairo::DrawTargetCairo()
 
 DrawTargetCairo::~DrawTargetCairo()
 {
+  // bignose
+  // Make the exist SourceSurface snapshot independent before its dtor.
+  MarkSnapshotIndependent();
+
   cairo_destroy(mContext);
   if (mSurface) {
     cairo_surface_destroy(mSurface);
@@ -2207,6 +2215,23 @@ BorrowedCairoContext::BorrowCairoContextFromDrawTarget(DrawTarget* aDT)
       aDT->IsTiledDrawTarget()) {
     return nullptr;
   }
+
+#ifdef MOZ_OFF_MAIN_PAINTING
+  // bignose
+  // If this is a DrawTargetAsync, flush pending draw commands and return the
+  // internal DrawTargetCairo here.
+  if (aDT->IsAsyncDrawTarget()) {
+    DrawTargetAsync* asyncDT = static_cast<DrawTargetAsync*>(aDT);
+    // Apply pending draw command before getting the internal DrawTargetCairo.
+    asyncDT->ApplyPendingDrawCommand();
+    aDT = asyncDT->GetInternalDrawTarget();
+
+    MOZ_ASSERT(aDT);
+    MOZ_ASSERT(!aDT->IsAsyncDrawTarget());
+    MOZ_ASSERT(aDT->GetBackendType() == BackendType::CAIRO);
+  }
+#endif
+
   DrawTargetCairo* cairoDT = static_cast<DrawTargetCairo*>(aDT);
 
   cairoDT->WillChange();
@@ -2230,6 +2255,19 @@ BorrowedCairoContext::ReturnCairoContextToDrawTarget(DrawTarget* aDT,
       aDT->IsTiledDrawTarget()) {
     return;
   }
+
+#ifdef MOZ_OFF_MAIN_PAINTING
+  // bignose
+  // If this is a DrawTargetAsync, return the internal DrawTargetCairo.
+  if (aDT->IsAsyncDrawTarget()) {
+    aDT = static_cast<DrawTargetAsync*>(aDT)->GetInternalDrawTarget();
+
+    MOZ_ASSERT(aDT);
+    MOZ_ASSERT(!aDT->IsAsyncDrawTarget());
+    MOZ_ASSERT(aDT->GetBackendType() == BackendType::CAIRO);
+  }
+#endif
+
   DrawTargetCairo* cairoDT = static_cast<DrawTargetCairo*>(aDT);
 
   cairo_restore(aCairo);
@@ -2251,6 +2289,23 @@ BorrowedXlibDrawable::Init(DrawTarget* aDT)
       aDT->IsTiledDrawTarget()) {
     return false;
   }
+
+#ifdef MOZ_OFF_MAIN_PAINTING
+  // bignose
+  // If this is a DrawTargetAsync, flush pending draw commands and return the
+  // internal DrawTargetCairo here.
+  if (aDT->IsAsyncDrawTarget()) {
+    DrawTargetAsync* asyncDT = static_cast<DrawTargetAsync*>(aDT);
+    // Apply pending draw command before getting the internal DrawTargetCairo.
+    asyncDT->ApplyPendingDrawCommand();
+    aDT = asyncDT->GetInternalDrawTarget();
+    mDT = aDT;
+
+    MOZ_ASSERT(aDT);
+    MOZ_ASSERT(!aDT->IsAsyncDrawTarget());
+    MOZ_ASSERT(aDT->GetBackendType() == BackendType::CAIRO);
+  }
+#endif
 
   DrawTargetCairo* cairoDT = static_cast<DrawTargetCairo*>(aDT);
   cairo_surface_t* surf = cairo_get_group_target(cairoDT->mContext);

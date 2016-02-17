@@ -39,6 +39,10 @@
 #include "CGTextDrawing.h"
 #endif
 
+#ifdef MOZ_OFF_MAIN_PAINTING
+#include "DrawTargetAsync.h"
+#endif
+
 namespace mozilla {
 namespace gfx {
 
@@ -973,6 +977,21 @@ DrawTargetSkia::ReturnCGContext(CGContextRef aCGContext)
 CGContextRef
 BorrowedCGContext::BorrowCGContextFromDrawTarget(DrawTarget *aDT)
 {
+#ifdef MOZ_OFF_MAIN_PAINTING
+  // bignose
+  // If this is a DrawTargetAsync, flush pending draw commands and return the
+  // internal DrawTargetCG here.
+  if (aDT->IsAsyncDrawTarget()) {
+    DrawTargetAsync* asyncDT = static_cast<DrawTargetAsync*>(aDT);
+    // Apply pending draw command before getting the internal DrawTargetSkia.
+    asyncDT->ApplyPendingDrawCommand();
+    aDT = asyncDT->GetInternalDrawTarget();
+
+    MOZ_ASSERT(aDT);
+    MOZ_ASSERT(!aDT->IsAsyncDrawTarget());
+  }
+#endif
+
   MOZ_ASSERT(aDT->GetBackendType() == BackendType::SKIA);
   DrawTargetSkia* skiaDT = static_cast<DrawTargetSkia*>(aDT);
   return skiaDT->BorrowCGContext(DrawOptions());
@@ -981,6 +1000,17 @@ BorrowedCGContext::BorrowCGContextFromDrawTarget(DrawTarget *aDT)
 void
 BorrowedCGContext::ReturnCGContextToDrawTarget(DrawTarget *aDT, CGContextRef cg)
 {
+#ifdef MOZ_OFF_MAIN_PAINTING
+  // bignose
+  // If this is a DrawTargetAsync, get the internal DrawTargetSkia here.
+  if (aDT->IsAsyncDrawTarget()) {
+    aDT = static_cast<DrawTargetAsync*>(aDT)->GetInternalDrawTarget();
+
+    MOZ_ASSERT(aDT);
+    MOZ_ASSERT(!aDT->IsAsyncDrawTarget());
+  }
+#endif
+
   MOZ_ASSERT(aDT->GetBackendType() == BackendType::SKIA);
   DrawTargetSkia* skiaDT = static_cast<DrawTargetSkia*>(aDT);
   skiaDT->ReturnCGContext(cg);
