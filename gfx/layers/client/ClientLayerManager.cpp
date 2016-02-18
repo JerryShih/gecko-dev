@@ -38,6 +38,10 @@
 #include "mozilla/gfx/DeviceManagerD3D11.h"
 #endif
 
+#ifdef MOZ_OFF_MAIN_PAINTING
+#include "DrawTargetAsyncManager.h"
+#endif
+
 namespace mozilla {
 namespace layers {
 
@@ -287,13 +291,35 @@ ClientLayerManager::EndTransactionInternal(DrawPaintedLayerCallback aCallback,
   // Apply pending tree updates before recomputing effective
   // properties.
   GetRoot()->ApplyPendingUpdatesToSubtree();
-    
+
   mPaintedLayerCallback = aCallback;
   mPaintedLayerCallbackData = aCallbackData;
 
   GetRoot()->ComputeEffectiveTransforms(Matrix4x4());
 
+#ifdef MOZ_OFF_MAIN_PAINTING
+  bool offMainPainting = gfxPrefs::ContentOffMainPainting();
+
+  // Only wait previous off-main transactions at the beginning of frame.
+  if (!mIsRepeatTransaction) {
+    if (offMainPainting) {
+      gfxPlatform::GetPlatform()->GetDrawTargetAsyncManager()->WaitAllTransaction();
+    }
+  }
+
+  if (offMainPainting) {
+    gfxPlatform::GetPlatform()->GetDrawTargetAsyncManager()->BeginTransaction();
+  }
+#endif
+
   root->RenderLayer();
+
+#ifdef MOZ_OFF_MAIN_PAINTING
+  if (offMainPainting) {
+    gfxPlatform::GetPlatform()->GetDrawTargetAsyncManager()->EndTransaction();
+  }
+#endif
+
   if (!mRepeatTransaction && !GetRoot()->GetInvalidRegion().IsEmpty()) {
     GetRoot()->Mutated();
   }
