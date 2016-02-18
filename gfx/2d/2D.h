@@ -226,6 +226,14 @@ public:
   {
   }
 
+  explicit LinearGradientPattern(const LinearGradientPattern &aPattern)
+    : mBegin(aPattern.mBegin)
+    , mEnd(aPattern.mEnd)
+    , mStops(aPattern.mStops)
+    , mMatrix(aPattern.mMatrix)
+  {
+  }
+
   virtual PatternType GetType() const override
   {
     return PatternType::LINEAR_GRADIENT;
@@ -266,6 +274,16 @@ public:
   {
   }
 
+  explicit RadialGradientPattern(const RadialGradientPattern &aPattern)
+    : mCenter1(aPattern.mCenter1)
+    , mCenter2(aPattern.mCenter2)
+    , mRadius1(aPattern.mRadius1)
+    , mRadius2(aPattern.mRadius2)
+    , mStops(aPattern.mStops)
+    , mMatrix(aPattern.mMatrix)
+  {
+  }
+
   virtual PatternType GetType() const override
   {
     return PatternType::RADIAL_GRADIENT;
@@ -298,6 +316,14 @@ public:
     , mSamplingFilter(aSamplingFilter)
     , mMatrix(aMatrix)
     , mSamplingRect(aSamplingRect)
+  {}
+
+  explicit SurfacePattern(const SurfacePattern &aPattern)
+    : mSurface(aPattern.mSurface)
+    , mExtendMode(aPattern.mExtendMode)
+    , mFilter(aPattern.mFilter)
+    , mMatrix(aPattern.mMatrix)
+    , mSamplingRect(aPattern.mSamplingRect)
   {}
 
   virtual PatternType GetType() const override
