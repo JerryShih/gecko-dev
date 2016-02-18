@@ -35,6 +35,11 @@
 #include "nsXULAppAPI.h"                // for XRE_GetProcessType, etc
 #include "mozilla/ReentrantMonitor.h"
 
+#ifdef MOZ_OFF_MAIN_PAINTING
+#include "gfxPrefs.h"
+#include "DrawTargetAsyncManager.h"
+#endif
+
 namespace mozilla {
 namespace ipc {
 class Shmem;
@@ -733,18 +738,23 @@ ShadowLayerForwarder::EndTransaction(InfallibleTArray<EditReply>* aReplies,
                                      const mozilla::TimeStamp& aTransactionStart,
                                      bool* aSent)
 {
-  *aSent = false;
 
   ResetShmemCounter();
 
   MOZ_ASSERT(aId);
+  MOZ_ASSERT(HasShadowManager(), "no manager to forward to");
+  MOZ_ASSERT(!mTxn->Finished(), "forgot BeginTransaction?");
 
   PROFILER_LABEL("ShadowLayerForwarder", "EndTransaction",
     js::ProfileEntry::Category::GRAPHICS);
 
+#ifdef MOZ_OFF_MAIN_PAINTING
+  bool offMainPainting = gfxPrefs::ContentOffMainPainting();
+#endif
+
   RenderTraceScope rendertrace("Foward Transaction", "000091");
-  MOZ_ASSERT(HasShadowManager(), "no manager to forward to");
-  MOZ_ASSERT(!mTxn->Finished(), "forgot BeginTransaction?");
+
+  *aSent = false;
 
   DiagnosticTypes diagnostics = gfxPlatform::GetPlatform()->GetLayerDiagnosticTypes();
   if (mDiagnosticTypes != diagnostics) {
@@ -759,6 +769,15 @@ ShadowLayerForwarder::EndTransaction(InfallibleTArray<EditReply>* aReplies,
 
   if (mTxn->Empty() && !mTxn->RotationChanged()) {
     MOZ_LAYERS_LOG(("[LayersForwarder] 0-length cset (?) and no rotation event, skipping Update()"));
+
+#ifdef MOZ_OFF_MAIN_PAINTING
+    // There is no transaction here, but we still apply all draw command before
+    // return.
+    if (offMainPainting) {
+      gfxPlatform::GetPlatform()->GetDrawTargetAsyncManager()->ApplyLastTransaction();
+    }
+#endif
+
     return true;
   }
 
@@ -881,6 +900,13 @@ ShadowLayerForwarder::EndTransaction(InfallibleTArray<EditReply>* aReplies,
 
   profiler_tracing("Paint", "Rasterize", TRACING_INTERVAL_END);
   if (mTxn->mSwapRequired) {
+#ifdef MOZ_OFF_MAIN_PAINTING
+    // If we use sync update, apply pending transaction before sending.
+    if (offMainPainting) {
+      gfxPlatform::GetPlatform()->GetDrawTargetAsyncManager()->ApplyLastTransaction();
+    }
+#endif
+
     MOZ_LAYERS_LOG(("[LayersForwarder] sending transaction..."));
     RenderTraceScope rendertrace3("Forward Transaction", "000093");
     if (!HasShadowManager() ||
@@ -899,16 +925,25 @@ ShadowLayerForwarder::EndTransaction(InfallibleTArray<EditReply>* aReplies,
     // assumes that aReplies is empty (DEBUG assertion)
     MOZ_LAYERS_LOG(("[LayersForwarder] sending no swap transaction..."));
     RenderTraceScope rendertrace3("Forward NoSwap Transaction", "000093");
-    if (!HasShadowManager() ||
-        !mShadowManager->IPCOpen() ||
-        !mShadowManager->SendUpdateNoSwap(cset, mTxn->mDestroyedActors,
-                                          aId, targetConfig, mPluginWindowData,
-                                          mIsFirstPaint, aScheduleComposite,
-                                          aPaintSequenceNumber, aIsRepeatTransaction,
-                                          aTransactionStart, mPaintSyncId)) {
-      MOZ_LAYERS_LOG(("[LayersForwarder] WARNING: sending transaction failed!"));
-      mTxn->FallbackDestroyActors();
-      return false;
+
+    if (HasShadowManager() && mShadowManager->IPCOpen()) {
+#ifdef MOZ_OFF_MAIN_PAINTING
+      if (offMainPainting) {
+        gfxPlatform::GetPlatform()->GetDrawTargetAsyncManager()->PostApplyLastTransaction(mShadowManager->GetIPCChannel());
+      }
+#endif
+
+      if (!mShadowManager->SendUpdateNoSwap(cset, mTxn->mDestroyedActors,
+                                            aId, targetConfig, mPluginWindowData,
+                                            mIsFirstPaint, aScheduleComposite,
+                                            aPaintSequenceNumber, aIsRepeatTransaction,
+                                            aTransactionStart, mPaintSyncId)) {
+        MOZ_LAYERS_LOG(("[LayersForwarder] WARNING: sending transaction failed!"));
+
+        mTxn->FallbackDestroyActors();
+
+        return false;
+      }
     }
   }
 
