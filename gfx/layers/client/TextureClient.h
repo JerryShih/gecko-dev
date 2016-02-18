@@ -68,6 +68,8 @@ class TextureClientPool;
 class TextureForwarder;
 class KeepAlive;
 
+class TextureClientAsyncPaintData;
+
 /**
  * TextureClient is the abstraction that allows us to share data between the
  * content and the compositor side.
@@ -304,6 +306,11 @@ public:
   virtual BufferTextureData* AsBufferTextureData() { return nullptr; }
 };
 
+enum class TextureClientRenderingMode : uint8_t {
+  NORMAL           = 0,
+  DEFERRING        = 0x1,
+};
+
 /**
  * TextureClient is a thin abstraction over texture data that need to be shared
  * between the content process and the compositor process. It is the
@@ -334,6 +341,11 @@ public:
   explicit TextureClient(TextureData* aData, TextureFlags aFlags, ClientIPCAllocator* aAllocator);
 
   virtual ~TextureClient();
+
+#ifdef MOZ_OFF_MAIN_PAINTING
+  static void SetRenderingMode(TextureClientRenderingMode aMode);
+  static TextureClientRenderingMode GetRenderingMode();
+#endif
 
   static already_AddRefed<TextureClient>
   CreateWithData(TextureData* aData, TextureFlags aFlags, ClientIPCAllocator* aAllocator);
@@ -727,6 +739,13 @@ protected:
 
   TextureData::Info mInfo;
 
+#ifdef MOZ_OFF_MAIN_PAINTING
+  // For off-main-painting usage.
+  bool LockForAsyncPainting(OpenMode aMode);
+  void UnlockForAsyncPainting();
+  gfx::DrawTarget* BorrowDrawTargetForAsyncPainting();
+#endif
+
   RefPtr<ClientIPCAllocator> mAllocator;
   RefPtr<TextureChild> mActor;
   RefPtr<ITextureClientRecycleAllocator> mRecycleAllocator;
@@ -767,6 +786,8 @@ protected:
   // Used to assign serial ids of TextureClient.
   static mozilla::Atomic<uint64_t> sSerialCounter;
 
+  friend class TextureClientAsyncPaintData;
+
   friend class TextureChild;
   friend class RemoveTextureFromCompositableTracker;
   friend void TestTextureClientSurface(TextureClient*, gfxImageSurface*);
@@ -776,6 +797,12 @@ protected:
 public:
   // Pointer to the pool this tile came from.
   TextureClientPool* mPoolTracker;
+#endif
+
+#ifdef MOZ_OFF_MAIN_PAINTING
+  // Check if this TC is used by main and painting thread at the same time.
+  DebugOnly<bool> mInOffMainPainting;
+  static TextureClientRenderingMode mRenderingMode;
 #endif
 };
 
@@ -798,6 +825,24 @@ public:
 private:
     RefPtr<TextureClient> mTextureClient;
 };
+
+#ifdef MOZ_OFF_MAIN_PAINTING
+// The helper class to set and restore TextureClient::mRenderingMode rendering
+// hint at main thread. We will still use normal sync rendering if the
+// off-main-painting pref is off.
+class MOZ_RAII TextureClientRenderingAutoMode
+{
+public:
+  explicit TextureClientRenderingAutoMode(TextureClientRenderingMode aMode
+                                          MOZ_GUARD_OBJECT_NOTIFIER_PARAM);
+  ~TextureClientRenderingAutoMode();
+
+private:
+  TextureClientRenderingMode mPreviousMode;
+
+  MOZ_DECL_USE_GUARD_OBJECT_NOTIFIER;
+};
+#endif
 
 // Automatically lock and unlock a texture. Since texture locking is fallible,
 // Succeeded() must be checked on the guard object before proceeding.
