@@ -42,6 +42,11 @@
 #include "HelpersD2D.h"
 #endif
 
+#ifdef MOZ_OFF_MAIN_PAINTING
+#include "AsyncPaintData.h"
+#include "DrawTargetAsync.h"
+#endif
+
 #include "DrawTargetDual.h"
 #include "DrawTargetTiled.h"
 #include "DrawTargetRecording.h"
@@ -158,6 +163,12 @@ namespace gfx {
 int32_t LoggingPrefs::sGfxLogLevel =
   PreferenceAccess::RegisterLivePref("gfx.logging.level", &sGfxLogLevel,
                                      LOG_DEFAULT);
+
+#ifdef MOZ_OFF_MAIN_PAINTING
+bool sOffMainPainting =
+  PreferenceAccess::RegisterLivePref("gfx.content.off-main.painting", &sOffMainPainting,
+                                     false);
+#endif
 
 #ifdef WIN32
 ID3D11Device *Factory::mD3D11Device;
@@ -447,11 +458,27 @@ Factory::CreateTiledDrawTarget(const TileSet& aTileSet)
 {
   RefPtr<DrawTargetTiled> dt = new DrawTargetTiled();
 
+#ifndef MOZ_OFF_MAIN_PAINTING
   if (!dt->Init(aTileSet)) {
     return nullptr;
   }
 
   return dt.forget();
+#else
+  if (sOffMainPainting) {
+    RefPtr<DrawTargetTiledAsync> drawTargetAsync = new DrawTargetTiledAsync(new DrawTargetAsyncPaintData(dt.get()));
+
+    if (drawTargetAsync->Init(aTileSet)) {
+      return drawTargetAsync.forget();
+    } else if (dt->Init(aTileSet)){
+      return dt.forget();
+    }
+  } else if (dt->Init(aTileSet)) {
+    return dt.forget();
+  }
+
+  return nullptr;
+#endif
 }
 
 bool
