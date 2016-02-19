@@ -361,6 +361,9 @@ AC_DEFUN([MOZ_SET_WARNINGS_CFLAGS],
     _WARNINGS_CFLAGS="${_WARNINGS_CFLAGS} -Wtype-limits"
     _WARNINGS_CFLAGS="${_WARNINGS_CFLAGS} -Wunreachable-code"
 
+    # Treat some warnings as errors.
+    _WARNINGS_CFLAGS="${_WARNINGS_CFLAGS} -Werror=return-type"
+
     # -Wclass-varargs - catches objects passed by value to variadic functions.
     # -Wloop-analysis - catches issues around loops
     # -Wnon-literal-null-conversion - catches expressions used as a null pointer constant
@@ -385,6 +388,9 @@ AC_DEFUN([MOZ_SET_WARNINGS_CFLAGS],
     MOZ_C_SUPPORTS_WARNING(-W, thread-safety, ac_c_has_wthread_safety)
 
     # Turn off some non-useful warnings that -Wall turns on.
+
+    # bignose test
+    _WARNINGS_CFLAGS="${_WARNINGS_CFLAGS} -Wno-unreachable-code"
 
     # Prevent the following GCC warnings from being treated as errors:
     # -Wmaybe-uninitialized - too many false positives
@@ -428,6 +434,9 @@ AC_DEFUN([MOZ_SET_WARNINGS_CXXFLAGS],
     _WARNINGS_CXXFLAGS="${_WARNINGS_CXXFLAGS} -Wunreachable-code"
     _WARNINGS_CXXFLAGS="${_WARNINGS_CXXFLAGS} -Wwrite-strings"
 
+    # Treat some warnings as errors.
+    _WARNINGS_CXXFLAGS="${_WARNINGS_CXXFLAGS} -Werror=return-type"
+
     # -Wclass-varargs - catches objects passed by value to variadic functions.
     # -Wimplicit-fallthrough - catches unintentional switch case fallthroughs
     # -Wloop-analysis - catches issues around loops
@@ -458,6 +467,9 @@ AC_DEFUN([MOZ_SET_WARNINGS_CXXFLAGS],
     MOZ_CXX_SUPPORTS_WARNING(-W, thread-safety, ac_cxx_has_wthread_safety)
 
     # Turn off some non-useful warnings that -Wall turns on.
+
+    # bignose
+    _WARNINGS_CXXFLAGS="${_WARNINGS_CXXFLAGS} -Wno-unreachable-code"
 
     # -Wno-invalid-offsetof - we use offsetof on non-POD types frequently
     _WARNINGS_CXXFLAGS="${_WARNINGS_CXXFLAGS} -Wno-invalid-offsetof"
