@@ -60,6 +60,8 @@
 
 #include "mozilla/CheckedInt.h"
 
+#include "GeckoProfiler.h"
+
 #if defined(MOZ_LOGGING)
 GFX2D_API mozilla::LogModule*
 GetGFX2DLog()
@@ -833,6 +835,8 @@ Factory::CreateWrappingDataSourceSurface(uint8_t *aData, int32_t aStride,
   }
   MOZ_ASSERT(aData);
 
+  ATRACE_NAME("Factory::CreateWrappingDataSourceSurface");
+
   RefPtr<SourceSurfaceRawData> newSurf = new SourceSurfaceRawData();
 
   newSurf->InitWrappingData(aData, aSize, aStride, aFormat, false);
@@ -848,6 +852,8 @@ Factory::CreateDataSourceSurface(const IntSize &aSize,
     gfxCriticalError(LoggerOptionsBasedOnSize(aSize)) << "Failed to allocate a surface due to invalid size (DSS) " << aSize;
     return nullptr;
   }
+
+  ATRACE_NAME("Factory::CreateDataSourceSurface");
 
   RefPtr<SourceSurfaceAlignedRawData> newSurf = new SourceSurfaceAlignedRawData();
   if (newSurf->Init(aSize, aFormat, aZero)) {
@@ -868,6 +874,8 @@ Factory::CreateDataSourceSurfaceWithStride(const IntSize &aSize,
     gfxCriticalError(LoggerOptionsBasedOnSize(aSize)) << "CreateDataSourceSurfaceWithStride failed with bad stride " << aStride << ", " << aSize << ", " << aFormat;
     return nullptr;
   }
+
+  ATRACE_NAME("Factory::CreateDataSourceSurface");
 
   RefPtr<SourceSurfaceAlignedRawData> newSurf = new SourceSurfaceAlignedRawData();
   if (newSurf->InitWithStride(aSize, aFormat, aStride, aZero)) {
