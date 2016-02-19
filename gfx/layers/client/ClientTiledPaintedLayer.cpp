@@ -417,6 +417,10 @@ ClientTiledPaintedLayer::EndPaint()
 void
 ClientTiledPaintedLayer::RenderLayer()
 {
+#ifdef MOZ_OFF_MAIN_PAINTING
+  TextureClientRenderingAutoMode renderingMode(TextureClientRenderingMode::DEFERRING);
+#endif
+
   LayerManager::DrawPaintedLayerCallback callback =
     ClientManager()->GetPaintedLayerCallback();
   void *data = ClientManager()->GetPaintedLayerCallbackData();
