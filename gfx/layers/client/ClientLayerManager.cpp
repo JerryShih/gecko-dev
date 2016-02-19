@@ -183,6 +183,8 @@ ClientLayerManager::CreateReadbackLayer()
 void
 ClientLayerManager::BeginTransactionWithTarget(gfxContext* aTarget)
 {
+  printf_stderr("bignose ClientLayerManager::BeginTransactionWithTarget, lm:%p", this);
+
   mInTransaction = true;
   mTransactionStart = TimeStamp::Now();
 
@@ -302,7 +304,12 @@ ClientLayerManager::EndTransactionInternal(DrawPaintedLayerCallback aCallback,
   }
 #endif
 
-  root->RenderLayer();
+  {
+    PROFILER_LABEL("ClientLayerManager", "EndTransactionInternal-RenderLayer",
+      js::ProfileEntry::Category::GRAPHICS);
+
+    root->RenderLayer();
+  }
 
 #ifdef MOZ_OFF_MAIN_PAINTING
   if (offMainPainting) {
@@ -349,6 +356,9 @@ ClientLayerManager::EndTransaction(DrawPaintedLayerCallback aCallback,
                                    void* aCallbackData,
                                    EndTransactionFlags aFlags)
 {
+  PROFILER_LABEL("ClientLayerManager", "EndTransaction",
+    js::ProfileEntry::Category::GRAPHICS);
+
   if (mWidget) {
     mWidget->PrepareWindowEffects();
   }
@@ -356,6 +366,9 @@ ClientLayerManager::EndTransaction(DrawPaintedLayerCallback aCallback,
   ForwardTransaction(!(aFlags & END_NO_REMOTE_COMPOSITE));
 
   if (mRepeatTransaction) {
+    PROFILER_LABEL("ClientLayerManager", "EndTransaction-RepeatTransaction",
+      js::ProfileEntry::Category::GRAPHICS);
+
     mRepeatTransaction = false;
     mIsRepeatTransaction = true;
     BeginTransaction();
@@ -376,6 +389,9 @@ ClientLayerManager::EndTransaction(DrawPaintedLayerCallback aCallback,
 bool
 ClientLayerManager::EndEmptyTransaction(EndTransactionFlags aFlags)
 {
+  PROFILER_LABEL("ClientLayerManager", "EndEmptyTransaction",
+    js::ProfileEntry::Category::GRAPHICS);
+
   mInTransaction = false;
 
   if (!mRoot) {
@@ -622,6 +638,8 @@ ClientLayerManager::StopFrameTimeRecording(uint32_t         aStartIndex,
 void
 ClientLayerManager::ForwardTransaction(bool aScheduleComposite)
 {
+  printf_stderr("bignose ClientLayerManager::ForwardTransaction, lm:%p", this);
+
   TimeStamp start = TimeStamp::Now();
 
   if (mForwarder->GetSyncObject()) {
