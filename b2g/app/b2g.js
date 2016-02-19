@@ -4,6 +4,10 @@
 
 #filter substitution
 
+pref("gfx.content.off-main.painting", true);
+
+
+
 // For the all MOZ_MULET ifdef conditions in this file: see bug 1174234
 
 #ifndef MOZ_MULET
