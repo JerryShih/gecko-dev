@@ -835,7 +835,7 @@ Factory::CreateWrappingDataSourceSurface(uint8_t *aData, int32_t aStride,
   }
   MOZ_ASSERT(aData);
 
-  ATRACE_NAME("Factory::CreateWrappingDataSourceSurface");
+  //ATRACE_NAME("Factory::CreateWrappingDataSourceSurface");
 
   RefPtr<SourceSurfaceRawData> newSurf = new SourceSurfaceRawData();
 
@@ -853,7 +853,7 @@ Factory::CreateDataSourceSurface(const IntSize &aSize,
     return nullptr;
   }
 
-  ATRACE_NAME("Factory::CreateDataSourceSurface");
+  //ATRACE_NAME("Factory::CreateDataSourceSurface");
 
   RefPtr<SourceSurfaceAlignedRawData> newSurf = new SourceSurfaceAlignedRawData();
   if (newSurf->Init(aSize, aFormat, aZero)) {
@@ -875,7 +875,7 @@ Factory::CreateDataSourceSurfaceWithStride(const IntSize &aSize,
     return nullptr;
   }
 
-  ATRACE_NAME("Factory::CreateDataSourceSurface");
+  //ATRACE_NAME("Factory::CreateDataSourceSurface");
 
   RefPtr<SourceSurfaceAlignedRawData> newSurf = new SourceSurfaceAlignedRawData();
   if (newSurf->InitWithStride(aSize, aFormat, aStride, aZero)) {
