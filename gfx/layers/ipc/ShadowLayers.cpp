@@ -245,6 +245,8 @@ ShadowLayerForwarder::BeginTransaction(const gfx::IntRect& aTargetBounds,
                                        ScreenRotation aRotation,
                                        dom::ScreenOrientationInternal aOrientation)
 {
+  printf_stderr("bignose ShadowLayerForwarder::BeginTransaction");
+
   MOZ_ASSERT(HasShadowManager(), "no manager to forward to");
   MOZ_ASSERT(mTxn->Finished(), "uncommitted txn?");
   UpdateFwdTransactionId();
@@ -604,6 +606,9 @@ ShadowLayerForwarder::EndTransaction(InfallibleTArray<EditReply>* aReplies,
                                      const mozilla::TimeStamp& aTransactionStart,
                                      bool* aSent)
 {
+  printf_stderr("bignose ShadowLayerForwarder::EndTransaction, layertree id:%lld, transaction id:%lld",
+          mShadowManager->GetId(), aId);
+
   ResetShmemCounter();
 
   MOZ_ASSERT(aId);
@@ -765,7 +770,11 @@ ShadowLayerForwarder::EndTransaction(InfallibleTArray<EditReply>* aReplies,
   }
 
   profiler_tracing("Paint", "Rasterize", TRACING_INTERVAL_END);
+
   if (mTxn->mSwapRequired) {
+    printf_stderr("bignose SendUpdateSwap begin, layertree id:%lld, transaction id:%lld",
+        mShadowManager->GetId(), aId);
+
 #ifdef MOZ_OFF_MAIN_PAINTING
     // If we use sync update, apply pending transaction before sending.
     if (offMainPainting) {
@@ -787,7 +796,13 @@ ShadowLayerForwarder::EndTransaction(InfallibleTArray<EditReply>* aReplies,
       mTxn->FallbackDestroyActors();
       return false;
     }
+
+    printf_stderr("bignose SendUpdateSwap end, layertree id:%lld, transaction id:%lld",
+        mShadowManager->GetId(), aId);
   } else {
+    printf_stderr("bignose SendUpdateNoSwap begin, layertree id:%lld, transaction id:%lld",
+        mShadowManager->GetId(), aId);
+
     // If we don't require a swap we can call SendUpdateNoSwap which
     // assumes that aReplies is empty (DEBUG assertion)
     MOZ_LAYERS_LOG(("[LayersForwarder] sending no swap transaction..."));
@@ -810,9 +825,15 @@ ShadowLayerForwarder::EndTransaction(InfallibleTArray<EditReply>* aReplies,
 
         mTxn->FallbackDestroyActors();
 
+        printf_stderr("bignose SendUpdateNoSwap error, layertree id:%lld, transaction id:%lld",
+                      mShadowManager->GetId(), aId);
+
         return false;
       }
     }
+
+    printf_stderr("bignose SendUpdateNoSwap end, layertree id:%lld, transaction id:%lld",
+        mShadowManager->GetId(), aId);
   }
 
   *aSent = true;
