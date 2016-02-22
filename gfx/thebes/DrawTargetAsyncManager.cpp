@@ -72,6 +72,12 @@ DrawTargetAsyncManager::ApplyTransaction(Transaction* aTransaction, ipc::Message
   MOZ_ASSERT(aTransaction);
   MOZ_ASSERT(aTransaction->mFired);
 
+#ifdef PROFILE_DRAW_COMMAND
+  ATRACE_NAME("DrawTargetAsyncManager::ApplyPendingDrawCommand");
+#endif
+
+  printf_stderr("!!!bignose DrawTargetAsyncManager::ApplyTransaction, target num:%u",aTransaction->mPaintData.Length());
+
   auto num = aTransaction->mPaintData.Length();
   for (decltype(num) i = 0 ; i<num ; ++i) {
     aTransaction->mPaintData[i]->ApplyPendingDrawCommand();
