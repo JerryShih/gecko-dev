@@ -181,6 +181,21 @@ protected:
   bool mDrawCommandApplied;
 };
 
+// The tiled version of DrawTargetAsync.
+class DrawTargetTiledAsync final : public DrawTargetAsync
+{
+public:
+  explicit DrawTargetTiledAsync(AsyncPaintData* aAsyncPaintData);
+  ~DrawTargetTiledAsync();
+
+  bool Init(const TileSet& aTiles);
+
+  virtual bool IsTiledDrawTarget() const override;
+
+private:
+  std::vector<RefPtr<AsyncPaintData>> mAsyncPaintData;
+};
+
 } // namespace gfx
 } // namespace mozilla
 #endif /* MOZILLA_GFX_ASYNCDRAWTARGET_H_ */
