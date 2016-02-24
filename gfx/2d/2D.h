@@ -337,6 +337,7 @@ public:
                                        or an empty rect if none has been specified. */
 };
 
+class DrawTargetAsync;
 class StoredPattern;
 class DrawTargetCaptureImpl;
 
@@ -388,6 +389,7 @@ public:
   }
 
 protected:
+  friend class DrawTargetAsync;
   friend class DrawTargetCaptureImpl;
   friend class StoredPattern;
 
@@ -755,8 +757,9 @@ class DrawTarget : public RefCounted<DrawTarget>
 {
 public:
   MOZ_DECLARE_REFCOUNTED_VIRTUAL_TYPENAME(DrawTarget)
-  DrawTarget() : mTransformDirty(false), mPermitSubpixelAA(false) {}
-  virtual ~DrawTarget() {}
+
+  DrawTarget();
+  virtual ~DrawTarget();
 
   virtual bool IsValid() const { return true; };
   virtual DrawTargetType GetType() const = 0;
@@ -1153,6 +1156,8 @@ public:
   virtual bool IsTiledDrawTarget() const { return false; }
   virtual bool SupportsRegionClipping() const { return true; }
 
+  virtual bool IsAsyncDrawTarget() const { return false; }
+
   void AddUserData(UserDataKey *key, void *userData, void (*destroy)(void*)) {
     mUserData.Add(key, userData, destroy);
   }
@@ -1168,7 +1173,7 @@ public:
    * being used as an input to external drawing, or Snapshot() being called.
    * This rectangle is specified in device space.
    */
-  void SetOpaqueRect(const IntRect &aRect) {
+  virtual void SetOpaqueRect(const IntRect &aRect) {
     mOpaqueRect = aRect;
   }
 
