@@ -404,5 +404,57 @@ DrawTargetAsync::InitWithGrContext(GrContext* aGrContext,
 }
 #endif
 
+DrawTargetTiledAsync::DrawTargetTiledAsync(AsyncPaintData* aAsyncPaintData)
+  : DrawTargetAsync(aAsyncPaintData)
+{
+}
+
+DrawTargetTiledAsync::~DrawTargetTiledAsync()
+{
+}
+
+bool
+DrawTargetTiledAsync::Init(const TileSet& aTiles)
+{
+  MOZ_ASSERT(GetInternalDrawTarget());
+  MOZ_ASSERT(GetInternalDrawTarget()->IsTiledDrawTarget());
+
+  if (!aTiles.mTileCount) {
+    return false;
+  }
+
+  for (size_t i = 0; i < aTiles.mTileCount; ++i) {
+    if (!aTiles.mTiles[i].mDrawTarget->IsAsyncDrawTarget()) {
+      return false;
+    }
+  }
+
+  // replace tiles' dt with internal dt
+  std::vector<Tile> tiles(aTiles.mTileCount);
+  for (size_t i = 0; i < aTiles.mTileCount; ++i) {
+    tiles[i].mDrawTarget =
+        static_cast<DrawTargetAsync*>(aTiles.mTiles[i].mDrawTarget.get())->GetInternalDrawTarget();
+    tiles[i].mTileOrigin = aTiles.mTiles[i].mTileOrigin;
+    MOZ_ASSERT(tiles[i].mDrawTarget);
+    MOZ_ASSERT(!tiles[i].mDrawTarget->IsAsyncDrawTarget());
+  }
+
+  TileSet tileSet = { &tiles[0], aTiles.mTileCount };
+
+  if (!static_cast<DrawTargetTiled*>(GetInternalDrawTarget())->Init(tileSet)) {
+    return false;
+  }
+
+  mFormat = tiles[0].mDrawTarget->GetFormat();
+
+  return true;
+}
+
+bool
+DrawTargetTiledAsync::IsTiledDrawTarget() const
+{
+  return true;
+}
+
 } // namespace gfx
 } // namespace mozilla
