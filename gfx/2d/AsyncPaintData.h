@@ -67,6 +67,26 @@ private:
   bool mIsPoolReady;
 };
 
+// Holding a DrawTarget for AsyncPaintData drawing.
+class DrawTargetAsyncPaintData final : public AsyncPaintData
+{
+public:
+  explicit DrawTargetAsyncPaintData(DrawTarget* aRefDrawTarget);
+
+  virtual ~DrawTargetAsyncPaintData();
+
+  virtual DrawTarget* GetDrawTarget() override;
+
+  virtual void LockForAsyncPainting() override;
+
+  virtual void UnlockForAsyncPainting() override;
+
+  virtual DrawTarget* GetDrawTargetForAsyncPainting() override;
+
+private:
+  RefPtr<DrawTarget> mRefDrawTarget;
+};
+
 } //namespace gfx
 } //namespace mozilla
 

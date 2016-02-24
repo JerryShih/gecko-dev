@@ -6,6 +6,9 @@
 
 #include "2D.h"
 #include "DrawCommand.h"
+#include "DrawTargetAsyncManager.h"
+
+#include "gfxPlatform.h"
 
 //#define ENABLE_PROFILER
 #ifdef ENABLE_PROFILER
@@ -109,6 +112,44 @@ AsyncPaintData::ApplyPendingDrawCommand()
   ClearPoolDrawCommand();
 
   UnlockForAsyncPainting();
+}
+
+DrawTargetAsyncPaintData::DrawTargetAsyncPaintData(DrawTarget* aRefDrawTarget)
+  : mRefDrawTarget(aRefDrawTarget)
+{
+  MOZ_ASSERT(aRefDrawTarget);
+  MOZ_ASSERT(!aRefDrawTarget->IsAsyncDrawTarget());
+  MOZ_ASSERT(gfxPlatform::GetPlatform()->GetDrawTargetAsyncManager());
+  gfxPlatform::GetPlatform()->GetDrawTargetAsyncManager()->AppendAsyncPaintData(this);
+}
+
+DrawTargetAsyncPaintData::~DrawTargetAsyncPaintData()
+{
+  mRefDrawTarget = nullptr;
+}
+
+DrawTarget*
+DrawTargetAsyncPaintData::GetDrawTarget()
+{
+  return mRefDrawTarget;
+}
+
+void
+DrawTargetAsyncPaintData::LockForAsyncPainting()
+{
+  // do nothing since we already have dt.
+}
+
+void
+DrawTargetAsyncPaintData::UnlockForAsyncPainting()
+{
+  // do nothing since we already have dt.
+}
+
+DrawTarget*
+DrawTargetAsyncPaintData::GetDrawTargetForAsyncPainting()
+{
+  return mRefDrawTarget;
 }
 
 } //namespace gfx
