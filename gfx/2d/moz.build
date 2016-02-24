@@ -133,6 +133,14 @@ elif CONFIG['CPU_ARCH'].startswith('mips'):
             'convolverLS3.cpp',
         ]
 
+if CONFIG['MOZ_OFF_MAIN_PAINTING']:
+    SOURCES += [
+        'AsyncPaintData.cpp',
+    ]
+    EXPORTS.mozilla.gfx += [
+        'AsyncPaintData.h',
+    ]
+
 UNIFIED_SOURCES += [
     'Blur.cpp',
     'DataSourceSurface.cpp',
