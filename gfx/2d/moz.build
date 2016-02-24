@@ -146,9 +146,11 @@ elif CONFIG['CPU_ARCH'].startswith('mips'):
 if CONFIG['MOZ_OFF_MAIN_PAINTING']:
     SOURCES += [
         'AsyncPaintData.cpp',
+        'DrawTargetAsync.cpp',
     ]
     EXPORTS.mozilla.gfx += [
         'AsyncPaintData.h',
+        'DrawTargetAsync.h',
     ]
 
 UNIFIED_SOURCES += [

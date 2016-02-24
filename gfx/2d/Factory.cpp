@@ -995,5 +995,15 @@ CriticalLogger::CrashAction(LogReason aReason)
   }
 }
 
+DrawTarget::DrawTarget()
+  : mTransformDirty(false)
+  , mPermitSubpixelAA(false)
+{
+}
+
+DrawTarget::~DrawTarget()
+{
+}
+
 } // namespace gfx
 } // namespace mozilla
