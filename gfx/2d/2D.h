@@ -156,7 +156,11 @@ struct DrawSurfaceOptions {
  * matching DrawTarget. Not adhering to this condition will make a draw call
  * fail.
  */
+#ifdef MOZ_OFF_MAIN_PAINTING
+class GradientStops : public external::AtomicRefCounted<GradientStops>
+#else
 class GradientStops : public RefCounted<GradientStops>
+#endif
 {
 public:
   MOZ_DECLARE_REFCOUNTED_VIRTUAL_TYPENAME(GradientStops)
@@ -556,7 +560,11 @@ class FlattenedPath;
 /** The path class is used to create (sets of) figures of any shape that can be
  * filled or stroked to a DrawTarget
  */
+#ifdef MOZ_OFF_MAIN_PAINTING
+class Path : public external::AtomicRefCounted<Path>
+#else
 class Path : public RefCounted<Path>
+#endif
 {
 public:
   MOZ_DECLARE_REFCOUNTED_VIRTUAL_TYPENAME(Path)
@@ -666,7 +674,11 @@ struct GlyphBuffer
  * at a particular size. It is passed into text drawing calls to describe
  * the font used for the drawing call.
  */
+#ifdef MOZ_OFF_MAIN_PAINTING
+class ScaledFont : public external::AtomicRefCounted<ScaledFont>
+#else
 class ScaledFont : public RefCounted<ScaledFont>
+#endif
 {
 public:
   MOZ_DECLARE_REFCOUNTED_VIRTUAL_TYPENAME(ScaledFont)
@@ -734,7 +746,11 @@ public:
  * parameters. This is because different platforms have unique rendering
  * parameters.
  */
+#ifdef MOZ_OFF_MAIN_PAINTING
+class GlyphRenderingOptions : public external::AtomicRefCounted<GlyphRenderingOptions>
+#else
 class GlyphRenderingOptions : public RefCounted<GlyphRenderingOptions>
+#endif
 {
 public:
   MOZ_DECLARE_REFCOUNTED_VIRTUAL_TYPENAME(GlyphRenderingOptions)
@@ -753,7 +769,11 @@ class DrawTargetCapture;
  * may be used either through a Snapshot or by flushing the target and directly
  * accessing the backing store a DrawTarget was created with.
  */
+#ifdef MOZ_OFF_MAIN_PAINTING
+class DrawTarget : public external::AtomicRefCounted<DrawTarget>
+#else
 class DrawTarget : public RefCounted<DrawTarget>
+#endif
 {
 public:
   MOZ_DECLARE_REFCOUNTED_VIRTUAL_TYPENAME(DrawTarget)
