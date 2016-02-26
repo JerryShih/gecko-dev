@@ -93,7 +93,9 @@ namespace detail {
 // This can live beyond the lifetime of the class derived from
 // SupportsWeakPtr.
 template<class T>
-class WeakReference : public ::mozilla::RefCounted<WeakReference<T> >
+
+class WeakReference : public ::mozilla::external::AtomicRefCounted<WeakReference<T> >
+//class WeakReference : public ::mozilla::RefCounted<WeakReference<T> >
 {
 public:
   explicit WeakReference(T* p) : mPtr(p) {}
