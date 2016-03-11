@@ -1197,6 +1197,12 @@ MessageChannel::Send(Message* aMsg, Message* aReply)
         return false;
     }
 
+    if (!Connected()) {
+        ReportConnectionError("MessageChannel::SendAndWait", msg);
+        mLastSendError = SyncSendError::NotConnectedBeforeSend;
+        return false;
+    }
+
     if (msg->priority() < DispatchingSyncMessagePriority() ||
         msg->priority() < AwaitingSyncReplyPriority())
     {
@@ -1218,12 +1224,6 @@ MessageChannel::Send(Message* aMsg, Message* aReply)
 
     IPC_ASSERT(DispatchingAsyncMessagePriority() != IPC::Message::PRIORITY_URGENT,
                "not allowed to send messages while dispatching urgent messages");
-
-    if (!Connected()) {
-        ReportConnectionError("MessageChannel::SendAndWait", msg);
-        mLastSendError = SyncSendError::NotConnectedBeforeSend;
-        return false;
-    }
 
     msg->set_seqno(NextSeqno());
 
