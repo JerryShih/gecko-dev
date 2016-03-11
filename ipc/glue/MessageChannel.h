@@ -197,7 +197,8 @@ class MessageChannel : HasResultCodes
         sIsPumpingMessages = aIsPumping;
     }
 
-    // These functions can be used at any thread.
+    // These functions can be used at any thread, but they only work for child
+    // side actor.
     bool StartDeferring();
     bool EndDeferring();
 

@@ -933,6 +933,9 @@ MessageChannel::MaybeInterceptSpecialDeferMessage(const Message& aMsg)
 
     // If we are still in deferring mode, put this message into mIPCDeferringMessage.
     if (mDeferring) {
+        // We won't save any message into mIPCDeferringMessage at Child side.
+        MOZ_ASSERT(mSide != ChildSide);
+
         mIPCDeferringMessage.push_back(aMsg);
 
         return true;
@@ -2443,6 +2446,7 @@ MessageChannel::StartDeferring()
   MOZ_ASSERT(mMonitor);
   MOZ_ASSERT(mLink);
   MOZ_ASSERT(mListener);
+  MOZ_ASSERT(mSide == ChildSide);
 
   nsAutoPtr<Message> msg(new DeferMessage(START_DEFER_MESSAGE_TYPE));
   mMonitor->AssertNotCurrentThreadOwns();
@@ -2467,6 +2471,7 @@ MessageChannel::EndDeferring()
   MOZ_ASSERT(mMonitor);
   MOZ_ASSERT(mLink);
   MOZ_ASSERT(mListener);
+  MOZ_ASSERT(mSide == ChildSide);
 
   nsAutoPtr<Message> msg(new DeferMessage(END_DEFER_MESSAGE_TYPE));
   mMonitor->AssertNotCurrentThreadOwns();
