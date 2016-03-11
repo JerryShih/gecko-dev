@@ -2444,6 +2444,8 @@ MessageChannel::StartDeferring()
       return false;
   }
 
+  printf_stderr("bignose messagechannel child StartDeferring");
+
   MOZ_ASSERT(!mOtherSideDeferring);
   mOtherSideDeferring = true;
   mLink->SendMessageInternal(msg.forget());
@@ -2468,6 +2470,8 @@ MessageChannel::EndDeferring()
       ReportConnectionError("MessageChannel", msg);
       return false;
   }
+
+  printf_stderr("bignose messagechannel child EndDeferring");
 
   MOZ_ASSERT(mOtherSideDeferring);
   mOtherSideDeferring = false;
