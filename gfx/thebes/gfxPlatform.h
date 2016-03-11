@@ -53,6 +53,8 @@ class DrawEventRecorder;
 class VsyncSource;
 class DeviceInitData;
 
+class DrawTargetAsyncManager;
+
 inline uint32_t
 BackendTypeBit(BackendType b)
 {
@@ -174,6 +176,12 @@ public:
 
     static void InitLayersIPC();
     static void ShutdownLayersIPC();
+
+#ifdef MOZ_OFF_MAIN_PAINTING
+    // bignose
+    void InitDrawTargetAsyncManager();
+    mozilla::gfx::DrawTargetAsyncManager* GetDrawTargetAsyncManager();
+#endif
 
     /**
      * Initialize ScrollMetadata statics. Does not depend on gfxPlatform.
@@ -824,6 +832,10 @@ private:
     // An instance of gfxSkipChars which is empty. It is used as the
     // basis for error-case iterators.
     const gfxSkipChars kEmptySkipChars;
+
+#ifdef MOZ_OFF_MAIN_PAINTING
+    RefPtr<mozilla::gfx::DrawTargetAsyncManager> mDrawTargetAsyncManager;
+#endif
 };
 
 #endif /* GFX_PLATFORM_H */
