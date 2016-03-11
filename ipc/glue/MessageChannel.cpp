@@ -551,7 +551,9 @@ MessageChannel::MessageChannel(MessageListener *aListener)
     mAbortOnError(false),
     mFlags(REQUIRE_DEFAULT),
     mPeerPidSet(false),
-    mPeerPid(-1)
+    mPeerPid(-1),
+    mDeferring(false),
+    mOtherSideDeferring(false)
 {
     MOZ_COUNT_CTOR(ipc::MessageChannel);
 
@@ -907,14 +909,51 @@ public:
     }
 };
 
+bool
+MessageChannel::MaybeInterceptSpecialDeferMessage(const Message& aMsg)
+{
+    if (aMsg.routing_id() == MSG_ROUTING_NONE) {
+        if (aMsg.type() == START_DEFER_MESSAGE_TYPE) {
+            mDeferring = true;
+
+            return true;
+        } else if (aMsg.type() == END_DEFER_MESSAGE_TYPE) {
+            mDeferring = false;
+
+            // If we receive DEFERRING_END, start to process all deferring message
+            // here.
+            for (size_t i = 0; i < mIPCDeferringMessage.size(); ++i) {
+                OnMessageReceivedFromLink(mIPCDeferringMessage[i]);
+            }
+            mIPCDeferringMessage.clear();
+
+            return true;
+        }
+    }
+
+    // If we are still in deferring mode, put this message into mIPCDeferringMessage.
+    if (mDeferring) {
+        mIPCDeferringMessage.push_back(aMsg);
+
+        return true;
+    }
+
+    return false;
+}
+
 void
 MessageChannel::OnMessageReceivedFromLink(const Message& aMsg)
 {
     AssertLinkThread();
     mMonitor->AssertCurrentThreadOwns();
 
-    if (MaybeInterceptSpecialIOMessage(aMsg))
+    if (MaybeInterceptSpecialDeferMessage(aMsg)) {
         return;
+    }
+
+    if (MaybeInterceptSpecialIOMessage(aMsg)) {
+        return;
+    }
 
     // Regardless of the Interrupt stack, if we're awaiting a sync reply,
     // we know that it needs to be immediately handled to unblock us.
@@ -2396,6 +2435,54 @@ MessageChannel::CancelCurrentTransaction()
         CancelTransaction(CurrentHighPriorityTransaction());
         mLink->SendMessage(cancel);
     }
+}
+
+bool
+MessageChannel::StartDeferring()
+{
+  MOZ_ASSERT(mMonitor);
+  MOZ_ASSERT(mLink);
+  MOZ_ASSERT(mListener);
+
+  nsAutoPtr<Message> msg(new DeferMessage(START_DEFER_MESSAGE_TYPE));
+  mMonitor->AssertNotCurrentThreadOwns();
+
+  MonitorAutoLock lock(*mMonitor);
+
+  if (!Connected()) {
+      ReportConnectionError("MessageChannel", msg);
+      return false;
+  }
+
+  MOZ_ASSERT(!mOtherSideDeferring);
+  mOtherSideDeferring = true;
+  mLink->SendMessageInternal(msg.forget());
+
+  return true;
+}
+
+bool
+MessageChannel::EndDeferring()
+{
+  MOZ_ASSERT(mMonitor);
+  MOZ_ASSERT(mLink);
+  MOZ_ASSERT(mListener);
+
+  nsAutoPtr<Message> msg(new DeferMessage(END_DEFER_MESSAGE_TYPE));
+  mMonitor->AssertNotCurrentThreadOwns();
+
+  MonitorAutoLock lock(*mMonitor);
+
+  if (!Connected()) {
+      ReportConnectionError("MessageChannel", msg);
+      return false;
+  }
+
+  MOZ_ASSERT(mOtherSideDeferring);
+  mOtherSideDeferring = false;
+  mLink->SendMessageInternal(msg.forget());
+
+  return true;
 }
 
 void

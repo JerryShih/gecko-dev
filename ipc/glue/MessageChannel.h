@@ -197,6 +197,10 @@ class MessageChannel : HasResultCodes
         sIsPumpingMessages = aIsPumping;
     }
 
+    // These functions can be used at any thread.
+    bool StartDeferring();
+    bool EndDeferring();
+
 #ifdef MOZ_NUWA_PROCESS
     void Block() {
         MOZ_ASSERT(mLink);
@@ -433,6 +437,10 @@ class MessageChannel : HasResultCodes
     bool ShouldDeferMessage(const Message& aMsg);
     void OnMessageReceivedFromLink(const Message& aMsg);
     void OnChannelErrorFromLink();
+
+    // Return true if |aMsg| is a special message that turn on/off ipc deferring
+    // mode. It also records messages into a queue during deferring mode.
+    bool MaybeInterceptSpecialDeferMessage(const Message& aMsg);
 
   private:
     // Run on the not current thread.
@@ -711,6 +719,17 @@ class MessageChannel : HasResultCodes
     RefPtr<RefCountedTask> mOnChannelConnectedTask;
     bool mPeerPidSet;
     int32_t mPeerPid;
+
+    // If the child side turns on the deferring mode, all messages(including sync,
+    // async and intr) will be pushed into mIPCDeferringMessage. Then, be processed
+    // when the child side exit deferring mode.
+    MessageQueue mIPCDeferringMessage;
+
+    // Used at parent side.
+    bool mDeferring;
+
+    // Used at child side.
+    DebugOnly<bool> mOtherSideDeferring;
 };
 
 void
