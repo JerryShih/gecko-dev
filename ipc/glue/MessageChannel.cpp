@@ -933,10 +933,16 @@ MessageChannel::MaybeInterceptSpecialDeferMessage(const Message& aMsg)
 {
     if (aMsg.routing_id() == MSG_ROUTING_NONE) {
         if (aMsg.type() == START_DEFER_MESSAGE_TYPE) {
+            // Only parent side could receive DEFER_MESSAGE_TYPE message.
+            MOZ_ASSERT(mSide != ChildSide);
+
             mDeferring = true;
 
             return true;
         } else if (aMsg.type() == END_DEFER_MESSAGE_TYPE) {
+            // Only parent side could receive DEFER_MESSAGE_TYPE message.
+            MOZ_ASSERT(mSide != ChildSide);
+
             mDeferring = false;
 
             // If we receive DEFERRING_END, start to process all deferring message
