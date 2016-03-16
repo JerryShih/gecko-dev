@@ -176,6 +176,7 @@ def old_configure_options(*options):
     '--enable-directshow',
     '--enable-dtrace',
     '--enable-dump-painting',
+    '--enable-off-main-painting',
     '--enable-elf-hack',
     '--enable-extensions',
     '--enable-faststripe',
