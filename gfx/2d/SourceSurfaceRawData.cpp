@@ -41,6 +41,8 @@ SourceSurfaceRawData::GuaranteePersistance()
     return;
   }
 
+  printf_stderr("!!!!!!!! bignose GuaranteePersistance\n");
+
   PROFILER_LABEL("SourceSurfaceRawData", "GuaranteePersistance",
     js::ProfileEntry::Category::GRAPHICS);
 

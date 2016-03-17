@@ -99,6 +99,7 @@ DrawTargetAsync::DrawSurface(SourceSurface *aSurface,
 #ifdef ENABLE_PROFILER
     PROFILER_LABEL("DrawTargetAsync", "DrawSurface::GuaranteePersistance", js::ProfileEntry::Category::GRAPHICS);
 #endif
+    printf_stderr("!!!!!!!! bignose try to call GuaranteePersistance\n");
     aSurface->GuaranteePersistance();
   }
 
@@ -126,6 +127,7 @@ DrawTargetAsync::DrawSurfaceWithShadow(SourceSurface *aSurface,
 #ifdef ENABLE_PROFILER
     PROFILER_LABEL("DrawTargetAsync", "DrawSurfaceWithShadow::GuaranteePersistance", js::ProfileEntry::Category::GRAPHICS);
 #endif
+    printf_stderr("!!!!!!!! bignose try to call GuaranteePersistance\n");
     aSurface->GuaranteePersistance();
   }
 
@@ -154,6 +156,7 @@ DrawTargetAsync::CopySurface(SourceSurface* aSurface,
 #ifdef ENABLE_PROFILER
     PROFILER_LABEL("DrawTargetAsync", "CopySurface::GuaranteePersistance", js::ProfileEntry::Category::GRAPHICS);
 #endif
+    printf_stderr("!!!!!!!! bignose try to call GuaranteePersistance\n");
     aSurface->GuaranteePersistance();
   }
 
@@ -232,6 +235,7 @@ DrawTargetAsync::MaskSurface(const Pattern& aSource,
 #ifdef ENABLE_PROFILER
     PROFILER_LABEL("DrawTargetAsync", "MaskSurface::GuaranteePersistance", js::ProfileEntry::Category::GRAPHICS);
 #endif
+    printf_stderr("!!!!!!!! bignose try to call GuaranteePersistance\n");
     aMask->GuaranteePersistance();
   }
 
