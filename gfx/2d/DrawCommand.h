@@ -133,6 +133,7 @@ private:
       }
       case PatternType::SURFACE: {
         SurfacePattern* surfPat = new (mData.mColor)SurfacePattern(*static_cast<const SurfacePattern*>(&aPattern));
+        printf_stderr("!!!!!!!! bignose try to call GuaranteePersistance\n");
         surfPat->mSurface->GuaranteePersistance();
         break;
       }
