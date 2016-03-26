@@ -6,6 +6,8 @@
 #include "gfxQuartzNativeDrawing.h"
 #include "gfxPlatform.h"
 #include "mozilla/gfx/Helpers.h"
+#include "sstream"
+#include "gfxUtils.h"
 
 using namespace mozilla::gfx;
 using namespace mozilla;
@@ -24,9 +26,17 @@ gfxQuartzNativeDrawing::BeginNativeDrawing()
   NS_ASSERTION(!mCGContext, "BeginNativeDrawing called when drawing already in progress");
 
   DrawTarget *dt = mDrawTarget;
+
+  printf_stderr("bignose gfxQuartzNativeDrawing::BeginNativeDrawing, orig dt:%p\n",dt);
+
+#ifdef MOZ_OFF_MAIN_PAINTING
+  // with off-main-painting, try to prevent the native drawing to the asyncDT.
+  if (true) {
+#else
   if (dt->GetBackendType() != BackendType::COREGRAPHICS ||
       dt->IsDualDrawTarget() ||
       dt->IsTiledDrawTarget()) {
+#endif
     // We need a DrawTarget that we can get a CGContextRef from:
     Matrix transform = dt->GetTransform();
 
@@ -49,8 +59,13 @@ gfxQuartzNativeDrawing::BeginNativeDrawing()
         mTempDrawTarget->SetTransform(transform);
     }
     dt = mTempDrawTarget;
+
+    printf_stderr("bignose gfxQuartzNativeDrawing::BeginNativeDrawing, create temp surface: size(%d,%d) addr:%p\n",
+        (int32_t)mNativeRect.width, (int32_t)mNativeRect.height, dt);
   }
   if (dt) {
+    printf_stderr("bignose gfxQuartzNativeDrawing::BeginNativeDrawing, borrow dt from surface:%p\n",dt);
+
     mCGContext = mBorrowedContext.Init(dt);
     MOZ_ASSERT(mCGContext);
   }
@@ -65,6 +80,16 @@ gfxQuartzNativeDrawing::EndNativeDrawing()
   mBorrowedContext.Finish();
   if (mTempDrawTarget) {
     RefPtr<SourceSurface> source = mTempDrawTarget->Snapshot();
+
+
+    static int count = 0;
+    ++count;
+
+    std::stringstream sstream;
+    sstream << "/Users/bignose/tmp/img/dt_" << count << '_' <<
+        source->GetSize().width << '_' << source->GetSize().height << ".png";
+
+    gfxUtils::WriteAsPNG(source, sstream.str().c_str());
 
     AutoRestoreTransform autoRestore(mDrawTarget);
     mDrawTarget->SetTransform(Matrix());

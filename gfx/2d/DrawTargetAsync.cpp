@@ -14,6 +14,8 @@
 #include "GeckoProfiler.h"
 #endif
 
+#include "nsThreadUtils.h"
+
 namespace mozilla {
 namespace gfx {
 
@@ -86,6 +88,10 @@ DrawTargetAsync::ApplyPendingDrawCommand()
 {
   mDrawCommandApplied = true;
   mAsyncPaintData->ApplyPendingDrawCommand();
+
+  if (NS_IsMainThread()) {
+    NS_ERROR("bignose ApplyPendingDrawCommand at main");
+  }
 }
 
 void

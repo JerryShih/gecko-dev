@@ -2112,8 +2112,9 @@ BorrowedCGContext::ReturnCGContextToDrawTarget(DrawTarget *aDT, CGContextRef cg)
 
     MOZ_ASSERT(aDT);
     MOZ_ASSERT(!aDT->IsAsyncDrawTarget());
-    MOZ_ASSERT(aDT->GetBackendType() == BackendType::COREGRAPHICS ||
-               aDT->GetBackendType() == BackendType::COREGRAPHICS_ACCELERATED);
+    // We can't check the BackendType here since the mCg is nullptr.
+    //MOZ_ASSERT(aDT->GetBackendType() == BackendType::COREGRAPHICS ||
+    //           aDT->GetBackendType() == BackendType::COREGRAPHICS_ACCELERATED);
   }
 #endif
 
