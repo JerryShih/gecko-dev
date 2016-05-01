@@ -40,6 +40,8 @@
 #include "nsIDocument.h"
 #include "nsStringStream.h"
 
+#include "GeckoProfiler.h"
+
 using mozilla::BasePrincipal;
 using namespace mozilla::dom;
 using namespace mozilla::ipc;
@@ -1016,6 +1018,7 @@ HttpChannelParent::OnStartRequest(nsIRequest *aRequest, nsISupports *aContext)
     nsCString appCacheClientId;
     appCache->GetGroupID(appCacheGroupId);
     appCache->GetClientID(appCacheClientId);
+
     if (mIPCClosed ||
         !SendAssociateApplicationCache(appCacheGroupId, appCacheClientId))
     {

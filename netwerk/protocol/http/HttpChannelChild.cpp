@@ -39,6 +39,8 @@
 #include "nsICompressConvStats.h"
 #include "nsStreamUtils.h"
 
+#include "gfxEnv.h"
+
 #ifdef OS_POSIX
 #include "chrome/common/file_descriptor_set_posix.h"
 #endif
@@ -523,6 +525,14 @@ HttpChannelChild::DoOnStartRequest(nsIRequest* aRequest, nsISupports* aContext)
 {
   LOG(("HttpChannelChild::DoOnStartRequest [this=%p]\n", this));
   nsresult rv = mListener->OnStartRequest(aRequest, aContext);
+
+  //bignose
+  if (gfxEnv::RequestMarker()) {
+    char markerString[256];
+    snprintf(markerString,256,"###Request:%s",mSpec.get());
+    PROFILER_MARKER(markerString);
+  }
+
   if (NS_FAILED(rv)) {
     Cancel(rv);
     return;
