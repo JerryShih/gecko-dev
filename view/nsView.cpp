@@ -21,6 +21,9 @@
 #include "mozilla/TimelineConsumers.h"
 #include "mozilla/CompositeTimelineMarker.h"
 
+#include "gfxEnv.h"
+#include "GeckoProfiler.h"
+
 using namespace mozilla;
 
 nsView::nsView(nsViewManager* aViewManager, nsViewVisibility aVisibility)
@@ -1091,6 +1094,15 @@ nsView::DidCompositeWindow(uint64_t aTransactionId,
     MOZ_ASSERT(rootContext, "rootContext must be valid.");
     rootContext->NotifyDidPaintForSubtree(nsIPresShell::PAINT_COMPOSITE, aTransactionId,
                                           aCompositeEnd);
+
+    //bignose
+    if (gfxEnv::AfterPaintMarker()) {
+      if (!context->IsChrome()) {
+        char markerString[128];
+        snprintf(markerString,128,"### AfterPaint, rootContext:%p",rootContext);
+        PROFILER_MARKER(markerString);
+      }
+    }
 
     // If the two timestamps are identical, this was likely a fake composite
     // event which wouldn't be terribly useful to display.

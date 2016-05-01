@@ -36,6 +36,11 @@ public:
   // to make it easier to see if a method accessing an entry already exists.
   // Just insert yours in the list.
 
+
+  // bignose debug
+  DECL_GFX_ENV_ONCE("AFTER_PAINT_MARKER", AfterPaintMarker);
+
+
   // Debugging inside of ContainerLayerComposite
   DECL_GFX_ENV_LIVE("DUMP_DEBUG", DumpDebug);
 
