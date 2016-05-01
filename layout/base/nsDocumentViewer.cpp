@@ -141,6 +141,9 @@ using namespace mozilla::dom;
 #include "LayoutLogging.h"
 #include "mozilla/Logging.h"
 
+#include "GeckoProfiler.h"
+#include "gfxEnv.h"
+
 #ifdef NS_PRINTING
 static mozilla::LazyLogModule gPrintingLog("printing");
 
@@ -990,6 +993,13 @@ nsDocumentViewer::LoadComplete(nsresult aStatus)
       if (timelines && timelines->HasConsumer(docShell)) {
         timelines->AddMarkerForDocShell(docShell,
           MakeUnique<DocLoadingTimelineMarker>("document::Load"));
+      }
+
+      //bignose
+      if (gfxEnv::LoadEventMarker()) {
+        char markerString[128];
+        snprintf(markerString,128,"###load event(DocViewer)");
+        PROFILER_MARKER(markerString);
       }
 
       EventDispatcher::Dispatch(window, mPresContext, &event, nullptr, &status);

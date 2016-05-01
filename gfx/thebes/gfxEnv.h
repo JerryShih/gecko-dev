@@ -41,6 +41,7 @@ public:
   DECL_GFX_ENV_ONCE("AFTER_PAINT_MARKER", AfterPaintMarker);
   DECL_GFX_ENV_ONCE("REQUEST_MARKER", RequestMarker);
   DECL_GFX_ENV_ONCE("DOM_CONTENT_LOADED_MARKER", DOMContentLoadedMarker);
+  DECL_GFX_ENV_ONCE("LOAD_EVENT_MARKER", LoadEventMarker);
 
   // Debugging inside of ContainerLayerComposite
   DECL_GFX_ENV_LIVE("DUMP_DEBUG", DumpDebug);

@@ -258,6 +258,9 @@ class nsIScriptTimeoutHandler;
 #include <unistd.h> // for getpid()
 #endif
 
+#include "GeckoProfiler.h"
+#include "gfxEnv.h"
+
 static const char kStorageEnabled[] = "dom.storage.enabled";
 
 using namespace mozilla;
@@ -3383,6 +3386,14 @@ nsGlobalWindow::PostHandleEvent(EventChainPostVisitor& aVisitor)
       // be a pres context available). Since we're not firing a GUI
       // event we don't need a pres context anyway so we just pass
       // null as the pres context all the time here.
+
+      //bignose
+      if (gfxEnv::LoadEventMarker()) {
+        char markerString[128];
+        snprintf(markerString,128,"###load event(global window)");
+        PROFILER_MARKER(markerString);
+      }
+
       EventDispatcher::Dispatch(element, nullptr, &event, nullptr, &status);
     }
   }
