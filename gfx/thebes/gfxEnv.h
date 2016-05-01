@@ -40,7 +40,7 @@ public:
   // bignose debug
   DECL_GFX_ENV_ONCE("AFTER_PAINT_MARKER", AfterPaintMarker);
   DECL_GFX_ENV_ONCE("REQUEST_MARKER", RequestMarker);
-
+  DECL_GFX_ENV_ONCE("DOM_CONTENT_LOADED_MARKER", DOMContentLoadedMarker);
 
   // Debugging inside of ContainerLayerComposite
   DECL_GFX_ENV_LIVE("DUMP_DEBUG", DumpDebug);

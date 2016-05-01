@@ -261,6 +261,10 @@
 #include "IPeerConnection.h"
 #endif // MOZ_WEBRTC
 
+#include "GeckoProfiler.h"
+#include "gfxEnv.h"
+#include "nsCoreUtils.h"
+
 using namespace mozilla;
 using namespace mozilla::dom;
 
@@ -5152,6 +5156,15 @@ nsDocument::DispatchContentLoadedEvents()
                         "chrome-document-interactive" :
                         "content-document-interactive",
                       nullptr);
+
+  //bignose
+  if (gfxEnv::DOMContentLoadedMarker()) {
+    if (nsCoreUtils::IsTabDocument(this)) {
+      char markerString[128];
+      snprintf(markerString,128,"###DOMContentLoaded doc:%p", this);
+      PROFILER_MARKER(markerString);
+    }
+  }
 
   // Fire a DOM event notifying listeners that this document has been
   // loaded (excluding images and other loads initiated by this

@@ -410,6 +410,10 @@ nsCoreUtils::IsContentDocument(nsIDocument *aDocument)
 bool
 nsCoreUtils::IsTabDocument(nsIDocument* aDocumentNode)
 {
+  if (!aDocumentNode->GetDocShell()) {
+    return false;
+  }
+
   nsCOMPtr<nsIDocShellTreeItem> treeItem(aDocumentNode->GetDocShell());
 
   nsCOMPtr<nsIDocShellTreeItem> parentTreeItem;

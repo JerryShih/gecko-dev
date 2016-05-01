@@ -6,7 +6,8 @@
 
 EXPORTS += [
     'AccEvent.h',
-    'nsAccessibilityService.h'
+    'nsAccessibilityService.h',
+    'nsCoreUtils.h',
 ]
 
 EXPORTS.mozilla.a11y += [
