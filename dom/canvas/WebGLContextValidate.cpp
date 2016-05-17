@@ -483,22 +483,33 @@ WebGLContext::ValidateUniformArraySetter(WebGLUniformLocation* loc,
                                          GLuint* const out_rawLoc,
                                          GLsizei* const out_numElementsToUpload)
 {
-    if (IsContextLost())
+    if (IsContextLost()) {
+      printf_stderr("bignose IsContextLost failed\n");
         return false;
+    }
 
-    if (!ValidateUniformLocation(loc, funcName))
+    if (!ValidateUniformLocation(loc, funcName)) {
+      printf_stderr("bignose ValidateUniformLocation failed\n");
         return false;
+    }
 
-    if (!loc->ValidateSizeAndType(setterElemSize, setterType, this, funcName))
+    if (!loc->ValidateSizeAndType(setterElemSize, setterType, this, funcName)) {
+      printf_stderr("bignose ValidateSizeAndType failed\n");
         return false;
+    }
 
-    if (!loc->ValidateArrayLength(setterElemSize, setterArraySize, this, funcName))
+    if (!loc->ValidateArrayLength(setterElemSize, setterArraySize, this, funcName)) {
+      printf_stderr("bignose ValidateArrayLength failed\n");
         return false;
+    }
 
     MOZ_ASSERT(loc->mArrayIndex < loc->mActiveInfo->mElemCount);
     size_t uniformElemCount = loc->mActiveInfo->mElemCount - loc->mArrayIndex;
     *out_rawLoc = loc->mLoc;
     *out_numElementsToUpload = std::min(uniformElemCount, setterArraySize / setterElemSize);
+
+    printf_stderr("bignose WebGLContext::ValidateUniformArraySetter, elem:%d\n",*out_numElementsToUpload);
+
     return true;
 }
 

@@ -2057,10 +2057,14 @@ WebGLContext::Uniform1fv_base(WebGLUniformLocation* loc, size_t arrayLength,
                                     "uniform1fv", &rawLoc,
                                     &numElementsToUpload))
     {
+        printf_stderr("bignose ValidateUniformArraySetter failed\n");
         return;
     }
 
     MakeContextCurrent();
+
+    printf_stderr("bignose call fUniform1fv\n");
+
     gl->fUniform1fv(rawLoc, numElementsToUpload, data);
 }
 
