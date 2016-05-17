@@ -812,7 +812,8 @@ WebGLProgram::GetUniformLocation(const nsAString& userName_wide) const
         return nullptr;
 
     RefPtr<WebGLUniformLocation> locObj = new WebGLUniformLocation(mContext, LinkInfo(),
-                                                                     loc, activeInfo);
+                                                                   loc, arrayIndex,
+                                                                   activeInfo);
     return locObj.forget();
 }
 
