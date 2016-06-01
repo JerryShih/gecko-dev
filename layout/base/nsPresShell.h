@@ -430,6 +430,8 @@ public:
 
   void SetNextPaintCompressed() { mNextPaintCompressed = true; }
 
+  virtual void CheckIfTimeToUnsuppressPainting() override;
+
 protected:
   virtual ~PresShell();
 
@@ -957,6 +959,7 @@ protected:
   // or all frames are constructed, we won't paint anything but
   // our <body> background and scrollbars.
   nsCOMPtr<nsITimer>        mPaintSuppressionTimer;
+  mozilla::TimeStamp        mPaintSuppressionExpectTime;
 
   nsCOMPtr<nsITimer>        mDelayedPaintTimer;
 

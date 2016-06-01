@@ -1801,6 +1801,8 @@ PresShell::Initialize(nscoord aWidth, nscoord aHeight)
       mPaintSuppressionTimer->InitWithNamedFuncCallback(
         sPaintSuppressionCallback, this, delay, nsITimer::TYPE_ONE_SHOT,
         "PresShell::sPaintSuppressionCallback");
+
+      mPaintSuppressionExpectTime = TimeStamp::Now() + TimeDuration::FromMilliseconds(delay);
     }
   }
 
@@ -6533,6 +6535,8 @@ PresShell::Paint(nsView*        aViewToPaint,
 
   nsAutoNotifyDidPaint notifyDidPaint(this, aFlags);
   AutoUpdateHitRegion updateHitRegion(this, frame);
+
+  CheckIfTimeToUnsuppressPainting();
 
   // Whether or not we should set first paint when painting is
   // suppressed is debatable. For now we'll do it because
@@ -11542,4 +11546,16 @@ nsIPresShell::HasRuleProcessorUsedByMultipleStyleSets(uint32_t aSheetType,
     *aRetVal = styleSet->HasRuleProcessorUsedByMultipleStyleSets(type);
   }
   return NS_OK;
+}
+
+void
+PresShell::CheckIfTimeToUnsuppressPainting()
+{
+  if (!mPaintingSuppressed) {
+    return;
+  }
+
+  if (TimeStamp::Now() >= mPaintSuppressionExpectTime) {
+    UnsuppressPainting();
+  }
 }
