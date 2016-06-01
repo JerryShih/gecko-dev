@@ -918,3 +918,6 @@ pref("dom.presentation.discovery.enabled", true);
 
 pref("dom.audiochannel.audioCompeting", true);
 pref("dom.audiochannel.mediaControl", true);
+
+// adjust suppresion panting for Fennec
+pref("nglayout.initialpaint.delay", 500);
