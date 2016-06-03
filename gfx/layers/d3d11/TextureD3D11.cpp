@@ -1105,6 +1105,8 @@ SyncObjectD3D11::FinalizeFrame()
 {
   HRESULT hr;
 
+  printf_stderr("bignose SyncObjectD3D11::FinalizeFrame, pid:%d, mHandle:%d",getpid(),mHandle);
+
   if (!mD3D11Texture && mD3D11SyncedTextures.size()) {
     ID3D11Device* device = gfxWindowsPlatform::GetPlatform()->GetD3D11ContentDevice();
 

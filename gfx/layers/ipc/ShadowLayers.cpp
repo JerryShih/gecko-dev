@@ -380,6 +380,11 @@ CompositableForwarder::IdentifyTextureHost(const TextureFactoryIdentifier& aIden
 {
   mTextureFactoryIdentifier = aIdentifier;
 
+  printf_stderr("bignose CompositableForwarder::IdentifyTextureHost, pid:%d, handle:%d\n",
+      getpid(),aIdentifier.mSyncHandle);
+
+  NS_ERROR("bignose CompositableForwarder::IdentifyTextureHost");
+
   mSyncObject = SyncObject::CreateSyncObject(aIdentifier.mSyncHandle);
 }
 
