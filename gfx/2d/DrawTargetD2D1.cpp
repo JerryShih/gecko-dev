@@ -945,6 +945,7 @@ DrawTargetD2D1::Init(ID3D11Texture2D* aTexture, SurfaceFormat aFormat)
   ID2D1Device* device = Factory::GetD2D1Device();
   if (!device) {
     gfxCriticalNote << "[D2D1.1] Failed to obtain a device for DrawTargetD2D1::Init().";
+    printf_stderr("bignose Failed to obtain a device for DrawTargetD2D1::Init()\n");
     return false;
   }
 

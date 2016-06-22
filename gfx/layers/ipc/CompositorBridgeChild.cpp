@@ -273,6 +273,8 @@ CompositorBridgeChild::RecvCompositorUpdated(const uint64_t& aLayersId,
 
   gfxCriticalNote << "Receive CompositorUpdated for layer:" << aLayersId;
 
+  printf_stderr("bignose Receive CompositorUpdated for layer:%llu\n", aLayersId);
+
   return true;
 }
 
