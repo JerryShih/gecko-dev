@@ -270,6 +270,9 @@ CompositorBridgeChild::RecvCompositorUpdated(const uint64_t& aLayersId,
     }
     SendAcknowledgeCompositorUpdate(aLayersId);
   }
+
+  gfxCriticalNote << "Receive CompositorUpdated for layer:" << aLayersId;
+
   return true;
 }
 
