@@ -6536,7 +6536,7 @@ PresShell::Paint(nsView*        aViewToPaint,
   nsAutoNotifyDidPaint notifyDidPaint(this, aFlags);
   AutoUpdateHitRegion updateHitRegion(this, frame);
 
-  CheckIfTimeToUnsuppressPainting();
+  //CheckIfTimeToUnsuppressPainting();
 
   // Whether or not we should set first paint when painting is
   // suppressed is debatable. For now we'll do it because
