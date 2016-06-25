@@ -112,28 +112,34 @@ public:
                          bool aCopyBackground = false) override;
   virtual void PopLayer() override;
   virtual already_AddRefed<SourceSurface> CreateSourceSurfaceFromData(unsigned char *aData,
-                                                            const IntSize &aSize,
-                                                            int32_t aStride,
-                                                            SurfaceFormat aFormat) const override;
+                                                                      const IntSize &aSize,
+                                                                      int32_t aStride,
+                                                                      SurfaceFormat aFormat) const override;
   virtual already_AddRefed<SourceSurface> OptimizeSourceSurface(SourceSurface *aSurface) const override;
   virtual already_AddRefed<SourceSurface>
     CreateSourceSurfaceFromNativeSurface(const NativeSurface &aSurface) const override;
   virtual already_AddRefed<DrawTarget>
     CreateSimilarDrawTarget(const IntSize &aSize, SurfaceFormat aFormat) const override;
+  virtual already_AddRefed<DrawTarget> CreateSimilarDrawTargetWithSurfaceData(const IntSize &aSize,
+                                                                              SurfaceFormat aFormat,
+                                                                              SourceSurface *aSurface,
+                                                                              const IntRect &aSourceRect,
+                                                                              const IntPoint &aDestination) const override;
   virtual already_AddRefed<PathBuilder> CreatePathBuilder(FillRule aFillRule = FillRule::FILL_WINDING) const override;
   virtual already_AddRefed<GradientStops> CreateGradientStops(GradientStop *aStops, uint32_t aNumStops, ExtendMode aExtendMode = ExtendMode::CLAMP) const override;
   virtual already_AddRefed<FilterNode> CreateFilter(FilterType aType) override;
   virtual void SetTransform(const Matrix &aTransform) override;
   virtual void *GetNativeSurface(NativeSurfaceType aType) override;
 
-  bool Init(const IntSize &aSize, SurfaceFormat aFormat);
+  bool Init(const IntSize &aSize, SurfaceFormat aFormat, bool aInitializeContent = true);
   void Init(unsigned char* aData, const IntSize &aSize, int32_t aStride, SurfaceFormat aFormat, bool aUninitialized = false);
 
 #ifdef USE_SKIA_GPU
   bool InitWithGrContext(GrContext* aGrContext,
                          const IntSize &aSize,
                          SurfaceFormat aFormat,
-                         bool aCached);
+                         bool aCached,
+                         bool aInitializeContent = true);
   virtual bool
     InitWithGrContext(GrContext* aGrContext,
                       const IntSize &aSize,

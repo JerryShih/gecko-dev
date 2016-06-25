@@ -27,6 +27,8 @@
 #include "GLDefs.h"
 #include "skia/include/gpu/SkGr.h"
 #include "skia/include/gpu/GrContext.h"
+#include "skia/src/gpu/SkGpuDevice.h"
+#include "skia/src/image/SkSurface_Gpu.h"
 #include "skia/include/gpu/gl/GrGLInterface.h"
 #endif
 
@@ -1269,7 +1271,41 @@ DrawTargetSkia::CreateSimilarDrawTarget(const IntSize &aSize, SurfaceFormat aFor
   if (!target->Init(aSize, aFormat)) {
     return nullptr;
   }
+
   return target.forget();
+}
+
+already_AddRefed<DrawTarget>
+DrawTargetSkia::CreateSimilarDrawTargetWithSurfaceData(const IntSize &aSize,
+                                                       SurfaceFormat aFormat,
+                                                       SourceSurface *aSurface,
+                                                       const IntRect &aSourceRect,
+                                                       const IntPoint &aDestination) const
+{
+  RefPtr<DrawTargetSkia> newDrawTarget = new DrawTargetSkia();
+  if (!newDrawTarget) {
+    return nullptr;
+  }
+
+  bool inited = false;
+
+#ifdef USE_SKIA_GPU
+  if (UsingSkiaGPU()) {
+    // Try to create a GPU draw target first if we're currently using the GPU.
+    // Mark the DT as cached so that shadow DTs, extracted subrects, and similar can be reused.
+    if (newDrawTarget->InitWithGrContext(mGrContext.get(), aSize, aFormat, true, false)) {
+      inited = true;
+    }
+  }
+#endif
+
+  if (!inited && !newDrawTarget->Init(aSize, aFormat, false)) {
+    return nullptr;
+  }
+
+  newDrawTarget->CopySurface(aSurface, aSourceRect, aDestination);
+
+  return newDrawTarget.forget();
 }
 
 bool
@@ -1399,7 +1435,7 @@ DrawTargetSkia::CopySurface(SourceSurface *aSurface,
 }
 
 bool
-DrawTargetSkia::Init(const IntSize &aSize, SurfaceFormat aFormat)
+DrawTargetSkia::Init(const IntSize &aSize, SurfaceFormat aFormat, bool aInitializeContent /*= true*/)
 {
   if (size_t(std::max(aSize.width, aSize.height)) > GetMaxSurfaceSize()) {
     return false;
@@ -1414,7 +1450,9 @@ DrawTargetSkia::Init(const IntSize &aSize, SurfaceFormat aFormat)
     return false;
   }
 
-  bitmap.eraseColor(SK_ColorTRANSPARENT);
+  if (aInitializeContent) {
+    bitmap.eraseColor(SK_ColorTRANSPARENT);
+  }
 
   mCanvas.adopt(new SkCanvas(bitmap));
   mSize = aSize;
@@ -1447,7 +1485,8 @@ bool
 DrawTargetSkia::InitWithGrContext(GrContext* aGrContext,
                                   const IntSize &aSize,
                                   SurfaceFormat aFormat,
-                                  bool aCached)
+                                  bool aCached,
+                                  bool aInitializeContent /*= true*/)
 {
   MOZ_ASSERT(aGrContext, "null GrContext");
 
@@ -1455,12 +1494,21 @@ DrawTargetSkia::InitWithGrContext(GrContext* aGrContext,
     return false;
   }
 
+  SkGpuDevice::InitContents initCondition =
+      aInitializeContent ? SkGpuDevice::kClear_InitContents : SkGpuDevice::kUninit_InitContents;
+
   // Create a GPU rendertarget/texture using the supplied GrContext.
-  // NewRenderTarget also implicitly clears the underlying texture on creation.
-  sk_sp<SkSurface> gpuSurface =
-    SkSurface::MakeRenderTarget(aGrContext,
-                                SkBudgeted(aCached),
-                                MakeSkiaImageInfo(aSize, aFormat));
+  SkAutoTUnref<SkGpuDevice> device(SkGpuDevice::Create(aGrContext,
+                                                       SkBudgeted(aCached),
+                                                       MakeSkiaImageInfo(aSize, aFormat),
+                                                       0,
+                                                       nullptr,
+                                                       initCondition,
+                                                       GrTextureStorageAllocator()));
+  if (!device) {
+      return false;
+  }
+  sk_sp<SkSurface> gpuSurface = sk_make_sp<SkSurface_Gpu>(device);
   if (!gpuSurface) {
     return false;
   }
