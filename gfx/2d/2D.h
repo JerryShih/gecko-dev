@@ -1050,6 +1050,32 @@ public:
     CreateSimilarDrawTarget(const IntSize &aSize, SurfaceFormat aFormat) const = 0;
 
   /**
+   * Similar to CreateSimilarDrawTarget(), but initialize with the exist surface
+   * data.
+   * @param aSurface Surface to copy from
+   * @param aSourceRect Source rectangle to be copied
+   * @param aDest Destination point to copy the surface to
+   */
+  virtual already_AddRefed<DrawTarget>
+    CreateSimilarDrawTargetWithSurfaceData(const IntSize &aSize,
+                                           SurfaceFormat aFormat,
+                                           SourceSurface *aSurface,
+                                           const IntRect &aSourceRect,
+                                           const IntPoint &aDestination) const
+  {
+    RefPtr<DrawTarget> newDrawTarget =
+      CreateSimilarDrawTarget(aSize, aFormat);
+
+    if (!newDrawTarget) {
+      return nullptr;
+    }
+
+    newDrawTarget->CopySurface(aSurface, aSourceRect, aDestination);
+
+    return newDrawTarget.forget();
+  }
+
+  /**
    * Create a DrawTarget that captures the drawing commands and can be replayed
    * onto a compatible DrawTarget afterwards.
    *
