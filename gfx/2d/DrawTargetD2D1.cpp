@@ -15,6 +15,8 @@
 #include "ExtendInputEffectD2D1.h"
 #include "Tools.h"
 
+#include "GeckoProfiler.h"
+
 using namespace std;
 
 // decltype is not usable for overloaded functions.
@@ -60,6 +62,8 @@ DrawTargetD2D1::~DrawTargetD2D1()
   }
 
   if (mDC) {
+    PROFILER_LABEL("DrawTargetD2D1::~DrawTargetD2D1", "EndDraw",
+      js::ProfileEntry::Category::GRAPHICS);
     // The only way mDC can be null is if Init failed, but it can happen and the
     // destructor is the only place where we need to check for it since the
     // DrawTarget will destroyed right after Init fails.
@@ -88,7 +92,11 @@ DrawTargetD2D1::Snapshot()
   }
   PopAllClips();
 
+  {
+    PROFILER_LABEL("DrawTargetD2D1::Snapshot", "Flush",
+      js::ProfileEntry::Category::GRAPHICS);
   Flush();
+  }
 
   mSnapshot = new SourceSurfaceD2D1(mBitmap, mDC, mFormat, mSize, this);
 
@@ -884,8 +892,13 @@ DrawTargetD2D1::CreateSimilarDrawTargetWithSurfaceData(const IntSize &aSize,
 {
   RefPtr<DrawTargetD2D1> newDrawTarget = new DrawTargetD2D1();
 
-  if (!newDrawTarget->Init(aSize, aFormat, false)) {
-    return nullptr;
+  {
+    PROFILER_LABEL("DrawTargetD2D1::CreateSimilarDrawTargetWithSurfaceData", "newDrawTarget->Init",
+      js::ProfileEntry::Category::GRAPHICS);
+
+    if (!newDrawTarget->Init(aSize, aFormat, false)) {
+      return nullptr;
+    }
   }
 
   newDrawTarget->CopySurface(aSurface, aSourceRect, aDestination);
@@ -1029,7 +1042,11 @@ DrawTargetD2D1::Init(const IntSize &aSize, SurfaceFormat aFormat, bool aInitiali
     return false;
   }
 
+  {
+    PROFILER_LABEL("DrawTargetD2D1::Init", "device->CreateDeviceContext",
+      js::ProfileEntry::Category::GRAPHICS);
   hr = device->CreateDeviceContext(D2D1_DEVICE_CONTEXT_OPTIONS_ENABLE_MULTITHREADED_OPTIMIZATIONS, getter_AddRefs(mDC));
+  }
 
   if (FAILED(hr)) {
     gfxCriticalError() <<"[D2D1.1] 2Failed to create a DeviceContext, code: " << hexa(hr) << " format " << (int)aFormat;
@@ -1049,7 +1066,12 @@ DrawTargetD2D1::Init(const IntSize &aSize, SurfaceFormat aFormat, bool aInitiali
   props.pixelFormat = D2DPixelFormat(aFormat);
   props.colorContext = nullptr;
   props.bitmapOptions = D2D1_BITMAP_OPTIONS_TARGET;
+
+  {
+    PROFILER_LABEL("DrawTargetD2D1::Init", "mDC->CreateBitmap",
+      js::ProfileEntry::Category::GRAPHICS);
   hr = mDC->CreateBitmap(D2DIntSize(aSize), nullptr, 0, props, (ID2D1Bitmap1**)getter_AddRefs(mBitmap));
+  }
 
   if (FAILED(hr)) {
     gfxCriticalError() << "[D2D1.1] 3CreateBitmap failure " << aSize << " Code: " << hexa(hr) << " format " << (int)aFormat;
@@ -1058,7 +1080,11 @@ DrawTargetD2D1::Init(const IntSize &aSize, SurfaceFormat aFormat, bool aInitiali
 
   mDC->SetTarget(CurrentTarget());
 
+  {
+    PROFILER_LABEL("DrawTargetD2D1::Init", "mDC->CreateSolidColorBrush",
+      js::ProfileEntry::Category::GRAPHICS);
   hr = mDC->CreateSolidColorBrush(D2D1::ColorF(0, 0), getter_AddRefs(mSolidColorBrush));
+  }
 
   if (FAILED(hr)) {
     gfxCriticalError() << "[D2D1.1] Failure creating solid color brush (I2).";
