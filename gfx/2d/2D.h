@@ -321,7 +321,7 @@ public:
   explicit SurfacePattern(const SurfacePattern &aPattern)
     : mSurface(aPattern.mSurface)
     , mExtendMode(aPattern.mExtendMode)
-    , mFilter(aPattern.mFilter)
+    , mSamplingFilter(aPattern.mSamplingFilter)
     , mMatrix(aPattern.mMatrix)
     , mSamplingRect(aPattern.mSamplingRect)
   {}
