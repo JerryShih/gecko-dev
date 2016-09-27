@@ -1558,17 +1558,7 @@ nsCSSValue::AppendToString(nsCSSPropertyID aProperty, nsAString& aResult,
         // round-tripping of all other rgba() values.
         aResult.AppendLiteral("transparent");
       } else {
-        uint8_t a = NS_GET_A(color);
-        bool showAlpha =
-          (aSerialization == eNormalized && a < 255) ||
-          (aSerialization == eAuthorSpecified &&
-           unit == eCSSUnit_RGBAColor);
-        if (showAlpha) {
-          aResult.AppendLiteral("rgba(");
-        } else {
-          aResult.AppendLiteral("rgb(");
-        }
-
+        aResult.AppendLiteral("rgb(");
         NS_NAMED_LITERAL_STRING(comma, ", ");
 
         aResult.AppendInt(NS_GET_R(color), 10);
@@ -1576,7 +1566,8 @@ nsCSSValue::AppendToString(nsCSSPropertyID aProperty, nsAString& aResult,
         aResult.AppendInt(NS_GET_G(color), 10);
         aResult.Append(comma);
         aResult.AppendInt(NS_GET_B(color), 10);
-        if (showAlpha) {
+        uint8_t a = NS_GET_A(color);
+        if (a != 255) {
           aResult.Append(comma);
           aResult.AppendFloat(nsStyleUtil::ColorComponentToFloat(a));
         }
@@ -2987,20 +2978,12 @@ nsCSSValueFloatColor::AppendToString(nsCSSUnit aUnit, nsAString& aResult) const
 {
   MOZ_ASSERT(nsCSSValue::IsFloatColorUnit(aUnit), "unexpected unit");
 
-  bool hasAlpha = aUnit == eCSSUnit_PercentageRGBAColor ||
-                  aUnit == eCSSUnit_HSLAColor;
-  bool isHSL = aUnit == eCSSUnit_HSLColor ||
-               aUnit == eCSSUnit_HSLAColor;
+  bool isHSL = aUnit == eCSSUnit_HSLColor || aUnit == eCSSUnit_HSLAColor;
 
   if (isHSL) {
-    aResult.AppendLiteral("hsl");
+    aResult.AppendLiteral("hsl(");
   } else {
-    aResult.AppendLiteral("rgb");
-  }
-  if (hasAlpha) {
-    aResult.AppendLiteral("a(");
-  } else {
-    aResult.Append('(');
+    aResult.AppendLiteral("rgb(");
   }
   if (isHSL) {
     aResult.AppendFloat(mComponent1 * 360.0f);
@@ -3012,13 +2995,12 @@ nsCSSValueFloatColor::AppendToString(nsCSSUnit aUnit, nsAString& aResult) const
   aResult.AppendFloat(mComponent2 * 100.0f);
   aResult.AppendLiteral("%, ");
   aResult.AppendFloat(mComponent3 * 100.0f);
-  if (hasAlpha) {
-    aResult.AppendLiteral("%, ");
+  aResult.AppendLiteral("%");
+  if (mAlpha != 1.0f) {
+    aResult.AppendLiteral(", ");
     aResult.AppendFloat(mAlpha);
-    aResult.Append(')');
-  } else {
-    aResult.AppendLiteral("%)");
   }
+  aResult.Append(')');
 }
 
 size_t
