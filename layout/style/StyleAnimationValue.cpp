@@ -502,12 +502,10 @@ static RGBAColorData
 ExtractColor(const nsCSSValue& aValue)
 {
   MOZ_ASSERT(aValue.IsNumericColorUnit(), "The unit should be color");
-  // PercentageRGBColor and PercentageRGBAColor component value might be
-  // greater than 1.0 in case when the color value is accumulated, so we
-  // can't use nsCSSValue::GetColorValue() here because that function
-  // clamps its values.
-  if (aValue.GetUnit() == eCSSUnit_PercentageRGBColor ||
-      aValue.GetUnit() == eCSSUnit_PercentageRGBAColor) {
+  // PercentageRGBColor component value might be greater than 1.0 in case when
+  // the color value is accumulated, so we can't use nsCSSValue::GetColorValue()
+  // here because that function clamps its values.
+  if (aValue.GetUnit() == eCSSUnit_PercentageRGBColor) {
     nsCSSValueFloatColor* floatColor = aValue.GetFloatColorValue();
     return {
       floatColor->Comp1(),

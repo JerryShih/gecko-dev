@@ -6729,14 +6729,14 @@ CSSParserImpl::ParseColor(nsCSSValue& aValue)
           uint8_t r, g, b, a;
 
           if (ParseRGBColor(r, g, b, a)) {
-            aValue.SetIntegerColorValue(NS_RGBA(r, g, b, a), eCSSUnit_RGBAColor);
+            aValue.SetIntegerColorValue(NS_RGBA(r, g, b, a), eCSSUnit_RGBColor);
             return CSSParseResult::Ok;
           }
         } else {  // <percentage>
           float r, g, b, a;
 
           if (ParseRGBColor(r, g, b, a)) {
-            aValue.SetFloatColorValue(r, g, b, a, eCSSUnit_PercentageRGBAColor);
+            aValue.SetFloatColorValue(r, g, b, a, eCSSUnit_PercentageRGBColor);
             return CSSParseResult::Ok;
           }
         }
@@ -6753,7 +6753,7 @@ CSSParserImpl::ParseColor(nsCSSValue& aValue)
         float h, s, l, a;
 
         if (ParseHSLColor(h, s, l, a)) {
-          aValue.SetFloatColorValue(h, s, l, a, eCSSUnit_HSLAColor);
+          aValue.SetFloatColorValue(h, s, l, a, eCSSUnit_HSLColor);
           return CSSParseResult::Ok;
         }
         SkipUntil(')');
@@ -10772,12 +10772,12 @@ CSSParserImpl::ParseWebkitGradientColorStops(nsCSSValueGradient* aGradient)
   if (aGradient->mStops.IsEmpty()) {
     nsCSSValueGradientStop* stop1 = aGradient->mStops.AppendElement();
     stop1->mColor.SetIntegerColorValue(NS_RGBA(0, 0, 0, 0),
-                                       eCSSUnit_RGBAColor);
+                                       eCSSUnit_RGBColor);
     stop1->mLocation.SetPercentValue(0.0f);
 
     nsCSSValueGradientStop* stop2 = aGradient->mStops.AppendElement();
     stop2->mColor.SetIntegerColorValue(NS_RGBA(0, 0, 0, 0),
-                                       eCSSUnit_RGBAColor);
+                                       eCSSUnit_RGBColor);
     stop2->mLocation.SetPercentValue(1.0f);
   } else if (aGradient->mStops.Length() == 1) {
     // Copy whatever the author provided in the first stop:
@@ -12159,7 +12159,7 @@ CSSParserImpl::ParseImageLayers(const nsCSSPropertyID aTable[])
   // If we get to this point without seeing a color, provide a default.
  if (aTable[nsStyleImageLayers::color] != eCSSProperty_UNKNOWN) {
     if (color.GetUnit() == eCSSUnit_Null) {
-      color.SetIntegerColorValue(NS_RGBA(0,0,0,0), eCSSUnit_RGBAColor);
+      color.SetIntegerColorValue(NS_RGBA(0,0,0,0), eCSSUnit_RGBColor);
     }
   }
 

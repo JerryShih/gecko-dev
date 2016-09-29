@@ -479,7 +479,7 @@ void nsCSSValue::SetStringValue(const nsString& aValue,
 
 void nsCSSValue::SetColorValue(nscolor aValue)
 {
-  SetIntegerColorValue(aValue, eCSSUnit_RGBAColor);
+  SetIntegerColorValue(aValue, eCSSUnit_RGBColor);
 }
 
 void nsCSSValue::SetIntegerColorValue(nscolor aValue, nsCSSUnit aUnit)
@@ -508,7 +508,7 @@ void
 nsCSSValue::SetRGBAColorValue(const RGBAColorData& aValue)
 {
   SetFloatColorValue(aValue.mR, aValue.mG, aValue.mB,
-                     aValue.mA, eCSSUnit_PercentageRGBAColor);
+                     aValue.mA, eCSSUnit_PercentageRGBColor);
 }
 
 void
@@ -1548,9 +1548,7 @@ nsCSSValue::AppendToString(nsCSSPropertyID aProperty, nsAString& aResult,
     }
   }
   else if (IsNumericColorUnit(unit)) {
-    if (aSerialization == eNormalized ||
-        unit == eCSSUnit_RGBColor ||
-        unit == eCSSUnit_RGBAColor) {
+    if (aSerialization == eNormalized || unit == eCSSUnit_RGBColor) {
       nscolor color = GetColorValue();
       if (aSerialization == eNormalized &&
           color == NS_RGBA(0, 0, 0, 0)) {
@@ -1897,15 +1895,12 @@ nsCSSValue::AppendToString(nsCSSPropertyID aProperty, nsAString& aResult,
     case eCSSUnit_Enumerated:   break;
     case eCSSUnit_EnumColor:             break;
     case eCSSUnit_RGBColor:              break;
-    case eCSSUnit_RGBAColor:             break;
     case eCSSUnit_HexColor:              break;
     case eCSSUnit_ShortHexColor:         break;
     case eCSSUnit_HexColorAlpha:         break;
     case eCSSUnit_ShortHexColorAlpha:    break;
     case eCSSUnit_PercentageRGBColor:    break;
-    case eCSSUnit_PercentageRGBAColor:   break;
     case eCSSUnit_HSLColor:              break;
-    case eCSSUnit_HSLAColor:             break;
     case eCSSUnit_ComplexColor:          break;
     case eCSSUnit_Percent:      aResult.Append(char16_t('%'));    break;
     case eCSSUnit_Number:       break;
@@ -2079,7 +2074,6 @@ nsCSSValue::SizeOfExcludingThis(mozilla::MallocSizeOf aMallocSizeOf) const
 
     // Integer Color: nothing extra to measure.
     case eCSSUnit_RGBColor:
-    case eCSSUnit_RGBAColor:
     case eCSSUnit_HexColor:
     case eCSSUnit_ShortHexColor:
     case eCSSUnit_HexColorAlpha:
@@ -2088,9 +2082,7 @@ nsCSSValue::SizeOfExcludingThis(mozilla::MallocSizeOf aMallocSizeOf) const
 
     // Float Color
     case eCSSUnit_PercentageRGBColor:
-    case eCSSUnit_PercentageRGBAColor:
     case eCSSUnit_HSLColor:
-    case eCSSUnit_HSLAColor:
       n += mValue.mFloatColor->SizeOfIncludingThis(aMallocSizeOf);
       break;
 
@@ -2946,9 +2938,8 @@ nsCSSValueFloatColor::GetColorValue(nsCSSUnit aUnit) const
   MOZ_ASSERT(nsCSSValue::IsFloatColorUnit(aUnit), "unexpected unit");
 
   // We should clamp each component value since eCSSUnit_PercentageRGBColor
-  // and eCSSUnit_PercentageRGBAColor may store values greater than 1.0.
-  if (aUnit == eCSSUnit_PercentageRGBColor ||
-      aUnit == eCSSUnit_PercentageRGBAColor) {
+  // may store values greater than 1.0.
+  if (aUnit == eCSSUnit_PercentageRGBColor) {
     return NS_RGBA(
       // We need to clamp before multiplying by 255.0f to avoid overflow.
       NSToIntRound(mozilla::clamped(mComponent1, 0.0f, 1.0f) * 255.0f),
@@ -2958,8 +2949,7 @@ nsCSSValueFloatColor::GetColorValue(nsCSSUnit aUnit) const
   }
 
   // HSL color
-  MOZ_ASSERT(aUnit == eCSSUnit_HSLColor ||
-             aUnit == eCSSUnit_HSLAColor);
+  MOZ_ASSERT(aUnit == eCSSUnit_HSLColor);
   nscolor hsl = NS_HSL2RGB(mComponent1, mComponent2, mComponent3);
   return NS_RGBA(NS_GET_R(hsl),
                  NS_GET_G(hsl),
@@ -2978,7 +2968,7 @@ nsCSSValueFloatColor::AppendToString(nsCSSUnit aUnit, nsAString& aResult) const
 {
   MOZ_ASSERT(nsCSSValue::IsFloatColorUnit(aUnit), "unexpected unit");
 
-  bool isHSL = aUnit == eCSSUnit_HSLColor || aUnit == eCSSUnit_HSLAColor;
+  bool isHSL = aUnit == eCSSUnit_HSLColor;
 
   if (isHSL) {
     aResult.AppendLiteral("hsl(");

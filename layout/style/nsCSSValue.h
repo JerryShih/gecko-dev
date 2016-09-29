@@ -473,23 +473,20 @@ enum nsCSSUnit {
   eCSSUnit_Enumerated   = 71,     // (int) value has enumerated meaning
 
   eCSSUnit_EnumColor           = 80,   // (int) enumerated color (kColorKTable)
-  eCSSUnit_RGBColor            = 81,   // (nscolor) an opaque RGBA value specified as rgb()
-  eCSSUnit_RGBAColor           = 82,   // (nscolor) an RGBA value specified as rgba()
-  eCSSUnit_HexColor            = 83,   // (nscolor) an opaque RGBA value specified as #rrggbb
-  eCSSUnit_ShortHexColor       = 84,   // (nscolor) an opaque RGBA value specified as #rgb
-  eCSSUnit_HexColorAlpha       = 85,   // (nscolor) an opaque RGBA value specified as #rrggbbaa
-  eCSSUnit_ShortHexColorAlpha  = 86,   // (nscolor) an opaque RGBA value specified as #rgba
-  eCSSUnit_PercentageRGBColor  = 87,   // (nsCSSValueFloatColor*) an opaque
-                                       // RGBA value specified as rgb() with
-                                       // percentage components. Values over
-                                       // 100% are allowed.
-  eCSSUnit_PercentageRGBAColor = 88,   // (nsCSSValueFloatColor*) an RGBA value
-                                       // specified as rgba() with percentage
+  eCSSUnit_RGBColor            = 81,   // (nscolor) an RGBA value specified as
+                                       // css-color-4 rgb()/rgba() color
+                                       // function with <number> components.
+  eCSSUnit_HexColor            = 82,   // (nscolor) an opaque RGBA value specified as #rrggbb
+  eCSSUnit_ShortHexColor       = 83,   // (nscolor) an opaque RGBA value specified as #rgb
+  eCSSUnit_HexColorAlpha       = 84,   // (nscolor) an opaque RGBA value specified as #rrggbbaa
+  eCSSUnit_ShortHexColorAlpha  = 85,   // (nscolor) an opaque RGBA value specified as #rgba
+  eCSSUnit_PercentageRGBColor  = 86,   // (nsCSSValueFloatColor*) an RGBA value
+                                       // specified as css-color-4 rgb()/rgba()
+                                       // color function with <percentage>
                                        // components. Values over 100% are
                                        // allowed.
-  eCSSUnit_HSLColor            = 89,   // (nsCSSValueFloatColor*)
-  eCSSUnit_HSLAColor           = 90,   // (nsCSSValueFloatColor*)
-  eCSSUnit_ComplexColor        = 91,   // (ComplexColorValue*)
+  eCSSUnit_HSLColor            = 87,   // (nsCSSValueFloatColor*)
+  eCSSUnit_ComplexColor        = 88,   // (ComplexColorValue*)
 
   eCSSUnit_Percent      = 100,     // (float) 1.0 == 100%) value is percentage of something
   eCSSUnit_Number       = 101,     // (float) value is numeric (usually multiplier, different behavior than percent)
@@ -655,18 +652,21 @@ public:
   // Checks for the nsCSSValue being of a particular type of color unit:
   //
   //   - IsIntegerColorUnit returns true for:
-  //       eCSSUnit_RGBColor             -- rgb(int,int,int)
-  //       eCSSUnit_RGBAColor            -- rgba(int,int,int,float)
+  //       eCSSUnit_RGBColor             --
+  //           rgb() = rgba() = rgb( <number>{3} [ / <alpha-value> ]? )
+  //           <alpha-value> = <number> | <percentage>
   //       eCSSUnit_HexColor             -- #rrggbb
   //       eCSSUnit_ShortHexColor        -- #rgb
   //       eCSSUnit_HexColorAlpha        -- #rrggbbaa
   //       eCSSUnit_ShortHexColorAlpha   -- #rgba
   //
   //   - IsFloatColorUnit returns true for:
-  //       eCSSUnit_PercentageRGBColor   -- rgb(%,%,%)
-  //       eCSSUnit_PercentageRGBAColor  -- rgba(%,%,%,float)
-  //       eCSSUnit_HSLColor             -- hsl(float,%,%)
-  //       eCSSUnit_HSLAColor            -- hsla(float,%,%,float)
+  //       eCSSUnit_PercentageRGBColor   --
+  //           rgb( <percentage>{3} [ / <alpha-value> ]? )
+  //           <alpha-value> = <number> | <percentage>
+  //       eCSSUnit_HSLColor             --
+  //           hsl() = hsla() = hsl( <hue> <percentage> <percentage> [ / <alpha-value> ]? )
+  //           <hue> = <number> | <angle>
   //
   //   - IsNumericColorUnit returns true for any of the above units.
   //
@@ -679,7 +679,7 @@ public:
   { return eCSSUnit_RGBColor <= aUnit && aUnit <= eCSSUnit_ShortHexColorAlpha; }
   static bool IsFloatColorUnit(nsCSSUnit aUnit)
   { return eCSSUnit_PercentageRGBColor <= aUnit &&
-           aUnit <= eCSSUnit_HSLAColor; }
+           aUnit <= eCSSUnit_HSLColor; }
   static bool IsNumericColorUnit(nsCSSUnit aUnit)
   { return IsIntegerColorUnit(aUnit) || IsFloatColorUnit(aUnit); }
 
@@ -1834,8 +1834,7 @@ private:
   //                                    [0, 1] for hue represents
   //                                    [0deg, 360deg].
   //
-  // [-float::max(), float::max()] for PercentageRGBColor, PercentageRGBAColor.
-  //                               1.0 means 100%.
+  // [-float::max(), float::max()] for PercentageRGBColor. 1.0 means 100%.
   float mComponent1;
   float mComponent2;
   float mComponent3;
