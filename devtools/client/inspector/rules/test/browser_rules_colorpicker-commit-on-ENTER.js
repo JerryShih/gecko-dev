@@ -38,7 +38,7 @@ function* testPressingEnterCommitsChanges(swatch, ruleView) {
     value: "rgba(0, 255, 0, 0.5)"
   });
 
-  is(swatch.style.backgroundColor, "rgba(0, 255, 0, 0.5)",
+  is(swatch.style.backgroundColor, "rgb(0, 255, 0, 0.5)",
     "The color swatch's background was updated");
   is(getRuleViewProperty(ruleView, "body", "border").valueSpan.textContent,
     "2em solid rgba(0, 255, 0, 0.5)",
@@ -53,7 +53,7 @@ function* testPressingEnterCommitsChanges(swatch, ruleView) {
 
   is((yield getComputedStyleProperty("body", null, "border-left-color")),
     "rgba(0, 255, 0, 0.5)", "The element's border was kept after RETURN");
-  is(swatch.style.backgroundColor, "rgba(0, 255, 0, 0.5)",
+  is(swatch.style.backgroundColor, "rgb(0, 255, 0, 0.5)",
     "The color swatch's background was kept after RETURN");
   is(getRuleViewProperty(ruleView, "body", "border").valueSpan.textContent,
     "2em solid rgba(0, 255, 0, 0.5)",
