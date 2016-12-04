@@ -429,11 +429,45 @@ pub extern fn wr_pop_dl_builder(state: &mut WrState, bounds: WrRect, transform: 
     prev_dl.pop_stacking_context()
 }
 
+fn wait_for_epoch(window: &mut WrWindowState) {
+    let &(ref lock, ref cvar) = &*window.render_notifier_lock;
+    let mut finished = lock.lock().unwrap();
+
+    'outer: for (pipeline_id, epoch) in window.pipeline_epoch_map.iter() {
+        if epoch.0 == 0 {
+            // This pipeline_id is not set the display_list yet, so skip the waiting.
+            continue;
+        }
+
+        loop {
+            // Update all epochs.
+            window.renderer.update();
+
+            if let Some(rendered_epoch) = window.renderer.current_epoch(*pipeline_id) {
+                if *epoch == rendered_epoch {
+                    continue 'outer;
+                }
+            } else {
+                panic!("Could not get an epoch from the renderer");
+            }
+
+            // If the epoch is not matched, starts to wait for next frame updating.
+            while !*finished {
+                finished = cvar.wait(finished).unwrap();
+            }
+            // For the next sync one
+            *finished = false;
+        }
+    }
+}
+
 #[no_mangle]
 pub fn wr_composite_window(window: &mut WrWindowState) {
     assert!( unsafe { is_in_compositor_thread() });
+
+    wait_for_epoch(window);
+
     gl::clear(gl::COLOR_BUFFER_BIT);
-    window.renderer.update();
     window.renderer.render(window.size);
 }
 
