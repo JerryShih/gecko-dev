@@ -45,7 +45,6 @@ WebRenderBridgeParent::WebRenderBridgeParent(CompositorBridgeParentBase* aCompos
   , mParentLayerObserverEpoch(0)
   , mPendingTransactionId(0)
   , mDestroyed(false)
-  , mWREpoch(0)
 {
   MOZ_ASSERT(mGLContext);
   MOZ_ASSERT(mCompositor);
@@ -236,7 +235,7 @@ WebRenderBridgeParent::ProcessWebrenderCommands(InfallibleTArray<WebRenderComman
         NS_RUNTIMEABORT("not reached");
     }
   }
-  wr_dp_end(mWRWindowState, mWRState, mWREpoch++);
+  wr_dp_end(mWRWindowState, mWRState);
   ScheduleComposition();
   DeleteOldImages();
 
@@ -437,7 +436,7 @@ WebRenderBridgeParent::ClearResources()
   mExternalImageIds.Clear();
 
   if (mWRState) {
-    wr_destroy(mWRState);
+    wr_destroy(mWRWindowState, mWRState);
     mWRState = nullptr;
   }
   if (mCompositorScheduler) {
