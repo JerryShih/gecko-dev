@@ -9,6 +9,7 @@
 #include "CompositableHost.h"
 #include "GLContext.h"
 #include "GLContextProvider.h"
+#include "mozilla/gfx/2D.h"
 #include "mozilla/layers/Compositor.h"
 #include "mozilla/layers/CompositorBridgeParent.h"
 #include "mozilla/layers/CompositorThread.h"
@@ -17,6 +18,8 @@
 #include "mozilla/layers/TextureHost.h"
 #include "mozilla/layers/WebRenderCompositorOGL.h"
 #include "mozilla/widget/CompositorWidget.h"
+
+#include "GLTextureImage.h"
 
 bool is_in_compositor_thread()
 {
@@ -28,11 +31,28 @@ namespace layers {
 
 using namespace mozilla::gfx;
 
+gfx::SurfaceFormat
+WRImageFormatToSurfaceFormat(const WRImageFormat& aWRFormat)
+{
+  switch (aWRFormat) {
+    case A8:
+      return gfx::SurfaceFormat::A8;
+    case RGB8:
+      return gfx::SurfaceFormat::R8G8B8;
+    case RGBA8:
+      return gfx::SurfaceFormat::R8G8B8A8;
+    default:
+      MOZ_ASSERT(true, "No match SurfaceFormat enum from WRImageFormat");
+      return gfx::SurfaceFormat::UNKNOWN;
+  }
+}
+
 WebRenderBridgeParent::WebRenderBridgeParent(CompositorBridgeParentBase* aCompositorBridge,
                                              const uint64_t& aPipelineId,
                                              widget::CompositorWidget* aWidget,
                                              gl::GLContext* aGlContext,
                                              wrwindowstate* aWrWindowState,
+                                             WebRenderExternalImage* aExternalImage,
                                              layers::Compositor* aCompositor)
   : mCompositorBridge(aCompositorBridge)
   , mPipelineId(aPipelineId)
@@ -41,6 +61,7 @@ WebRenderBridgeParent::WebRenderBridgeParent(CompositorBridgeParentBase* aCompos
   , mGLContext(aGlContext)
   , mWRWindowState(aWrWindowState)
   , mCompositor(aCompositor)
+  , mExternalImage(aExternalImage)
   , mChildLayerObserverEpoch(0)
   , mParentLayerObserverEpoch(0)
   , mPendingTransactionId(0)
@@ -54,13 +75,21 @@ WebRenderBridgeParent::WebRenderBridgeParent(CompositorBridgeParentBase* aCompos
     // i.e. the one created by the CompositorBridgeParent as opposed to the
     // CrossProcessCompositorBridgeParent
     MOZ_ASSERT(mWidget);
+    MOZ_ASSERT(!mExternalImage);
+
+    mExternalImage = new WebRenderExternalImage(aGlContext);
+    WRExternalImageHandler handler = mExternalImage->GetExternalImageHandler();
+
     mWRWindowState = wr_init_window(mPipelineId,
-                                    gfxPrefs::WebRenderProfilerEnabled());
+                                    gfxPrefs::WebRenderProfilerEnabled(),
+                                    &handler);
   }
   if (mWidget) {
     mCompositorScheduler = new CompositorVsyncScheduler(this, mWidget);
     mCompositor->AsWebRenderCompositorOGL()->SetVsyncScheduler(mCompositorScheduler);
   }
+
+  MOZ_ASSERT(mExternalImage);
 }
 
 mozilla::ipc::IPCResult
@@ -112,12 +141,38 @@ WebRenderBridgeParent::RecvAddImage(const uint32_t& aWidth,
                                     const ByteBuffer& aBuffer,
                                     WRImageKey* aOutImageKey)
 {
+  Debug();
+  printf_stderr("bignose gecko WebRenderBridgeParent::RecvAddImage %p begin\n",this);
+
   if (mDestroyed) {
     return IPC_OK();
   }
   MOZ_ASSERT(mWRWindowState);
+
   *aOutImageKey = wr_add_image(mWRWindowState, aWidth, aHeight, aStride, aFormat,
                                aBuffer.mData, aBuffer.mLength);
+
+//  RefPtr<gfx::DataSourceSurface> dataSurface =
+//      gfx::Factory::CreateWrappingDataSourceSurface(aBuffer.mData,
+//                                                    aStride,
+//                                                    gfx::IntSize(aWidth, aHeight),
+//                                                    WRImageFormatToSurfaceFormat(aFormat));
+//  WRExternalImageId id;
+//  mExternalImage->AddExternalImage(dataSurface, id);
+//  *aOutImageKey = wr_add_external_image_texture(mWRWindowState,
+//                                                aWidth,
+//                                                aHeight,
+//                                                aFormat,
+//                                                id.id);
+//
+//  gl::TextureImage* texture = mExternalImage->GetExternalImage(id);
+//  printf_stderr("bignose add image %p size:(%d,%d), id:%lld, gl:%d\n",
+//      this, aWidth, aHeight, id.id, texture->GetTextureID());
+//
+//  printf_stderr("bignose gecko WebRenderBridgeParent::RecvAddImage %p end, key(%d,%d)\n",
+//      this, aOutImageKey->a, aOutImageKey->b);
+//
+//  mCurrentUsedImage.insert(std::make_pair(*aOutImageKey, id));
   return IPC_OK();
 }
 
@@ -132,8 +187,14 @@ WebRenderBridgeParent::RecvUpdateImage(const WRImageKey& aImageKey,
     return IPC_OK();
   }
   MOZ_ASSERT(mWRWindowState);
+  Debug();
+  printf_stderr("bignose gecko WebRenderBridgeParent::RecvUpdateImage %p begin\n", this);
+
   wr_update_image(mWRWindowState, aImageKey, aWidth, aHeight, aFormat,
                   aBuffer.mData, aBuffer.mLength);
+
+  printf_stderr("bignose gecko WebRenderBridgeParent::RecvUpdateImage %p end\n", this);
+
   return IPC_OK();
 }
 
@@ -167,6 +228,9 @@ mozilla::ipc::IPCResult
 WebRenderBridgeParent::RecvDPEnd(InfallibleTArray<WebRenderCommand>&& aCommands,
                                  const uint64_t& aTransactionId)
 {
+  Debug();
+  printf_stderr("bignose gecko RecvDPEnd %p begin\n",this);
+
   if (mDestroyed) {
     return IPC_OK();
   }
@@ -177,6 +241,9 @@ WebRenderBridgeParent::RecvDPEnd(InfallibleTArray<WebRenderCommand>&& aCommands,
   // Otherwise, it should be continually increasing.
   MOZ_ASSERT(aTransactionId == 1 || aTransactionId > mPendingTransactionId);
   mPendingTransactionId = aTransactionId;
+
+
+  printf_stderr("bignose gecko RecvDPEnd end\n");
 
   return IPC_OK();
 }
@@ -185,6 +252,9 @@ mozilla::ipc::IPCResult
 WebRenderBridgeParent::RecvDPSyncEnd(InfallibleTArray<WebRenderCommand>&& aCommands,
                                      const uint64_t& aTransactionId)
 {
+  Debug();
+  printf_stderr("bignose gecko RecvDPSyncEnd %p begin\n",this);
+
   if (mDestroyed) {
     return IPC_OK();
   }
@@ -195,6 +265,9 @@ WebRenderBridgeParent::RecvDPSyncEnd(InfallibleTArray<WebRenderCommand>&& aComma
   // Otherwise, it should be continually increasing.
   MOZ_ASSERT(aTransactionId == 1 || aTransactionId > mPendingTransactionId);
   mPendingTransactionId = aTransactionId;
+
+
+  printf_stderr("bignose gecko RecvDPSyncEnd %p end\n", this);
 
   return IPC_OK();
 }
@@ -223,6 +296,8 @@ WebRenderBridgeParent::ProcessWebrenderCommands(InfallibleTArray<WebRenderComman
       }
       case WebRenderCommand::TOpDPPushImage: {
         const OpDPPushImage& op = cmd.get_OpDPPushImage();
+        printf_stderr("bignose gecko process wr cmd %p, push image (%d,%d)\n",
+            this,op.key().a, op.key().b);
         wr_dp_push_image(mWRState, op.bounds(), op.clip(), op.mask().ptrOr(nullptr), op.key());
         break;
       }
@@ -393,6 +468,7 @@ WebRenderBridgeParent::CompositeToTarget(gfx::DrawTarget* aTarget, const gfx::In
     return;
   }
   mGLContext->MakeCurrent();
+  printf_stderr("bignose compose to window, %p\n",this);
   wr_composite_window(mWRWindowState);
   mGLContext->SwapBuffers();
   mWidget->PostRender(&widgetContext);
@@ -414,6 +490,16 @@ void
 WebRenderBridgeParent::DeleteOldImages()
 {
   for (WRImageKey key : mKeysToDelete) {
+    printf_stderr("bignose WebRenderBridgeParent::DeleteOldImages %p key(%d,%d)\n",
+        this, key.a, key.b);
+    UsedImage::iterator image = mCurrentUsedImage.find(key);
+
+    if (image != mCurrentUsedImage.end()) {
+      printf_stderr("bignose WebRenderBridgeParent::DeleteOldImages remove for id:%lld\n",image->second.id);
+      mExternalImage->RemoveExternalImage(image->second);
+      mCurrentUsedImage.erase(image);
+    }
+
     wr_delete_image(mWRWindowState, key);
   }
   mKeysToDelete.clear();

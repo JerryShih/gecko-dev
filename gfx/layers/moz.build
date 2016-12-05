@@ -205,6 +205,7 @@ EXPORTS.mozilla.layers += [
     'wr/WebRenderBridgeChild.h',
     'wr/WebRenderBridgeParent.h',
     'wr/WebRenderCompositorOGL.h',
+    'wr/WebRenderExternalImage.h',
     'wr/WebRenderLayerManager.h',
     'wr/WebRenderTypes.h',
 ]
@@ -388,6 +389,7 @@ UNIFIED_SOURCES += [
     'wr/WebRenderColorLayer.cpp',
     'wr/WebRenderCompositorOGL.cpp',
     'wr/WebRenderContainerLayer.cpp',
+    'wr/WebRenderExternalImage.cpp',
     'wr/WebRenderImageLayer.cpp',
     'wr/WebRenderLayerManager.cpp',
     'wr/WebRenderPaintedLayer.cpp',

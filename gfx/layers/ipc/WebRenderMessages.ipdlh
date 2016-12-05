@@ -12,6 +12,7 @@ include protocol PImageContainer;
 include protocol PLayer;
 include protocol PTexture;
 
+using WRExternalImageId from "mozilla/gfx/webrender.h";
 using WRImageKey from "mozilla/gfx/webrender.h";
 using WRRect from "mozilla/gfx/webrender.h";
 using MaybeImageMask from "mozilla/layers/WebRenderTypes.h";
@@ -43,6 +44,13 @@ struct OpDPPushImage {
   WRRect clip;
   MaybeImageMask mask;
   WRImageKey key;
+};
+
+struct OpDPPushExternalImage {
+  WRRect bounds;
+  WRRect clip;
+  MaybeImageMask mask;
+  WRExternalImageId id;
 };
 
 struct OpDPPushIframe {

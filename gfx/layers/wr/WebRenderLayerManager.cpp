@@ -150,6 +150,7 @@ WebRenderLayerManager::Initialize(PCompositorBridgeChild* aCBChild,
   MOZ_ASSERT(mWRChild == nullptr);
   MOZ_ASSERT(aTextureFactoryIdentifier);
 
+  NS_ERROR("bignose send WebRenderExternalImage ctor");
   TextureFactoryIdentifier textureFactoryIdentifier;
   PWebRenderBridgeChild* bridge = aCBChild->SendPWebRenderBridgeConstructor(aLayersId,
                                                                             &textureFactoryIdentifier);
@@ -227,6 +228,8 @@ WebRenderLayerManager::EndTransaction(DrawPaintedLayerCallback aCallback,
                                       void* aCallbackData,
                                       EndTransactionFlags aFlags)
 {
+  printf_stderr("bignose gecko WebRenderLayerManager::EndTransaction %p begin\n",this);
+
   DiscardImages();
 
   mPaintedLayerCallback = aCallback;
@@ -252,6 +255,8 @@ WebRenderLayerManager::EndTransaction(DrawPaintedLayerCallback aCallback,
   WRBridge()->DPEnd(sync, mLatestTransactionId);
 
   MakeSnapshotIfRequired(size);
+
+  printf_stderr("bignose gecko WebRenderLayerManager::EndTransaction %p end\n",this);
 }
 
 void

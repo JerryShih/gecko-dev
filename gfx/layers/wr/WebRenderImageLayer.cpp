@@ -45,6 +45,33 @@ WebRenderImageLayer::RenderLayer()
     MOZ_ASSERT(mImageId);
   }
 
+  //TODO(Jerry): init the imageClient
+
+//  if (!mImageClient ||
+//      !mImageClient->UpdateImage(mContainer, GetContentFlags())) {
+//    CompositableType type = GetImageClientType();
+//    if (type == CompositableType::UNKNOWN) {
+//      return;
+//    }
+//    TextureFlags flags = TextureFlags::DEFAULT;
+//    mImageClient = ImageClient::CreateImageClient(type,
+//                                                  ClientManager()->AsShadowForwarder(),
+//                                                  flags);
+//    if (!mImageClient) {
+//      return;
+//    }
+//    mImageClient->SetLayer(this);
+//    if (HasShadow() && !mContainer->IsAsync()) {
+//      mImageClient->Connect();
+//      ClientManager()->AsShadowForwarder()->Attach(mImageClient, this);
+//    }
+//    if (!mImageClient->UpdateImage(mContainer, GetContentFlags())) {
+//      return;
+//    }
+//  }
+//  ClientManager()->Hold(this);
+
+
   RefPtr<gfx::SourceSurface> surface = GetAsSourceSurface();
   if (!surface)
     return;

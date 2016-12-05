@@ -7,12 +7,15 @@
 #ifndef mozilla_layers_WebRenderBridgeParent_h
 #define mozilla_layers_WebRenderBridgeParent_h
 
+#include <map>
+
 #include "GLContextProvider.h"
 #include "mozilla/layers/CompositableTransactionParent.h"
 #include "mozilla/layers/CompositorVsyncSchedulerOwner.h"
 #include "mozilla/layers/PWebRenderBridgeParent.h"
 #include "mozilla/layers/WebRenderTypes.h"
 #include "nsTArrayForwardDeclare.h"
+#include "WebRenderExternalImage.h"
 
 namespace mozilla {
 
@@ -40,11 +43,13 @@ public:
                         widget::CompositorWidget* aWidget,
                         gl::GLContext* aGlContext,
                         wrwindowstate* aWrWindowState,
+                        WebRenderExternalImage* aExternalImage,
                         layers::Compositor* aCompositor);
   uint64_t PipelineId() { return mPipelineId; }
   gl::GLContext* GLContext() { return mGLContext.get(); }
   wrwindowstate* WindowState() { return mWRWindowState; }
   layers::Compositor* Compositor() { return mCompositor.get(); }
+  WebRenderExternalImage* ExternalImage() { return mExternalImage.get(); }
 
   mozilla::ipc::IPCResult RecvCreate(const uint32_t& aWidth,
                                      const uint32_t& aHeight) override;
@@ -111,7 +116,12 @@ private:
   uint64_t GetChildLayerObserverEpoch() const { return mChildLayerObserverEpoch; }
   bool ShouldParentObserveEpoch();
 
-private:
+  void Debug()
+  {
+    printf_stderr("bignose gecko wbp:%p, widget:%p, wr_window:%p, wr_stat:%p\n",
+        this, mWidget.get(), mWRWindowState, mWRState);
+  }
+
   CompositorBridgeParentBase* mCompositorBridge;
   uint64_t mPipelineId;
   RefPtr<widget::CompositorWidget> mWidget;
@@ -122,6 +132,9 @@ private:
   RefPtr<CompositorVsyncScheduler> mCompositorScheduler;
   std::vector<WRImageKey> mKeysToDelete;
   nsDataHashtable<nsUint64HashKey, uint64_t> mExternalImageIds;
+  RefPtr<WebRenderExternalImage> mExternalImage;
+  typedef std::map<WRImageKey,WRExternalImageId> UsedImage;
+  UsedImage mCurrentUsedImage;
 
   // These fields keep track of the latest layer observer epoch values in the child and the
   // parent. mChildLayerObserverEpoch is the latest epoch value received from the child.

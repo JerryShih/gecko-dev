@@ -206,6 +206,8 @@ CrossProcessCompositorBridgeParent::AllocPWebRenderBridgeParent(const uint64_t& 
     return nullptr;
   }
 
+  printf_stderr("bignose CrossProcessCompositorBridgeParent::AllocPWebRenderBridgeParent %p\n", this);
+
   MonitorAutoLock lock(*sIndirectLayerTreesLock);
   MOZ_ASSERT(sIndirectLayerTrees.find(aPipelineId) != sIndirectLayerTrees.end());
   MOZ_ASSERT(sIndirectLayerTrees[aPipelineId].mWRBridge == nullptr);
@@ -213,7 +215,7 @@ CrossProcessCompositorBridgeParent::AllocPWebRenderBridgeParent(const uint64_t& 
   WebRenderBridgeParent* root = sIndirectLayerTrees[cbp->RootLayerTreeId()].mWRBridge.get();
 
   WebRenderBridgeParent* parent = new WebRenderBridgeParent(
-    this, aPipelineId, nullptr, root->GLContext(), root->WindowState(), root->Compositor());
+    this, aPipelineId, nullptr, root->GLContext(), root->WindowState(), root->ExternalImage(), root->Compositor());
   parent->AddRef(); // IPDL reference
   sIndirectLayerTrees[aPipelineId].mCrossProcessParent = this;
   sIndirectLayerTrees[aPipelineId].mWRBridge = parent;

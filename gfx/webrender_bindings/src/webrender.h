@@ -24,6 +24,9 @@ struct WRImageKey {
   bool operator==(const WRImageKey& aRhs) const {
     return a == aRhs.a && b == aRhs.b;
   }
+  bool operator<(const WRImageKey& aRhs) const {
+    return (a < aRhs.a) || ((a == aRhs.a) && (b < aRhs.b));
+  }
 };
 
 struct WRRect {
@@ -52,6 +55,13 @@ struct WRImageMask
 typedef uint64_t WRImageIdType;
 struct WRExternalImageId {
   WRImageIdType id;
+
+  bool operator==(const WRExternalImageId& aRhs) const {
+    return id == aRhs.id;
+  }
+  bool operator<(const WRExternalImageId& aRhs) const {
+    return id < aRhs.id;
+  }
 };
 
 enum WRExternalImageType {

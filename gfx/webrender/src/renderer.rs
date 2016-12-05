@@ -844,6 +844,8 @@ impl Renderer {
             &SourceTexture::Invalid => TextureId::invalid(),
             &SourceTexture::WebGL(id) => TextureId::new(id),
             &SourceTexture::External(ref key) => {
+                println!("bignose ruest resolve_source_texture for external id:{}\n",key.0);
+
                 *self.external_images
                      .get(key)
                      .expect("BUG: External image should be resolved by now!")
@@ -1406,6 +1408,8 @@ impl Renderer {
     }
 
     fn update_deferred_resolves(&mut self, frame: &mut Frame) {
+        println!("bignose ruest update_deferred_resolves\n");
+
         // The first thing we do is run through any pending deferred
         // resolves, and use a callback to get the UV rect for this
         // custom item. Then we patch the resource_rects structure
@@ -1431,6 +1435,9 @@ impl Renderer {
                 let resource_rect = &mut frame.gpu_resource_rects[resource_rect_index];
                 resource_rect.uv0 = DevicePoint::new(image.u0, image.v0);
                 resource_rect.uv1 = DevicePoint::new(image.u1, image.v1);
+
+                println!("bignose rust ext_img, id:{} uv({},{},{},{}),",
+                    external_id.0,image.u0,image.v0,image.u1,image.v1);
             }
         }
     }
