@@ -22,7 +22,16 @@ public:
     MOZ_COUNT_CTOR(WebRenderPaintedLayer);
   }
 
-protected:
+  virtual void InvalidateRegion(const nsIntRegion& aRegion) override
+  {
+    mInvalidRegion.Add(aRegion);
+    mValidRegion.Sub(mValidRegion, mInvalidRegion.GetRegion());
+  }
+
+  Layer* GetLayer() override { return this; }
+  void RenderLayer() override;
+
+private:
   virtual ~WebRenderPaintedLayer()
   {
     MOZ_COUNT_DTOR(WebRenderPaintedLayer);
@@ -32,15 +41,10 @@ protected:
     return static_cast<WebRenderLayerManager*>(mManager);
   }
 
-public:
-  virtual void InvalidateRegion(const nsIntRegion& aRegion) override
-  {
-    mInvalidRegion.Add(aRegion);
-    mValidRegion.Sub(mValidRegion, mInvalidRegion.GetRegion());
-  }
-
-  Layer* GetLayer() override { return this; }
-  void RenderLayer() override;
+  uint64_t mExternalImageId;
+  // XXX remove it when external image id is used.
+  RefPtr<ImageContainer> mImageContainerForWR;
+  RefPtr<ImageClient> mImageClient;
 };
 
 } // namespace layers

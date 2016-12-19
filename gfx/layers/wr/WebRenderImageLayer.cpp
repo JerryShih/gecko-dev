@@ -76,6 +76,9 @@ WebRenderImageLayer::RenderLayer()
     mImageClient->Connect();
   }
 
+  gfx::IntSize size = surface->GetSize();
+  SurfaceFormat format = surface->GetFormat();
+
   // XXX Enable external image id for async image container.
 
   // XXX update async ImageContainer rendering path
@@ -85,14 +88,14 @@ WebRenderImageLayer::RenderLayer()
   //}
 
   if (!mExternalImageId) {
-    mExternalImageId = WRBridge()->AllocExternalImageIdForCompositable(mImageClient);
+    mExternalImageId = WRBridge()->AllocExternalImageIdForCompositable(mImageClient,
+                                                                       size,
+                                                                       format);
     MOZ_ASSERT(mExternalImageId);
   }
 
-  gfx::IntSize size = surface->GetSize();
-
   RefPtr<TextureClient> texture = mImageClient->GetTextureClientRecycler()
-    ->CreateOrRecycle(surface->GetFormat(),
+    ->CreateOrRecycle(format,
                       size,
                       BackendSelector::Content,
                       TextureFlags::DEFAULT);
@@ -123,8 +126,8 @@ WebRenderImageLayer::RenderLayer()
   WRScrollFrameStackingContextGenerator scrollFrames(this);
 
   //XXX
-  MOZ_RELEASE_ASSERT(surface->GetFormat() == SurfaceFormat::B8G8R8X8 ||
-                     surface->GetFormat() == SurfaceFormat::B8G8R8A8, "bad format");
+  MOZ_RELEASE_ASSERT(format == SurfaceFormat::B8G8R8X8 ||
+                     format == SurfaceFormat::B8G8R8A8, "bad format");
 
   Rect rect(0, 0, size.width, size.height);
 

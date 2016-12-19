@@ -81,8 +81,11 @@ WebRenderBridgeParent::WebRenderBridgeParent(CompositorBridgeParentBase* aCompos
     // i.e. the one created by the CompositorBridgeParent as opposed to the
     // CrossProcessCompositorBridgeParent
     MOZ_ASSERT(mWidget);
+    WRExternalImageHandler handler = mCompositor->AsWebRenderCompositorOGL()
+                                                ->GetExternalImageHandler();
     mWRWindowState = wr_init_window(mPipelineId,
-                                    gfxPrefs::WebRenderProfilerEnabled());
+                                    gfxPrefs::WebRenderProfilerEnabled(),
+                                    &handler);
   }
   if (mWidget) {
     mCompositorScheduler = new CompositorVsyncScheduler(this, mWidget);
@@ -279,25 +282,18 @@ WebRenderBridgeParent::ProcessWebrenderCommands(InfallibleTArray<WebRenderComman
       }
       case WebRenderCommand::TOpDPPushExternalImageId: {
         const OpDPPushExternalImageId& op = cmd.get_OpDPPushExternalImageId();
-        MOZ_ASSERT(mExternalImageIds.Get(op.externalImageId()).get());
+        MOZ_ASSERT(mExternalImageIds.Get(op.externalImageId(), nullptr));
+        std::pair<WRImageKey, RefPtr<CompositableHost>> imageData =
+            mExternalImageIds.Get(op.externalImageId());
 
-        RefPtr<CompositableHost> host = mExternalImageIds.Get(op.externalImageId());
-        if (!host) {
+        if (!imageData.second) {
           break;
         }
-        RefPtr<DataSourceSurface> dSurf = host->GetAsSurface();
-        if (!dSurf) {
-          break;
-        }
-        DataSourceSurface::MappedSurface map;
-        if (!dSurf->Map(gfx::DataSourceSurface::MapType::READ, &map)) {
-          break;
-        }
-        gfx::IntSize size = dSurf->GetSize();
-        WRImageKey key = wr_add_image(mWRWindowState, size.width, size.height, map.mStride, RGBA8, map.mData, size.height * map.mStride);
-        wr_dp_push_image(mWRState, op.bounds(), op.clip(), op.mask().ptrOr(nullptr), key);
-        keysToDelete.push_back(key);
-        dSurf->Unmap();
+        // Let the compositor holds this compositable for later composition.
+        mCompositor->AsWebRenderCompositorOGL()->AddExternalImageId(op.externalImageId(), imageData.second);
+        wr_dp_push_image(mWRState, op.bounds(), op.clip(), op.mask().ptrOr(nullptr), imageData.first);
+        printf_stderr("bignose gecko push external image id:%lld\n", op.externalImageId());
+
         break;
       }
       case WebRenderCommand::TOpDPPushIframe: {
@@ -378,7 +374,10 @@ WebRenderBridgeParent::RecvDPGetSnapshot(PTextureParent* aTexture)
 
 mozilla::ipc::IPCResult
 WebRenderBridgeParent::RecvAddExternalImageId(const uint64_t& aImageId,
-                                              const uint64_t& aAsyncContainerId)
+                                              const uint64_t& aAsyncContainerId,
+                                              const uint32_t& aWidth,
+                                              const uint32_t& aHeight,
+                                              const WRImageFormat& aFormat)
 {
   if (mDestroyed) {
     return IPC_OK();
@@ -398,14 +397,22 @@ WebRenderBridgeParent::RecvAddExternalImageId(const uint64_t& aImageId,
   }
 
   host->SetCompositor(mCompositor);
-  mCompositor->AsWebRenderCompositorOGL()->AddExternalImageId(aImageId, host);
-  mExternalImageIds.Put(aImageId, host);
+  WRImageKey key = wr_add_external_image_texture(mWRWindowState,
+                                                 aWidth,
+                                                 aHeight,
+                                                 aFormat,
+                                                 aImageId);
+  mExternalImageIds.Put(aImageId, std::make_pair(key, host));
+
   return IPC_OK();
 }
 
 mozilla::ipc::IPCResult
 WebRenderBridgeParent::RecvAddExternalImageIdForCompositable(const uint64_t& aImageId,
-                                                             PCompositableParent* aCompositable)
+                                                             PCompositableParent* aCompositable,
+                                                             const uint32_t& aWidth,
+                                                             const uint32_t& aHeight,
+                                                             const WRImageFormat& aFormat)
 {
   if (mDestroyed) {
     return IPC_OK();
@@ -419,8 +426,13 @@ WebRenderBridgeParent::RecvAddExternalImageIdForCompositable(const uint64_t& aIm
   }
 
   host->SetCompositor(mCompositor);
-  mCompositor->AsWebRenderCompositorOGL()->AddExternalImageId(aImageId, host);
-  mExternalImageIds.Put(aImageId, host);
+  WRImageKey key = wr_add_external_image_texture(mWRWindowState,
+                                                 aWidth,
+                                                 aHeight,
+                                                 aFormat,
+                                                 aImageId);
+  mExternalImageIds.Put(aImageId, std::make_pair(key, host));
+
   return IPC_OK();
 }
 
@@ -432,7 +444,7 @@ WebRenderBridgeParent::RecvRemoveExternalImageId(const uint64_t& aImageId)
   }
   MOZ_ASSERT(mExternalImageIds.Get(aImageId).get());
   mExternalImageIds.Remove(aImageId);
-  mCompositor->AsWebRenderCompositorOGL()->RemoveExternalImageId(aImageId);
+
   return IPC_OK();
 }
 
@@ -470,7 +482,6 @@ WebRenderBridgeParent::CompositeToTarget(gfx::DrawTarget* aTarget, const gfx::In
   TimeStamp start = TimeStamp::Now();
 
   mCompositor->SetCompositionTime(TimeStamp::Now());
-  mCompositor->AsWebRenderCompositorOGL()->UpdateExternalImages();
 
   MOZ_ASSERT(mWRState);
   mozilla::widget::WidgetRenderingContext widgetContext;
@@ -516,6 +527,7 @@ WebRenderBridgeParent::ScheduleComposition()
 void
 WebRenderBridgeParent::ClearResources()
 {
+  // TODO(Jerry): wait for WR's rendering task done before clean the external images.
   DeleteOldImages();
   for (auto iter = mExternalImageIds.Iter(); !iter.Done(); iter.Next()) {
     uint64_t externalImageId = iter.Key();

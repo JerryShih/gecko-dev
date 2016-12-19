@@ -434,13 +434,19 @@ ImageHost::Composite(LayerComposite* aLayer,
       mBias);
 }
 
-void
+TextureSource*
 ImageHost::BindTextureSource()
 {
   int imageIndex = ChooseImageIndex();
   if (imageIndex < 0) {
-    return;
+    return nullptr;
   }
+
+  mBias = UpdateBias(GetCompositor()->GetCompositionTime(),
+                     mImages[imageIndex].mTimeStamp,
+                     uint32_t(imageIndex + 1) < mImages.Length() ?
+                         mImages[imageIndex + 1].mTimeStamp :TimeStamp(),
+                     mBias);
 
   if (uint32_t(imageIndex) + 1 < mImages.Length()) {
     GetCompositor()->CompositeUntil(mImages[imageIndex + 1].mTimeStamp + TimeDuration::FromMilliseconds(BIAS_TIME_MS));
@@ -450,14 +456,28 @@ ImageHost::BindTextureSource()
   img->mTextureHost->SetCompositor(GetCompositor());
   SetCurrentTextureHost(img->mTextureHost);
 
-  // XXX Add TextureSource binding
+  // XXX: handle the lock failed in UnbindTextureSource()
+  if (!Lock()) {
+    MOZ_RELEASE_ASSERT(false, "ImageHost::BindTextureSource() locks failed");
+    return nullptr;
+  }
+  if (!mCurrentTextureHost->BindTextureSource(mCurrentTextureSource)) {
+    MOZ_RELEASE_ASSERT(false, "ImageHost::BindTextureSource() binds textureSource failed");
+    return nullptr;
+  }
 
-  mBias = UpdateBias(
-      GetCompositor()->GetCompositionTime(), mImages[imageIndex].mTimeStamp,
-      uint32_t(imageIndex + 1) < mImages.Length() ?
-          mImages[imageIndex + 1].mTimeStamp : TimeStamp(),
-      mBias);
+  printf_stderr("bignose imagehost::bindTextureSource:%p, texturehost type:%s texturesource type:%s\n",
+      this, mCurrentTextureHost->Name(), mCurrentTextureSource->Name());
+
+  return mCurrentTextureSource.get();
 }
+
+void
+ImageHost::UnbindTextureSource()
+{
+  Unlock();
+}
+
 
 void
 ImageHost::SetCompositor(Compositor* aCompositor)

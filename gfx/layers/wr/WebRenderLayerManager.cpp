@@ -338,6 +338,21 @@ WebRenderLayerManager::DiscardImages()
 }
 
 void
+WebRenderLayerManager::AddExternalImageIdForDiscard(uint64_t aId)
+{
+  mExternalImageIds.push_back(aId);
+}
+
+void
+WebRenderLayerManager::DiscardExternalImages()
+{
+  for (auto id : mExternalImageIds) {
+      WRBridge()->DeallocExternalImageId(id);
+  }
+  mExternalImageIds.clear();
+}
+
+void
 WebRenderLayerManager::SetLayerObserverEpoch(uint64_t aLayerObserverEpoch)
 {
   WRBridge()->SendSetLayerObserverEpoch(aLayerObserverEpoch);
