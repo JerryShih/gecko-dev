@@ -31,21 +31,6 @@ WebRenderImageLayer::~WebRenderImageLayer()
   }
 }
 
-already_AddRefed<gfx::SourceSurface>
-WebRenderImageLayer::GetAsSourceSurface()
-{
-  AutoLockImage autoLock(mContainer);
-  Image *image = autoLock.GetImage();
-  if (!image) {
-    return nullptr;
-  }
-  RefPtr<gfx::SourceSurface> surface = image->GetAsSourceSurface();
-  if (!surface || !surface->IsValid()) {
-    return nullptr;
-  }
-  return surface.forget();
-}
-
 void
 WebRenderImageLayer::ClearCachedResources()
 {
@@ -57,13 +42,10 @@ WebRenderImageLayer::ClearCachedResources()
 void
 WebRenderImageLayer::RenderLayer()
 {
-  RefPtr<gfx::SourceSurface> surface = GetAsSourceSurface();
-  if (!surface) {
-    return;
-  }
+  MOZ_ASSERT(mContainer);
 
-  if (!mImageContainerForWR) {
-    mImageContainerForWR = LayerManager::CreateImageContainer();
+  if (!mContainer->HasCurrentImage()) {
+    return;
   }
 
   if (!mImageClient) {
@@ -76,7 +58,18 @@ WebRenderImageLayer::RenderLayer()
     mImageClient->Connect();
   }
 
-  gfx::IntSize size = surface->GetSize();
+  // XXX: find another way to get the size and format.
+  AutoLockImage autoLock(mContainer);
+  Image *image = autoLock.GetImage();
+  MOZ_ASSERT(image);
+  if (!image) {
+    return;
+  }
+  RefPtr<gfx::SourceSurface> surface = image->GetAsSourceSurface();
+  if (!surface || !surface->IsValid()) {
+    return;
+  }
+  IntSize size = surface->GetSize();
   SurfaceFormat format = surface->GetFormat();
 
   // XXX Enable external image id for async image container.
@@ -99,33 +92,7 @@ WebRenderImageLayer::RenderLayer()
                                                                      format);
   MOZ_ASSERT(mExternalImageId);
 
-
-  RefPtr<TextureClient> texture = mImageClient->GetTextureClientRecycler()
-    ->CreateOrRecycle(format,
-                      size,
-                      BackendSelector::Content,
-                      TextureFlags::DEFAULT);
-  if (!texture) {
-    return;
-  }
-
-  MOZ_ASSERT(texture->CanExposeDrawTarget());
-  {
-    TextureClientAutoLock autoLock(texture, OpenMode::OPEN_WRITE_ONLY);
-    if (!autoLock.Succeeded()) {
-      return;
-    }
-    RefPtr<DrawTarget> drawTarget = texture->BorrowDrawTarget();
-    if (!drawTarget || !drawTarget->IsValid()) {
-      return;
-    }
-    drawTarget->CopySurface(surface, IntRect(IntPoint(), size), IntPoint());
-  }
-  RefPtr<TextureWrapperImage> image =
-    new TextureWrapperImage(texture, IntRect(IntPoint(0, 0), size));
-  mImageContainerForWR->SetCurrentImageInTransaction(image);
-
-  if (!mImageClient->UpdateImage(mImageContainerForWR, /* unused */0)) {
+  if (!mImageClient->UpdateImage(mContainer, /* unused */0)) {
     return;
   }
 

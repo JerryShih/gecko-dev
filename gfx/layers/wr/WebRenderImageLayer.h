@@ -19,8 +19,6 @@ class WebRenderImageLayer : public WebRenderLayer,
 public:
   explicit WebRenderImageLayer(WebRenderLayerManager* aLayerManager);
 
-  virtual already_AddRefed<gfx::SourceSurface> GetAsSourceSurface() override;
-
   virtual void ClearCachedResources() override;
 protected:
   virtual ~WebRenderImageLayer();
@@ -36,8 +34,6 @@ public:
 
 protected:
   uint64_t mExternalImageId;
-  // XXX remove it when external image id is used.
-  RefPtr<ImageContainer> mImageContainerForWR;
   RefPtr<ImageClient> mImageClient;
 };
 

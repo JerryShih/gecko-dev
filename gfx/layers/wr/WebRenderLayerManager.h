@@ -48,7 +48,6 @@ public:
   virtual Layer* GetLayer() = 0;
   virtual void RenderLayer() = 0;
 
-  virtual already_AddRefed<gfx::SourceSurface> GetAsSourceSurface() { return nullptr; }
   static inline WebRenderLayer*
   ToWebRenderLayer(Layer* aLayer)
   {
