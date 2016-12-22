@@ -9,6 +9,7 @@
 #include "CompositableHost.h"
 #include "GLContext.h"
 #include "GLContextProvider.h"
+#include "mozilla/DebugOnly.h"
 #include "mozilla/layers/Compositor.h"
 #include "mozilla/layers/CompositorBridgeParent.h"
 #include "mozilla/layers/CompositorThread.h"
@@ -160,8 +161,9 @@ WebRenderBridgeParent::RecvAddImage(const uint32_t& aWidth,
   MOZ_ASSERT(mWRWindowState);
   *aOutImageKey = wr_add_image(mWRWindowState, aWidth, aHeight, aStride, aFormat,
                                aBuffer.mData, aBuffer.mLength);
-  auto result = mImages.insert(*aOutImageKey);
-  MOZ_ASSERT(result.second);
+  typedef std::pair<std::set<WRImageKey>::iterator, bool> ImgSetResult;
+  DebugOnly<ImgSetResult> result = mImages.insert(*aOutImageKey);
+  MOZ_ASSERT(static_cast<ImgSetResult&>(result).second);
 
   return IPC_OK();
 }
