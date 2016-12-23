@@ -27,6 +27,10 @@ WRExternalImage LockExternalImage(void* aObj, WRExternalImageId aId)
   MOZ_ASSERT(aObj);
   WebRenderCompositorOGL* compositor = static_cast<WebRenderCompositorOGL*>(aObj);
   CompositableHost* compositable = compositor->mCompositableHosts.Get(aId.id).get();
+
+  printf_stderr("bignose gecko LockExternalImage, ext_id:%lld, compositable:%p\n",
+      aId.id, compositable);
+
   TextureSource* textureSource = compositable->BindTextureSource();
 
   // XXX: the textureSource should ready here.
@@ -76,6 +80,10 @@ void UnlockExternalImage(void* aObj, WRExternalImageId aId)
   MOZ_ASSERT(aObj);
   WebRenderCompositorOGL* compositor = static_cast<WebRenderCompositorOGL*>(aObj);
   CompositableHost* compositable = compositor->mCompositableHosts.Get(aId.id).get();
+
+  printf_stderr("bignose gecko UnlockExternalImage, ext_id:%lld, compositable:%p\n",
+      aId.id, compositable);
+
   compositable->UnbindTextureSource();
 }
 
@@ -195,6 +203,11 @@ void
 WebRenderCompositorOGL::RemoveExternalImageId(uint64_t aExternalImageId)
 {
   MOZ_ASSERT(mCompositableHosts.Get(aExternalImageId));
+
+  RefPtr<CompositableHost> compositable = mCompositableHosts.Get(aExternalImageId);
+  printf_stderr("bignose gecko RemoveExternalImageId, ext_id:%lld, compositable:%p\n",
+      aExternalImageId, compositable.get());
+
   mCompositableHosts.Remove(aExternalImageId);
 }
 

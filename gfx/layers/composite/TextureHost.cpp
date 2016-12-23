@@ -537,6 +537,7 @@ BufferTextureHost::DeallocateDeviceData()
 bool
 BufferTextureHost::Lock()
 {
+  printf_stderr("bignose BufferTextureHost::Lock(), obj:%p\n",this);
   //MOZ_ASSERT(!mLocked);
   MOZ_ASSERT(mLockCount >= 0);
   if (!MaybeUpload(!mNeedsFullUpdate ? &mMaybeUpdatedRegion : nullptr)) {

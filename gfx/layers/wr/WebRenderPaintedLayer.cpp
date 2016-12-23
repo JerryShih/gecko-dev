@@ -123,6 +123,9 @@ WebRenderPaintedLayer::RenderLayer()
 
   WRBridge()->AddWebRenderCommand(
       OpPushDLBuilder(toWrRect(relBounds), toWrRect(overflow), transform, FrameMetrics::NULL_SCROLL_ID));
+
+  printf_stderr("bignose gecko paintedlayer use ext_id:%lld\n",mExternalImageId);
+
   WRBridge()->AddWebRenderCommand(OpDPPushExternalImageId(toWrRect(rect), toWrRect(clip), Nothing(), mExternalImageId));
 
   if (gfxPrefs::LayersDump()) printf_stderr("PaintedLayer %p using %s as bounds/overflow, %s for transform\n", this, Stringify(relBounds).c_str(), Stringify(transform).c_str());
