@@ -434,7 +434,8 @@ BufferTextureHost::BufferTextureHost(const BufferDescriptor& aDesc,
 : TextureHost(aFlags)
 , mCompositor(nullptr)
 , mUpdateSerial(1)
-, mLocked(false)
+//, mLocked(false)
+, mLockCount(0)
 , mNeedsFullUpdate(false)
 {
   mDescriptor = aDesc;
@@ -466,7 +467,9 @@ BufferTextureHost::BufferTextureHost(const BufferDescriptor& aDesc,
 }
 
 BufferTextureHost::~BufferTextureHost()
-{}
+{
+  MOZ_ASSERT(mLockCount==0);
+}
 
 void
 BufferTextureHost::UpdatedInternal(const nsIntRegion* aRegion)
@@ -534,19 +537,27 @@ BufferTextureHost::DeallocateDeviceData()
 bool
 BufferTextureHost::Lock()
 {
-  MOZ_ASSERT(!mLocked);
+  //MOZ_ASSERT(!mLocked);
+  MOZ_ASSERT(mLockCount >= 0);
   if (!MaybeUpload(!mNeedsFullUpdate ? &mMaybeUpdatedRegion : nullptr)) {
       return false;
   }
-  mLocked = !!mFirstSource;
-  return mLocked;
+  //mLocked = !!mFirstSource;
+  //return mLocked;
+  if (mFirstSource) {
+    ++mLockCount;
+  }
+  return !!mLockCount;
 }
 
 void
 BufferTextureHost::Unlock()
 {
-  MOZ_ASSERT(mLocked);
-  mLocked = false;
+  //MOZ_ASSERT(mLocked);
+  //mLocked = false;
+
+  MOZ_ASSERT(mLockCount > 0);
+  --mLockCount;
 }
 
 void
@@ -726,7 +737,8 @@ BufferTextureHost::PrepareTextureSource(CompositableTextureSourceRef& aTexture)
 bool
 BufferTextureHost::BindTextureSource(CompositableTextureSourceRef& aTexture)
 {
-  MOZ_ASSERT(mLocked);
+  //MOZ_ASSERT(mLocked);
+  MOZ_ASSERT(mLockCount > 0);
   MOZ_ASSERT(mFirstSource);
   aTexture = mFirstSource;
   return !!aTexture;

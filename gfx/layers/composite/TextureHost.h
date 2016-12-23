@@ -704,7 +704,8 @@ protected:
   gfx::IntSize mSize;
   gfx::SurfaceFormat mFormat;
   uint32_t mUpdateSerial;
-  bool mLocked;
+  //bool mLocked;
+  int32_t mLockCount;
   bool mNeedsFullUpdate;
   bool mHasIntermediateBuffer;
 
