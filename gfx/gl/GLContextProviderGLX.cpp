@@ -1239,14 +1239,39 @@ GLContextGLX::FindFBConfigForWindow(Display* display, int screen, Window window,
             LOCAL_GLX_DOUBLEBUFFER, False,
             0
         };
-        cfgs = sGLXLibrary.xChooseFBConfig(display,
-                                           screen,
-                                           attribs,
-                                           &numConfigs);
+        const int webrenderAttribs[] = {
+            LOCAL_GLX_DOUBLEBUFFER, False,
+            LOCAL_GLX_DEPTH_SIZE, 24,
+            0
+        };
+
+        if (gfxPrefs::WebRenderEnabled()) {
+          cfgs = sGLXLibrary.xChooseFBConfig(display,
+                                             screen,
+                                             webrenderAttribs,
+                                             &numConfigs);
+        } else {
+          cfgs = sGLXLibrary.xChooseFBConfig(display,
+                                             screen,
+                                             attribs,
+                                             &numConfigs);
+        }
     } else {
-        cfgs = sGLXLibrary.xGetFBConfigs(display,
-                                         screen,
-                                         &numConfigs);
+        const int webrenderAttribs[] = {
+            LOCAL_GLX_DEPTH_SIZE, 24,
+            0
+        };
+
+        if (gfxPrefs::WebRenderEnabled()) {
+          cfgs = sGLXLibrary.xChooseFBConfig(display,
+                                             screen,
+                                             webrenderAttribs,
+                                             &numConfigs);
+        } else {
+          cfgs = sGLXLibrary.xGetFBConfigs(display,
+                                           screen,
+                                           &numConfigs);
+        }
     }
 
     if (!cfgs) {
