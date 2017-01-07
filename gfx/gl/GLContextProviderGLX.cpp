@@ -1255,6 +1255,75 @@ GLContextGLX::FindFBConfigForWindow(Display* display, int screen, Window window,
     }
     NS_ASSERTION(numConfigs > 0, "No FBConfigs found!");
 
+    // debug glx configuration
+#define GLX_FB_DEBUG
+#ifdef GLX_FB_DEBUG
+    char debugMessage[256];
+    snprintf(debugMessage, 255, "[GLX] glx FBConfigs num:%d", numConfigs);
+    NS_WARNING(debugMessage);
+
+    int queryResult;
+    for (int i = 0; i < numConfigs; i++) {
+      snprintf(debugMessage, 255, "[GLX] glx FBConfigs [%d]:", i);
+      NS_WARNING(debugMessage);
+
+      queryResult = -1;
+      sGLXLibrary.xGetFBConfigAttrib(display, cfgs[i], LOCAL_GLX_VISUAL_ID, &queryResult);
+      snprintf(debugMessage, 255, "\tGLX_VISUAL_ID:%d", queryResult);
+      NS_WARNING(debugMessage);
+
+      queryResult = -1;
+      sGLXLibrary.xGetFBConfigAttrib(display, cfgs[i], LOCAL_GLX_FBCONFIG_ID, &queryResult);
+      snprintf(debugMessage, 255, "\tGLX_FBCONFIG_ID:%d", queryResult);
+      NS_WARNING(debugMessage);
+
+      queryResult = -1;
+      sGLXLibrary.xGetFBConfigAttrib(display, cfgs[i], LOCAL_GLX_BUFFER_SIZE, &queryResult);
+      snprintf(debugMessage, 255, "\tGLX_BUFFER_SIZE:%d", queryResult);
+      NS_WARNING(debugMessage);
+
+      queryResult = -1;
+      sGLXLibrary.xGetFBConfigAttrib(display, cfgs[i], LOCAL_GLX_LEVEL, &queryResult);
+      snprintf(debugMessage, 255, "\tGLX_LEVEL:%d", queryResult);
+      NS_WARNING(debugMessage);
+
+      queryResult = -1;
+      sGLXLibrary.xGetFBConfigAttrib(display, cfgs[i], LOCAL_GLX_DOUBLEBUFFER, &queryResult);
+      snprintf(debugMessage, 255, "\tGLX_DOUBLEBUFFER:%d", queryResult);
+      NS_WARNING(debugMessage);
+
+      queryResult = -1;
+      sGLXLibrary.xGetFBConfigAttrib(display, cfgs[i], LOCAL_GLX_DEPTH_SIZE, &queryResult);
+      snprintf(debugMessage, 255, "\tGLX_DEPTH_SIZE:%d", queryResult);
+      NS_WARNING(debugMessage);
+
+      queryResult = -1;
+      sGLXLibrary.xGetFBConfigAttrib(display, cfgs[i], LOCAL_GLX_STENCIL_SIZE, &queryResult);
+      snprintf(debugMessage, 255, "\tGGLX_STENCIL_SIZE:%d", queryResult);
+      NS_WARNING(debugMessage);
+
+      queryResult = -1;
+      sGLXLibrary.xGetFBConfigAttrib(display, cfgs[i], LOCAL_GLX_RENDER_TYPE, &queryResult);
+      snprintf(debugMessage, 255, "\tGLX_RENDER_TYPE:%d", queryResult);
+      NS_WARNING(debugMessage);
+
+      queryResult = -1;
+      sGLXLibrary.xGetFBConfigAttrib(display, cfgs[i], LOCAL_GLX_DRAWABLE_TYPE, &queryResult);
+      snprintf(debugMessage, 255, "\tGLX_DRAWABLE_TYPE:%d", queryResult);
+      NS_WARNING(debugMessage);
+
+      queryResult = -1;
+      sGLXLibrary.xGetFBConfigAttrib(display, cfgs[i], LOCAL_GLX_X_RENDERABLE, &queryResult);
+      snprintf(debugMessage, 255, "\tGLX_X_RENDERABLE:%d", queryResult);
+      NS_WARNING(debugMessage);
+
+      queryResult = -1;
+      sGLXLibrary.xGetFBConfigAttrib(display, cfgs[i], LOCAL_GLX_X_VISUAL_TYPE, &queryResult);
+      snprintf(debugMessage, 255, "\tGLX_X_VISUAL_TYPE:%d", queryResult);
+      NS_WARNING(debugMessage);
+    }
+#endif
+
     // XXX the visual ID is almost certainly the LOCAL_GLX_FBCONFIG_ID, so
     // we could probably do this first and replace the glXGetFBConfigs
     // with glXChooseConfigs.  Docs are sparklingly clear as always.
