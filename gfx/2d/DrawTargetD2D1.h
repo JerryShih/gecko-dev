@@ -114,6 +114,11 @@ public:
   
   virtual already_AddRefed<DrawTarget>
     CreateSimilarDrawTarget(const IntSize &aSize, SurfaceFormat aFormat) const override;
+  virtual already_AddRefed<DrawTarget> CreateSimilarDrawTargetWithSurfaceData(const IntSize &aSize,
+                                                                              SurfaceFormat aFormat,
+                                                                              SourceSurface *aSurface,
+                                                                              const IntRect &aSourceRect,
+                                                                              const IntPoint &aDestination) const override;
 
   virtual already_AddRefed<PathBuilder> CreatePathBuilder(FillRule aFillRule = FillRule::FILL_WINDING) const override;
 
@@ -134,7 +139,7 @@ public:
   virtual void GetGlyphRasterizationMetrics(ScaledFont *aScaledFont, const uint16_t* aGlyphIndices,
                                             uint32_t aNumGlyphs, GlyphMetrics* aGlyphMetrics) override;
 
-  bool Init(const IntSize &aSize, SurfaceFormat aFormat);
+  bool Init(const IntSize &aSize, SurfaceFormat aFormat, bool aInitializeContent = true);
   bool Init(ID3D11Texture2D* aTexture, SurfaceFormat aFormat);
   uint32_t GetByteSize() const;
 

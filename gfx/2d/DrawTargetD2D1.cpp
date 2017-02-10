@@ -917,6 +917,31 @@ DrawTargetD2D1::CreateSimilarDrawTarget(const IntSize &aSize, SurfaceFormat aFor
   return dt.forget();
 }
 
+already_AddRefed<DrawTarget>
+DrawTargetD2D1::CreateSimilarDrawTargetWithSurfaceData(const IntSize &aSize,
+                                                       SurfaceFormat aFormat,
+                                                       SourceSurface *aSurface,
+                                                       const IntRect &aSourceRect,
+                                                       const IntPoint &aDestination) const
+{
+  MOZ_ASSERT(aSurface);
+
+  RefPtr<DrawTargetD2D1> newDrawTarget = new DrawTargetD2D1();
+
+  IntRect drawTargetRect = IntRect(IntPoint(0, 0), aSize);
+  IntRect destRect = IntRect(aDestination, aSurface->GetSize());
+  // If destRect covers all drawTargetRect area, we could skip the initialization
+  // of the drawTarge.
+  bool init = destRect.Contains(drawTargetRect);
+
+  if (!newDrawTarget->Init(aSize, aFormat, init)) {
+    return nullptr;
+  }
+  newDrawTarget->CopySurface(aSurface, aSourceRect, aDestination);
+
+  return newDrawTarget.forget();
+}
+
 already_AddRefed<PathBuilder>
 DrawTargetD2D1::CreatePathBuilder(FillRule aFillRule) const
 {
@@ -1063,7 +1088,7 @@ DrawTargetD2D1::Init(ID3D11Texture2D* aTexture, SurfaceFormat aFormat)
 }
 
 bool
-DrawTargetD2D1::Init(const IntSize &aSize, SurfaceFormat aFormat)
+DrawTargetD2D1::Init(const IntSize &aSize, SurfaceFormat aFormat, bool aInitializeContent /*= true*/)
 {
   HRESULT hr;
 
@@ -1113,7 +1138,9 @@ DrawTargetD2D1::Init(const IntSize &aSize, SurfaceFormat aFormat)
 
   CurrentLayer().mIsOpaque = aFormat == SurfaceFormat::B8G8R8X8;
 
-  mDC->Clear();
+  if (aInitializeContent) {
+    mDC->Clear();
+  }
 
   mFormat = aFormat;
   mSize = aSize;
