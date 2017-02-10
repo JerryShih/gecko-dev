@@ -1650,6 +1650,50 @@ DrawTargetSkia::CreateSimilarDrawTarget(const IntSize &aSize, SurfaceFormat aFor
   return target.forget();
 }
 
+already_AddRefed<DrawTarget>
+DrawTargetSkia::CreateSimilarDrawTargetWithSurfaceData(const IntSize &aSize,
+                                                       SurfaceFormat aFormat,
+                                                       SourceSurface *aSurface,
+                                                       const IntRect &aSourceRect,
+                                                       const IntPoint &aDestination) const
+{
+  RefPtr<DrawTargetSkia> target = new DrawTargetSkia();
+  IntRect drawTargetRect = IntRect(IntPoint(0, 0), aSize);
+  IntRect destRect = IntRect(aDestination, aSurface->GetSize());
+  // If destRect covers all drawTargetRect area, we could skip the initialization
+  // of the drawTarge.
+  bool init = !destRect.Contains(drawTargetRect);
+  //printf_stderr("bignose need init:%d\n", (int)init);
+
+#ifdef USE_SKIA_GPU
+  if (UsingSkiaGPU()) {
+    // Try to create a GPU draw target first if we're currently using the GPU.
+    // Mark the DT as cached so that shadow DTs, extracted subrects, and similar can be reused.
+    if (target->InitWithGrContext(mGrContext.get(), aSize, aFormat, init)) {
+      return target.forget();
+    }
+    // Otherwise, just fall back to a software draw target.
+  }
+#endif
+
+#ifdef DEBUG
+  if (!IsBackedByPixels(mCanvas.get())) {
+    // If our canvas is backed by vector storage such as PDF then we want to
+    // create a new DrawTarget with similar storage to avoid losing fidelity
+    // (fidelity will be lost if the returned DT is Snapshot()'ed and drawn
+    // back onto us since a raster will be drawn instead of vector commands).
+    NS_WARNING("Not backed by pixels - we need to handle PDF backed SkCanvas");
+  }
+#endif
+
+  if (!target->Init(aSize, aFormat, init)) {
+    return nullptr;
+  }
+  target->CopySurface(aSurface, aSourceRect, aDestination);
+
+  return target.forget();
+}
+
 bool
 DrawTargetSkia::UsingSkiaGPU() const
 {
@@ -1807,7 +1851,7 @@ DrawTargetSkia::CopySurface(SourceSurface *aSurface,
 }
 
 bool
-DrawTargetSkia::Init(const IntSize &aSize, SurfaceFormat aFormat)
+DrawTargetSkia::Init(const IntSize &aSize, SurfaceFormat aFormat, bool aInitializeContent /*= true*/)
 {
   if (size_t(std::max(aSize.width, aSize.height)) > GetMaxSurfaceSize()) {
     return false;
@@ -1826,9 +1870,12 @@ DrawTargetSkia::Init(const IntSize &aSize, SurfaceFormat aFormat)
   mCanvas = sk_ref_sp(mSurface->getCanvas());
   SetPermitSubpixelAA(IsOpaque(mFormat));
 
-  if (info.isOpaque()) {
-    mCanvas->clear(SK_ColorBLACK);
+  if (aInitializeContent) {
+    if (info.isOpaque()) {
+      mCanvas->clear(SK_ColorBLACK);
+    }
   }
+
   return true;
 }
 
@@ -1879,7 +1926,8 @@ bool
 DrawTargetSkia::InitWithGrContext(GrContext* aGrContext,
                                   const IntSize &aSize,
                                   SurfaceFormat aFormat,
-                                  bool aCached)
+                                  bool aCached,
+                                  bool aInitializeContent /*= true*/)
 {
   MOZ_ASSERT(aGrContext, "null GrContext");
 
@@ -1888,11 +1936,14 @@ DrawTargetSkia::InitWithGrContext(GrContext* aGrContext,
   }
 
   // Create a GPU rendertarget/texture using the supplied GrContext.
-  // NewRenderTarget also implicitly clears the underlying texture on creation.
   mSurface =
     SkSurface::MakeRenderTarget(aGrContext,
                                 SkBudgeted(aCached),
-                                MakeSkiaImageInfo(aSize, aFormat));
+                                MakeSkiaImageInfo(aSize, aFormat),
+                                0,
+                                kBottomLeft_GrSurfaceOrigin,
+                                nullptr,
+                                aInitializeContent);
   if (!mSurface) {
     return false;
   }

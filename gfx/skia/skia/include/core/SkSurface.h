@@ -140,7 +140,8 @@ public:
      */
     static sk_sp<SkSurface> MakeRenderTarget(GrContext*, SkBudgeted, const SkImageInfo&,
                                              int sampleCount, GrSurfaceOrigin,
-                                             const SkSurfaceProps*);
+                                             const SkSurfaceProps*,
+                                             bool initContent = true);
 
     static sk_sp<SkSurface> MakeRenderTarget(GrContext* context, SkBudgeted budgeted,
                                              const SkImageInfo& info, int sampleCount,
@@ -149,7 +150,8 @@ public:
                                 kBottomLeft_GrSurfaceOrigin, props);
     }
 
-    static sk_sp<SkSurface> MakeRenderTarget(GrContext* gr, SkBudgeted b, const SkImageInfo& info) {
+    static sk_sp<SkSurface> MakeRenderTarget(GrContext* gr, SkBudgeted b,
+                                             const SkImageInfo& info) {
         return MakeRenderTarget(gr, b, info, 0, kBottomLeft_GrSurfaceOrigin, nullptr);
     }
 

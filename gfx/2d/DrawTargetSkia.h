@@ -121,6 +121,11 @@ public:
     CreateSourceSurfaceFromNativeSurface(const NativeSurface &aSurface) const override;
   virtual already_AddRefed<DrawTarget>
     CreateSimilarDrawTarget(const IntSize &aSize, SurfaceFormat aFormat) const override;
+  virtual already_AddRefed<DrawTarget> CreateSimilarDrawTargetWithSurfaceData(const IntSize &aSize,
+                                                                              SurfaceFormat aFormat,
+                                                                              SourceSurface *aSurface,
+                                                                              const IntRect &aSourceRect,
+                                                                              const IntPoint &aDestination) const override;
   virtual already_AddRefed<PathBuilder> CreatePathBuilder(FillRule aFillRule = FillRule::FILL_WINDING) const override;
   virtual already_AddRefed<GradientStops> CreateGradientStops(GradientStop *aStops, uint32_t aNumStops, ExtendMode aExtendMode = ExtendMode::CLAMP) const override;
   virtual already_AddRefed<FilterNode> CreateFilter(FilterType aType) override;
@@ -128,7 +133,7 @@ public:
   virtual void *GetNativeSurface(NativeSurfaceType aType) override;
   virtual void DetachAllSnapshots() override { MarkChanged(); }
 
-  bool Init(const IntSize &aSize, SurfaceFormat aFormat);
+  bool Init(const IntSize &aSize, SurfaceFormat aFormat, bool aInitializeContent = true);
   bool Init(unsigned char* aData, const IntSize &aSize, int32_t aStride, SurfaceFormat aFormat, bool aUninitialized = false);
   bool Init(SkCanvas* aCanvas);
 
@@ -136,7 +141,8 @@ public:
   bool InitWithGrContext(GrContext* aGrContext,
                          const IntSize &aSize,
                          SurfaceFormat aFormat,
-                         bool aCached);
+                         bool aCached,
+                         bool aInitializeContent = true);
   virtual bool
     InitWithGrContext(GrContext* aGrContext,
                       const IntSize &aSize,
