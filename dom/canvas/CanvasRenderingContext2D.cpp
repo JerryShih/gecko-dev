@@ -4672,7 +4672,11 @@ ExtractSubrect(SourceSurface* aSurface, gfx::Rect* aSourceRect, DrawTarget* aTar
   }
 
   RefPtr<DrawTarget> subrectDT =
-    aTargetDT->CreateSimilarDrawTarget(roundedOutSourceRectInt.Size(), SurfaceFormat::B8G8R8A8);
+      aTargetDT->CreateSimilarDrawTargetWithSurfaceData(roundedOutSourceRectInt.Size(),
+                                                        SurfaceFormat::B8G8R8A8,
+                                                        aSurface,
+                                                        roundedOutSourceRectInt,
+                                                        IntPoint());
 
   if (!subrectDT) {
     RefPtr<SourceSurface> surface(aSurface);
@@ -4681,7 +4685,6 @@ ExtractSubrect(SourceSurface* aSurface, gfx::Rect* aSourceRect, DrawTarget* aTar
 
   *aSourceRect -= roundedOutSourceRect.TopLeft();
 
-  subrectDT->CopySurface(aSurface, roundedOutSourceRectInt, IntPoint());
   return subrectDT->Snapshot();
 }
 
