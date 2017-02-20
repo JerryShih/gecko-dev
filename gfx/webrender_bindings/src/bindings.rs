@@ -193,7 +193,6 @@ pub extern fn wr_api_generate_frame(api: &mut RenderApi) {
 pub extern fn wr_window_new(window_id: WrWindowId,
                             gl_context: *mut c_void,
                             enable_profiler: bool,
-                            external_image_handler: *mut WrExternalImageHandler,
                             out_api: &mut *mut RenderApi,
                             out_renderer: &mut *mut Renderer) -> bool {
     assert!(unsafe { is_in_render_thread() });
@@ -219,7 +218,7 @@ pub extern fn wr_window_new(window_id: WrWindowId,
         .. Default::default()
     };
 
-    let (mut renderer, sender) = match Renderer::new(opts) {
+    let (renderer, sender) = match Renderer::new(opts) {
         Ok((renderer, sender)) => { (renderer, sender) }
         Err(e) => {
             println!(" Failed to create a Renderer: {:?}", e);
@@ -228,18 +227,6 @@ pub extern fn wr_window_new(window_id: WrWindowId,
     };
 
     renderer.set_render_notifier(Box::new(CppNotifier { window_id: window_id }));
-
-    if !external_image_handler.is_null() {
-        renderer.set_external_image_handler(Box::new(
-            unsafe {
-                WrExternalImageHandler {
-                    external_image_obj: (*external_image_handler).external_image_obj,
-                    lock_func: (*external_image_handler).lock_func,
-                    unlock_func: (*external_image_handler).unlock_func,
-                    release_func: (*external_image_handler).release_func,
-                }
-            }));
-    }
 
     *out_api = Box::into_raw(Box::new(sender.create_api()));
     *out_renderer = Box::into_raw(Box::new(renderer));
@@ -293,6 +280,23 @@ pub extern fn wr_dp_begin(state: &mut WrState, width: u32, height: u32) {
 pub extern fn wr_dp_end(state: &mut WrState) {
     assert!( unsafe { is_in_compositor_thread() });
     state.frame_builder.dl_builder.pop_stacking_context();
+}
+
+#[no_mangle]
+pub extern fn wr_renderer_set_external_image_handler(renderer: &mut Renderer,
+                                                     external_image_handler: *mut WrExternalImageHandler) {
+    if !external_image_handler.is_null() {
+        println!("bignose wr_renderer_set_external_image_handler:{:?}", external_image_handler);
+        renderer.set_external_image_handler(Box::new(
+            unsafe {
+                WrExternalImageHandler {
+                    external_image_obj: (*external_image_handler).external_image_obj,
+                    lock_func: (*external_image_handler).lock_func,
+                    unlock_func: (*external_image_handler).unlock_func,
+                    release_func: (*external_image_handler).release_func,
+                }
+            }));
+    }
 }
 
 #[no_mangle]
