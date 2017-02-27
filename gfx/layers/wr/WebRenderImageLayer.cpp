@@ -106,7 +106,7 @@ WebRenderImageLayer::RenderLayer()
   if (!mExternalImageId) {
     if (GetImageClientType() == CompositableType::IMAGE_BRIDGE) {
       MOZ_ASSERT(!mImageClient);
-      mExternalImageId = WrBridge()->AllocExternalImageId(mContainer->GetAsyncContainerHandle());
+      mExternalImageId = WrBridge()->AllocExternalImageIdForAsyncImageContainer(mContainer.get());
     } else {
       // Handle CompositableType::IMAGE case
       MOZ_ASSERT(mImageClient);
@@ -177,6 +177,8 @@ WebRenderImageLayer::RenderLayer()
   WrImageKey key;
   key.mNamespace = WrBridge()->GetNamespace();
   key.mHandle = WrBridge()->GetNextResourceId();
+  //TODO: (Jerry)
+  //Merge OpAddExternalImage and AllocExternalImageIdForAsyncImageContainer
   WrBridge()->AddWebRenderCommand(OpAddExternalImage(LayerIntRegion(), mExternalImageId, key));
   WrBridge()->AddWebRenderCommand(OpDPPushImage(wr::ToWrRect(rect), wr::ToWrRect(clip), Nothing(), filter, key));
   WrBridge()->AddWebRenderCommand(OpDPPopStackingContext());

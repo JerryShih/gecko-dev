@@ -4,26 +4,67 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
 #include "RendererOGL.h"
+#include "CompositableHost.h"
 #include "GLContext.h"
 #include "GLContextProvider.h"
 #include "mozilla/gfx/Logging.h"
 #include "mozilla/layers/CompositorBridgeParent.h"
 #include "mozilla/layers/CompositorThread.h"
 #include "mozilla/widget/CompositorWidget.h"
+#include "mozilla/layers/WebRenderCompositableHolder.h"
 
 namespace mozilla {
 namespace wr {
 
-WrExternalImage LockExternalImage(void* aObj, WrExternalImageId aId)
+WrExternalImage LockExternalImage(void* aRendererOGL, WrExternalImageId aId)
 {
-  return WrExternalImage { WrExternalImageIdType::TEXTURE_HANDLE, 0.0f, 0.0f, 0.0f, 0.0f, 0 };
+  MOZ_ASSERT(RenderThread::IsInRenderThread());
+  MOZ_ASSERT(aRendererOGL);
+  RendererOGL* renderer = static_cast<RendererOGL*>(aRendererOGL);
+  layers::CompositableHost* compositable = renderer->mCompositable[aId.id].get();
+  MOZ_ASSERT(compositable);
+  // XXX: only suppurt buffer texture now.
+  // TODO: handle gl texture here.
+  layers::TextureHost* textureHost = compositable->GetAsTextureHost();
+  layers::BufferTextureHost* bufferTextureHost = textureHost->AsBufferTextureHost();
+  MOZ_ASSERT(bufferTextureHost);
+
+  if (bufferTextureHost) {
+#if 0
+    // dump external image to file
+    static int count = 0;
+    count;
+
+    std::stringstream sstream;
+    sstream << "/tmp/img/" << count << '_' <<
+        bufferTextureHost->GetSize().width << '_' << bufferTextureHost->GetSize().height << ".raw";
+
+    FILE* file = fopen(sstream.str().c_str(), "wb");
+    if (file) {
+      printf_stderr("gecko write image(%d,%d) to file", bufferTextureHost->GetSize().width, bufferTextureHost->GetSize().height);
+      fwrite(bufferTextureHost->GetBuffer(), bufferTextureHost->GetBufferSize(), 1, file);
+      fclose(file);
+    }
+#endif
+
+    return WrExternalImage {
+      WrExternalImageIdType::MEM_OR_SHMEM,
+      0.0f, 0.0f,
+      static_cast<float>(bufferTextureHost->GetSize().width), static_cast<float>(bufferTextureHost->GetSize().height),
+      0,
+      bufferTextureHost->GetBuffer(),
+      bufferTextureHost->GetBufferSize()
+    };
+  }
+
+  return WrExternalImage { WrExternalImageIdType::TEXTURE_HANDLE, 0.0f, 0.0f, 0.0f, 0.0f, 0, nullptr, 0 };
 }
 
-void UnlockExternalImage(void* aObj, WrExternalImageId aId)
+void UnlockExternalImage(void* aRendererOGL, WrExternalImageId aId)
 {
 }
 
-void ReleaseExternalImage(void* aObj, WrExternalImageId aId)
+void ReleaseExternalImage(void* aRendererOGL, WrExternalImageId aId)
 {
 }
 
@@ -51,12 +92,15 @@ RendererOGL::RendererOGL(RefPtr<RenderThread>&& aThread,
 RendererOGL::~RendererOGL()
 {
   MOZ_COUNT_DTOR(RendererOGL);
+  mCompositable.clear();
   wr_renderer_delete(mWrRenderer);
 }
 
 WrExternalImageHandler
 RendererOGL::GetExternalImageHandler()
 {
+  MOZ_ASSERT(RenderThread::IsInRenderThread());
+
   return WrExternalImageHandler {
     this,
     LockExternalImage,
@@ -66,14 +110,37 @@ RendererOGL::GetExternalImageHandler()
 }
 
 void
+RendererOGL::AddExternalImageId(uint64_t aExternalImageId,
+                                layers::CompositableHost* aCompositable)
+{
+  MOZ_ASSERT(RenderThread::IsInRenderThread());
+  MOZ_ASSERT(mCompositable.count(aExternalImageId) == 0);
+
+  mCompositable[aExternalImageId] = aCompositable;
+}
+
+void
+RendererOGL::RemoveExternalImageId(uint64_t aExternalImageId)
+{
+  MOZ_ASSERT(RenderThread::IsInRenderThread());
+  MOZ_ASSERT(mCompositable.count(aExternalImageId));
+
+  mCompositable.erase(aExternalImageId);
+}
+
+void
 RendererOGL::Update()
 {
+  MOZ_ASSERT(RenderThread::IsInRenderThread());
+
   wr_renderer_update(mWrRenderer);
 }
 
 bool
 RendererOGL::Render()
 {
+  MOZ_ASSERT(RenderThread::IsInRenderThread());
+
   if (!mGL->MakeCurrent()) {
     gfxCriticalNote << "Failed to make render context current, can't draw.";
     return false;
@@ -111,12 +178,16 @@ RendererOGL::Render()
 void
 RendererOGL::SetProfilerEnabled(bool aEnabled)
 {
+  MOZ_ASSERT(RenderThread::IsInRenderThread());
+
   wr_renderer_set_profiler_enabled(mWrRenderer, aEnabled);
 }
 
 WrRenderedEpochs*
 RendererOGL::FlushRenderedEpochs()
 {
+  MOZ_ASSERT(RenderThread::IsInRenderThread());
+
   return wr_renderer_flush_rendered_epochs(mWrRenderer);
 }
 

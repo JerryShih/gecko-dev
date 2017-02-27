@@ -7,6 +7,7 @@
 #ifndef MOZILLA_LAYERS_RENDEREROGL_H
 #define MOZILLA_LAYERS_RENDEREROGL_H
 
+#include <map>
 #include "mozilla/webrender/RenderThread.h"
 #include "mozilla/webrender/WebRenderTypes.h"
 #include "mozilla/webrender/webrender_ffi.h"
@@ -22,7 +23,9 @@ class GLContext;
 }
 
 namespace layers {
+class CompositableHost;
 class CompositorBridgeParentBase;
+class WebRenderCompositableHolder;
 }
 
 namespace widget {
@@ -38,12 +41,20 @@ namespace wr {
 /// on the render thread instead of the compositor thread.
 class RendererOGL
 {
-  friend WrExternalImage LockExternalImage(void* aObj, WrExternalImageId aId);
-  friend void UnlockExternalImage(void* aObj, WrExternalImageId aId);
-  friend void ReleaseExternalImage(void* aObj, WrExternalImageId aId);
+  friend WrExternalImage LockExternalImage(void* aRendererOGL, WrExternalImageId aId);
+  friend void UnlockExternalImage(void* aRendererOGL, WrExternalImageId aId);
+  friend void ReleaseExternalImage(void* aRendererOGL, WrExternalImageId aId);
 
 public:
+  /// This can be called on the render thread only.
   WrExternalImageHandler GetExternalImageHandler();
+
+  /// This can be called on the render thread only.
+  void AddExternalImageId(uint64_t aExternalImageId,
+                          layers::CompositableHost* aCompositable);
+
+  /// This can be called on the render thread only.
+  void RemoveExternalImageId(uint64_t aExternalImageId);
 
   /// This can be called on the render thread only.
   void Update();
@@ -80,6 +91,7 @@ protected:
   WrRenderer* mWrRenderer;
   layers::CompositorBridgeParentBase* mBridge;
   wr::WindowId mWindowId;
+  std::map<uint64_t, RefPtr<layers::CompositableHost>> mCompositable;
 };
 
 } // namespace wr

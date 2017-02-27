@@ -7,12 +7,15 @@
 #ifndef mozilla_layers_WebRenderBridgeParent_h
 #define mozilla_layers_WebRenderBridgeParent_h
 
+#include <map>
+
 #include "CompositableHost.h"           // for CompositableHost, ImageCompositeNotificationInfo
 #include "GLContextProvider.h"
 #include "mozilla/layers/CompositableTransactionParent.h"
 #include "mozilla/layers/CompositorVsyncSchedulerOwner.h"
 #include "mozilla/layers/PWebRenderBridgeParent.h"
 #include "mozilla/Maybe.h"
+#include "mozilla/tuple.h"
 #include "mozilla/webrender/WebRenderTypes.h"
 #include "mozilla/webrender/WebRenderAPI.h"
 #include "nsTArrayForwardDeclare.h"
@@ -36,7 +39,6 @@ namespace layers {
 class Compositor;
 class CompositorBridgeParentBase;
 class CompositorVsyncScheduler;
-class WebRenderCompositableHolder;
 
 class WebRenderBridgeParent final : public PWebRenderBridgeParent
                                   , public CompositorVsyncSchedulerOwner
@@ -47,12 +49,10 @@ public:
                         const wr::PipelineId& aPipelineId,
                         widget::CompositorWidget* aWidget,
                         CompositorVsyncScheduler* aScheduler,
-                        RefPtr<wr::WebRenderAPI>&& aApi,
-                        RefPtr<WebRenderCompositableHolder>&& aHolder);
+                        RefPtr<wr::WebRenderAPI>&& aApi);
 
   wr::PipelineId PipelineId() { return mPipelineId; }
   wr::WebRenderAPI* GetWebRenderAPI() { return mApi; }
-  WebRenderCompositableHolder* CompositableHolder() { return mCompositableHolder; }
   CompositorVsyncScheduler* CompositorScheduler() { return mCompositorScheduler.get(); }
 
   mozilla::ipc::IPCResult RecvNewCompositable(const CompositableHandle& aHandle,
@@ -87,10 +87,9 @@ public:
                                         const uint64_t& aTransactionId) override;
   mozilla::ipc::IPCResult RecvDPGetSnapshot(PTextureParent* aTexture) override;
 
-  mozilla::ipc::IPCResult RecvAddExternalImageId(const uint64_t& aImageId,
+  mozilla::ipc::IPCResult RecvAddExternalImageId(const bool& aIsAsync,
+                                                 const uint64_t& aImageId,
                                                  const CompositableHandle& aHandle) override;
-  mozilla::ipc::IPCResult RecvAddExternalImageIdForCompositable(const uint64_t& aImageId,
-                                                                const CompositableHandle& aHandle) override;
   mozilla::ipc::IPCResult RecvRemoveExternalImageId(const uint64_t& aImageId) override;
   mozilla::ipc::IPCResult RecvSetLayerObserverEpoch(const uint64_t& aLayerObserverEpoch) override;
 
@@ -168,10 +167,11 @@ private:
   RefPtr<widget::CompositorWidget> mWidget;
   Maybe<wr::DisplayListBuilder> mBuilder;
   RefPtr<wr::WebRenderAPI> mApi;
-  RefPtr<WebRenderCompositableHolder> mCompositableHolder;
+  //std::map<uint64_t, Tuple<RefPtr<CompositableHost>, wr::ImageKey>> mExternalImages;
+  std::map<uint64_t, RefPtr<CompositableHost>> mExternalImages;
+
   RefPtr<CompositorVsyncScheduler> mCompositorScheduler;
   std::vector<wr::ImageKey> mKeysToDelete;
-  nsDataHashtable<nsUint64HashKey, RefPtr<CompositableHost>> mExternalImageIds;
   nsTArray<ImageCompositeNotificationInfo> mImageCompositeNotifications;
 
   // These fields keep track of the latest layer observer epoch values in the child and the

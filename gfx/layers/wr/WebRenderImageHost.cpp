@@ -14,6 +14,9 @@
 #include "nsPrintfCString.h"            // for nsPrintfCString
 #include "nsString.h"                   // for nsAutoCString
 
+#include "mozilla/layers/CompositorThread.h"
+#include "mozilla/webrender/RenderThread.h"
+
 namespace mozilla {
 
 using namespace gfx;
@@ -34,6 +37,19 @@ WebRenderImageHost::~WebRenderImageHost()
 void
 WebRenderImageHost::UseTextureHost(const nsTArray<TimedTexture>& aTextures)
 {
+  // XXX
+  // TODO:
+  // 1)
+  // schedule a new composition task at renderer thread.
+  // 2)
+  // This compositable will be accessed in both renderThread and compositorThread.
+  // Need to use mutex or other mechanism here.
+  // 3)
+  // In async mode, push the push_image() or push_yuv_image() dispaly item into
+  // WR. There is an assumption that all textures should be the same format.
+  // Otherwise, we will have mismatch format in WR external-image-handler
+  // callback.
+
   CompositableHost::UseTextureHost(aTextures);
   MOZ_ASSERT(aTextures.Length() >= 1);
 
@@ -62,6 +78,32 @@ WebRenderImageHost::UseTextureHost(const nsTArray<TimedTexture>& aTextures)
 
   mImages.SwapElements(newImages);
   newImages.Clear();
+}
+
+void
+WebRenderImageHost::PushToRenderer()
+{
+  // TODO: move all textureHost in mImages to mRendererImages at renderer thread.
+  // Then, choose one textureHost from mRendererImages in WR external image
+  // callback.
+  if (!wr::RenderThread::IsInRenderThread()) {
+    wr::RenderThread::Loop()->PostTask(NewRunnableMethod(this, &WebRenderImageHost::PushToRenderer));
+    return;
+  }
+
+  //nsTArray<TimedImage> mRendererImages;
+}
+
+void
+WebRenderImageHost::ReleaseToCompositor()
+{
+  // TODO: move all textureHost in mRendererImages to compositorThread. Then, we
+  // could remove this textureHost at compositorThread. AlL IPC calls in texture
+  // should happen at compositorThread.
+  if (!CompositorThreadHolder::IsInCompositorThread()) {
+    CompositorThreadHolder::Loop()->PostTask(NewRunnableMethod(this, &WebRenderImageHost::ReleaseToCompositor));
+    return;
+  }
 }
 
 void
@@ -102,7 +144,15 @@ WebRenderImageHost::GetCompositionTime() const
 TextureHost*
 WebRenderImageHost::GetAsTextureHost(IntRect* aPictureRect)
 {
-  MOZ_ASSERT_UNREACHABLE("unexpected to be called");
+  TimedImage* img = ChooseImage();
+
+  if (img) {
+    return img->mTextureHost;
+  }
+  if (aPictureRect && img) {
+    *aPictureRect = img->mPictureRect;
+  }
+
   return nullptr;
 }
 

@@ -31,19 +31,22 @@ parent:
   async ReleaseCompositable(CompositableHandle compositable);
 
   sync Create(IntSize aSize);
+
   sync AddImage(ImageKey aImageKey, IntSize aSize, uint32_t aStride,
                 SurfaceFormat aFormat, ByteBuffer aBytes);
   sync UpdateImage(ImageKey aImageKey, IntSize aSize,
                    SurfaceFormat aFormat, ByteBuffer aBytes);
   sync DeleteImage(ImageKey aImageKey);
+
   async AddRawFont(FontKey aFontKey, ByteBuffer aBytes, uint32_t aFontIndex);
   async DPBegin(IntSize aSize);
   async DPEnd(IntSize aSize, WebRenderCommand[] commands, OpDestroy[] toDestroy, uint64_t fwdTransactionId, uint64_t transactionId);
   sync DPSyncEnd(IntSize aSize, WebRenderCommand[] commands, OpDestroy[] toDestroy, uint64_t fwdTransactionId, uint64_t transactionId);
   sync DPGetSnapshot(PTexture texture);
-  async AddExternalImageId(uint64_t aImageId, CompositableHandle aHandle);
-  async AddExternalImageIdForCompositable(uint64_t aImageId, CompositableHandle aHandle);
+
+  async AddExternalImageId(bool aIsAsync, uint64_t aImageId, CompositableHandle aHandle);
   async RemoveExternalImageId(uint64_t aImageId);
+
   async SetLayerObserverEpoch(uint64_t layerObserverEpoch);
   async ClearCachedResources();
 

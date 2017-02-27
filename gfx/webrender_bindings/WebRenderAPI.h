@@ -20,6 +20,7 @@ class CompositorWidget;
 }
 
 namespace layers {
+class CompositableHost;
 class CompositorBridgeParentBase;
 }
 
@@ -53,16 +54,21 @@ public:
   void AddImage(wr::ImageKey aKey,
                 const ImageDescriptor& aDescriptor,
                 Range<uint8_t> aBytes);
-
-  wr::ImageKey AddExternalImageHandle(gfx::IntSize aSize,
-                                      gfx::SurfaceFormat aFormat,
-                                      uint64_t aHandle);
-
   void UpdateImageBuffer(wr::ImageKey aKey,
                          const ImageDescriptor& aDescriptor,
                          Range<uint8_t> aBytes);
-
   void DeleteImage(wr::ImageKey aKey);
+
+  void AddExternalImage(uint64_t aExternalId, layers::CompositableHost* aCompositable);
+  void RemoveExternalImage(uint64_t aExternalId);
+  void AddExternalImageHandle(wr::ImageKey aKey,
+                              const ImageDescriptor& aDescriptor,
+                              layers::CompositableHost* aCompositable,
+                              uint64_t aExternalId);
+  void AddExternalImageBuffer(wr::ImageKey aKey,
+                              const ImageDescriptor& aDescriptor,
+                              layers::CompositableHost* aCompositable,
+                              uint64_t aExternalId);
 
   void AddRawFont(wr::FontKey aKey, Range<uint8_t> aBytes);
 
@@ -71,6 +77,7 @@ public:
   void SetProfilerEnabled(bool aEnabled);
 
   void RunOnRenderThread(UniquePtr<RendererEvent> aEvent);
+
   void Readback(gfx::IntSize aSize, uint8_t *aBuffer, uint32_t aBufferSize);
 
   WrIdNamespace GetNamespace();

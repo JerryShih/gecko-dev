@@ -4,6 +4,7 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
 #include "WebRenderAPI.h"
+#include "CompositableHost.h"
 #include "mozilla/webrender/RendererOGL.h"
 #include "mozilla/layers/CompositorThread.h"
 #include "mozilla/widget/CompositorWidget.h"
@@ -104,6 +105,90 @@ private:
   layers::SynchronousTask* mTask;
 };
 
+class Readback : public RendererEvent
+{
+public:
+  explicit
+  Readback(layers::SynchronousTask* aTask,
+           gfx::IntSize aSize, uint8_t *aBuffer,
+           uint32_t aBufferSize)
+    : mTask(aTask)
+    , mSize(aSize)
+    , mBuffer(aBuffer)
+    , mBufferSize(aBufferSize)
+  {
+    MOZ_COUNT_CTOR(Readback);
+  }
+
+  ~Readback()
+  {
+    MOZ_COUNT_DTOR(Readback);
+  }
+
+  virtual void
+  Run(RenderThread& aRenderThread, WindowId aWindowId) override
+  {
+    aRenderThread.UpdateAndRender(aWindowId);
+    wr_renderer_readback(mSize.width, mSize.height, mBuffer, mBufferSize);
+    layers::AutoCompleteTask complete(mTask);
+  }
+
+  layers::SynchronousTask* mTask;
+  gfx::IntSize mSize;
+  uint8_t *mBuffer;
+  uint32_t mBufferSize;
+};
+
+class AddExternalImage : public RendererEvent
+{
+public:
+  explicit
+  AddExternalImage(uint64_t aExternalId,
+                   layers::CompositableHost* aCompositable)
+    : mExternalId(aExternalId)
+    , mCompositable(aCompositable)
+  {
+    MOZ_COUNT_CTOR(AddExternalImage);
+  }
+
+  ~AddExternalImage()
+  {
+    MOZ_COUNT_DTOR(AddExternalImage);
+  }
+
+  virtual void
+  Run(RenderThread& aRenderThread, WindowId aWindowId) override
+  {
+    aRenderThread.GetRenderer(aWindowId)->AddExternalImageId(mExternalId, mCompositable);
+  }
+
+  uint64_t mExternalId;
+  layers::CompositableHost* mCompositable;
+};
+
+class RemoveExternalImage : public RendererEvent
+{
+public:
+  explicit
+  RemoveExternalImage(uint64_t aExternalId)
+    : mExternalId(aExternalId)
+  {
+    MOZ_COUNT_CTOR(RemoveExternalImage);
+  }
+
+  ~RemoveExternalImage()
+  {
+    MOZ_COUNT_DTOR(RemoveExternalImage);
+  }
+
+  virtual void
+  Run(RenderThread& aRenderThread, WindowId aWindowId) override
+  {
+    aRenderThread.GetRenderer(aWindowId)->RemoveExternalImageId(mExternalId);
+  }
+
+  uint64_t mExternalId;
+};
 
 //static
 already_AddRefed<WebRenderAPI>
@@ -113,6 +198,7 @@ WebRenderAPI::Create(bool aEnableProfiler,
 {
   MOZ_ASSERT(aBridge);
   MOZ_ASSERT(aWidget);
+  MOZ_ASSERT(layers::CompositorThreadHolder::IsInCompositorThread());
 
   static uint64_t sNextId = 1;
   auto id = NewWindowId(sNextId++);
@@ -175,39 +261,8 @@ WebRenderAPI::Readback(gfx::IntSize size,
                        uint8_t *buffer,
                        uint32_t buffer_size)
 {
-    class Readback : public RendererEvent
-    {
-        public:
-            explicit Readback(layers::SynchronousTask* aTask,
-                              gfx::IntSize aSize, uint8_t *aBuffer, uint32_t aBufferSize)
-                : mTask(aTask)
-                , mSize(aSize)
-                , mBuffer(aBuffer)
-                , mBufferSize(aBufferSize)
-            {
-                MOZ_COUNT_CTOR(Readback);
-            }
-
-            ~Readback()
-            {
-                MOZ_COUNT_DTOR(Readback);
-            }
-
-            virtual void Run(RenderThread& aRenderThread, WindowId aWindowId) override
-            {
-                aRenderThread.UpdateAndRender(aWindowId);
-                wr_renderer_readback(mSize.width, mSize.height, mBuffer, mBufferSize);
-                layers::AutoCompleteTask complete(mTask);
-            }
-
-            layers::SynchronousTask* mTask;
-            gfx::IntSize mSize;
-            uint8_t *mBuffer;
-            uint32_t mBufferSize;
-    };
-
     layers::SynchronousTask task("Readback");
-    auto event = MakeUnique<Readback>(&task, size, buffer, buffer_size);
+    auto event = MakeUnique<wr::Readback>(&task, size, buffer, buffer_size);
     // This event will be passed from wr_backend thread to renderer thread. That
     // implies that all frame data have been processed when the renderer runs this
     // read-back event. Then, we could make sure this read-back event gets the
@@ -233,17 +288,6 @@ WebRenderAPI::AddImage(ImageKey key, const ImageDescriptor& aDescritptor,
                    &aBytes[0], aBytes.length());
 }
 
-ImageKey
-WebRenderAPI::AddExternalImageHandle(gfx::IntSize aSize,
-                                     gfx::SurfaceFormat aFormat,
-                                     uint64_t aHandle)
-{
-  auto format = SurfaceFormatToWrImageFormat(aFormat).value();
-  return ImageKey(wr_api_add_external_image_texture(mWrApi,
-                                                    aSize.width, aSize.height, format,
-                                                    aHandle));
-}
-
 void
 WebRenderAPI::UpdateImageBuffer(ImageKey aKey,
                                 const ImageDescriptor& aDescritptor,
@@ -259,6 +303,44 @@ void
 WebRenderAPI::DeleteImage(ImageKey aKey)
 {
   wr_api_delete_image(mWrApi, aKey);
+}
+
+void
+WebRenderAPI::AddExternalImage(uint64_t aExternalId, layers::CompositableHost* aCompositable)
+{
+  auto event = MakeUnique<wr::AddExternalImage>(aExternalId, aCompositable);
+  RunOnRenderThread(Move(event));
+}
+
+void
+WebRenderAPI::RemoveExternalImage(uint64_t aExternalId)
+{
+  auto event = MakeUnique<wr::RemoveExternalImage>(aExternalId);
+  RunOnRenderThread(Move(event));
+}
+
+void
+WebRenderAPI::AddExternalImageHandle(wr::ImageKey aKey,
+                                     const ImageDescriptor& aDescritptor,
+                                     layers::CompositableHost* aCompositable,
+                                     uint64_t aExternalId)
+{
+  wr_api_add_external_image_handle(mWrApi,
+                                   aKey,
+                                   &aDescritptor,
+                                   ToWrExternalImageId(aExternalId));
+}
+
+void
+WebRenderAPI::AddExternalImageBuffer(wr::ImageKey aKey,
+                                     const ImageDescriptor& aDescritptor,
+                                     layers::CompositableHost* aCompositable,
+                                     uint64_t aExternalId)
+{
+  wr_api_add_external_image_buffer(mWrApi,
+                                   aKey,
+                                   &aDescritptor,
+                                   ToWrExternalImageId(aExternalId));
 }
 
 void

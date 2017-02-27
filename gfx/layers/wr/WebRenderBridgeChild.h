@@ -18,6 +18,7 @@ class CompositorWidget;
 
 namespace layers {
 
+class ImageContainer;
 class CompositableClient;
 class CompositorBridgeChild;
 class TextureForwarder;
@@ -42,7 +43,7 @@ public:
   TextureForwarder* GetTextureForwarder() override;
   LayersIPCActor* GetLayersIPCActor() override;
 
-  uint64_t AllocExternalImageId(const CompositableHandle& aHandle);
+  uint64_t AllocExternalImageIdForAsyncImageContainer(ImageContainer* aContainer);
   uint64_t AllocExternalImageIdForCompositable(CompositableClient* aCompositable);
   void DeallocExternalImageId(uint64_t aImageId);
 

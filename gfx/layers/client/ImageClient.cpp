@@ -294,6 +294,10 @@ ImageClientBridge::ImageClientBridge(CompositableForwarder* aFwd,
 bool
 ImageClientBridge::UpdateImage(ImageContainer* aContainer, uint32_t aContentFlags)
 {
+  //bignose
+  //check this call is at main thread
+  MOZ_ASSERT(NS_IsMainThread());
+
   if (!GetForwarder() || !mLayer) {
     return false;
   }

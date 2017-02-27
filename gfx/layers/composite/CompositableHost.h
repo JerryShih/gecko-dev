@@ -236,6 +236,9 @@ public:
 
   virtual void BindTextureSource() {}
 
+  virtual void PushToRenderer() {}
+  virtual void ReleaseToCompositor() {}
+
 protected:
   HostLayerManager* GetLayerManager() const;
 

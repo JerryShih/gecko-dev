@@ -117,8 +117,7 @@ enum class WrImageRendering: uint32_t
 enum class WrExternalImageIdType
 {
   TEXTURE_HANDLE, // Currently, we only support gl texture handle.
-  // TODO(Jerry): handle shmem or cpu raw buffers.
-  //// MEM_OR_SHMEM,
+  MEM_OR_SHMEM,
 };
 
 enum class WrMixBlendMode: uint32_t
@@ -315,10 +314,9 @@ struct WrExternalImage
   // external buffer handle
   uint32_t handle;
 
-  // TODO(Jerry): handle shmem or cpu raw buffers.
-  //// shmem or memory buffer
-  //// uint8_t* buff;
-  //// size_t size;
+  // shmem or memory buffer
+  uint8_t* buff;
+  size_t size;
 };
 
 typedef WrExternalImage (*LockExternalImageCallback)(void*, WrExternalImageId);
@@ -421,16 +419,17 @@ WR_INLINE void
 wr_api_add_image(WrAPI* api, WrImageKey key, const WrImageDescriptor* descriptor, uint8_t *buffer, size_t buffer_size)
 WR_FUNC;
 
-WR_INLINE WrImageKey
-wr_api_add_external_image_texture(WrAPI* api, uint32_t width, uint32_t height,
-                                  WrImageFormat format, uint64_t external_image_id)
+WR_INLINE void
+wr_api_add_external_image_handle(WrAPI* api, WrImageKey key,
+                                 const WrImageDescriptor* descriptor,
+                                 WrExternalImageId external_image_id)
 WR_FUNC;
 
-//TODO(Jerry): handle shmem in WR
-//// WR_INLINE WrImageKey
-//// wr_api_add_external_image_buffer(WrAPI* api, uint32_t width, uint32_t height, uint32_t stride,
-////                                  WrImageFormat format, uint8_t *bytes, size_t size)
-//// WR_FUNC;
+WR_INLINE void
+wr_api_add_external_image_buffer(WrAPI* api, WrImageKey key,
+                                 const WrImageDescriptor* descriptor,
+                                 WrExternalImageId external_image_id)
+WR_FUNC;
 
 WR_INLINE void
 wr_api_update_image(WrAPI* api, WrImageKey key,

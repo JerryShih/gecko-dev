@@ -390,9 +390,7 @@ pub struct WrState {
 #[repr(C)]
 enum WrExternalImageType {
     TEXTURE_HANDLE,
-
-    // TODO(Jerry): handle shmem or cpu raw buffers.
-    //// MEM_OR_SHMEM,
+    MEM_OR_SHMEM,
 }
 
 #[repr(C)]
@@ -408,9 +406,9 @@ struct WrExternalImageStruct {
     // external buffer handle
     handle: u32,
 
-    // TODO(Jerry): handle shmem or cpu raw buffers.
-    //// buff: *const u8,
-    //// size: usize,
+    // handle shmem or cpu raw buffers.
+    buff: *const u8,
+    size: usize,
 }
 
 type LockExternalImageCallback = fn(*mut c_void, ExternalImageId) -> WrExternalImageStruct;
@@ -437,6 +435,14 @@ impl ExternalImageHandler for WrExternalImageHandler {
                     u1: image.u1,
                     v1: image.v1,
                     source: ExternalImageSource::NativeTexture(image.handle)
+                },
+            WrExternalImageType::MEM_OR_SHMEM =>
+                ExternalImage {
+                    u0: image.u0,
+                    v0: image.v0,
+                    u1: image.u1,
+                    v1: image.v1,
+                    source: ExternalImageSource::RawData(unsafe { slice::from_raw_parts(image.buff, image.size)})
                 },
         }
     }
@@ -621,10 +627,25 @@ pub extern fn wr_api_add_image(api: &mut RenderApi, image_key: ImageKey, descrip
 }
 
 #[no_mangle]
-pub extern fn wr_api_add_external_image_texture(api: &mut RenderApi, width: u32, height: u32, format: ImageFormat, external_image_id: u64) -> ImageKey {
+pub extern fn wr_api_add_external_image_handle(api: &mut RenderApi, image_key: ImageKey, descriptor: &WrImageDescriptor, external_image_id: ExternalImageId) {
     assert!( unsafe { is_in_compositor_thread() });
-    unimplemented!(); // TODO
-    //api.add_image(ImageDescriptor{width:width, height:height, stride:None, format: format, is_opaque: false}, ImageData::External(ExternalImageId(external_image_id)))
+    api.add_image(
+        image_key,
+        descriptor.to_descriptor(),
+        ImageData::ExternalHandle(external_image_id),
+        None
+    );
+}
+
+#[no_mangle]
+pub extern fn wr_api_add_external_image_buffer(api: &mut RenderApi, image_key: ImageKey, descriptor: &WrImageDescriptor, external_image_id: ExternalImageId) {
+    assert!( unsafe { is_in_compositor_thread() });
+    api.add_image(
+        image_key,
+        descriptor.to_descriptor(),
+        ImageData::ExternalBuffer(external_image_id),
+        None
+    );
 }
 
 #[no_mangle]

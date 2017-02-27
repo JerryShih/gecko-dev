@@ -17,7 +17,6 @@
 #include "mozilla/layers/ImageBridgeParent.h"
 #include "mozilla/layers/ImageDataSerializer.h"
 #include "mozilla/layers/TextureHost.h"
-#include "mozilla/layers/WebRenderCompositableHolder.h"
 #include "mozilla/webrender/RenderThread.h"
 #include "mozilla/widget/CompositorWidget.h"
 
@@ -81,14 +80,12 @@ WebRenderBridgeParent::WebRenderBridgeParent(CompositorBridgeParentBase* aCompos
                                              const wr::PipelineId& aPipelineId,
                                              widget::CompositorWidget* aWidget,
                                              CompositorVsyncScheduler* aScheduler,
-                                             RefPtr<wr::WebRenderAPI>&& aApi,
-                                             RefPtr<WebRenderCompositableHolder>&& aHolder)
+                                             RefPtr<wr::WebRenderAPI>&& aApi)
   : mCompositorBridge(aCompositorBridge)
   , mPipelineId(aPipelineId)
   , mWidget(aWidget)
   , mBuilder(Nothing())
   , mApi(aApi)
-  , mCompositableHolder(aHolder)
   , mCompositorScheduler(aScheduler)
   , mChildLayerObserverEpoch(0)
   , mParentLayerObserverEpoch(0)
@@ -96,7 +93,6 @@ WebRenderBridgeParent::WebRenderBridgeParent(CompositorBridgeParentBase* aCompos
   , mIdNameSpace(++sIdNameSpace)
   , mDestroyed(false)
 {
-  MOZ_ASSERT(mCompositableHolder);
   if (mWidget) {
     MOZ_ASSERT(!mCompositorScheduler);
     mCompositorScheduler = new CompositorVsyncScheduler(this, mWidget);
@@ -329,54 +325,28 @@ WebRenderBridgeParent::ProcessWebrenderCommands(const gfx::IntSize &aSize,
       }
       case WebRenderCommand::TOpAddExternalImage: {
         const OpAddExternalImage& op = cmd.get_OpAddExternalImage();
-        MOZ_ASSERT(mExternalImageIds.Get(op.externalImageId()).get());
+        MOZ_ASSERT(mExternalImages.count(op.externalImageId()));
 
-        RefPtr<CompositableHost> host = mExternalImageIds.Get(op.externalImageId());
-        if (!host) {
-          break;
-        }
-        RefPtr<DataSourceSurface> dSurf = host->GetAsSurface();
-        if (!dSurf) {
-          break;
-        }
-
-        nsIntRegion validBufferRegion = op.validBufferRegion().ToUnknownRegion();
-        IntRect validRect = IntRect(IntPoint(0,0), dSurf->GetSize());
-        if (!validBufferRegion.IsEmpty()) {
-          IntPoint offset = validBufferRegion.GetBounds().TopLeft();
-          validBufferRegion.MoveBy(-offset);
-          validBufferRegion.AndWith(IntRect(IntPoint(0,0), dSurf->GetSize()));
-          validRect = validBufferRegion.GetBounds().ToUnknownRect();
-
-          // XXX Remove it when we can put subimage in WebRender.
-          RefPtr<DrawTarget> target =
-           gfx::Factory::CreateDrawTarget(gfx::BackendType::SKIA, validRect.Size(), SurfaceFormat::B8G8R8A8);
-          for (auto iter = validBufferRegion.RectIter(); !iter.Done(); iter.Next()) {
-            IntRect regionRect = iter.Get();
-            Rect srcRect(regionRect.x + offset.x, regionRect.y + offset.y, regionRect.width, regionRect.height);
-            Rect dstRect(regionRect.x, regionRect.y, regionRect.width, regionRect.height);
-            target->DrawSurface(dSurf, dstRect, srcRect);
-          }
-          RefPtr<SourceSurface> surf = target->Snapshot();
-          dSurf = surf->GetDataSurface();
-        }
-
-        DataSourceSurface::MappedSurface map;
-        if (!dSurf->Map(gfx::DataSourceSurface::MapType::READ, &map)) {
-          break;
-        }
-
-        wr::ImageDescriptor descriptor(validRect.Size(), map.mStride, SurfaceFormat::B8G8R8A8);
+        RefPtr<CompositableHost> compositable = mExternalImages[op.externalImageId()];
         wr::ImageKey key = op.key();
-        auto slice = Range<uint8_t>(map.mData, validRect.height * map.mStride);
-        mApi->AddImage(key, descriptor, slice);
 
+        // XXX
+        // get format from client
+        TextureHost* texture = compositable->GetAsTextureHost();
+        MOZ_ASSERT(texture);
+        // before getting the format from client, use bufferTextureHost only now.
+        BufferTextureHost* bufferTexture = texture->AsBufferTextureHost();
+        MOZ_ASSERT(bufferTexture);
+        // XXX handle stride setting
+        wr::ImageDescriptor descriptor(bufferTexture->GetSize(), 0, bufferTexture->GetFormat());
+
+        // TODO:
+        // handle video case
+        mApi->AddExternalImageBuffer(key,
+                                     descriptor,
+                                     compositable,
+                                     op.externalImageId());
         keysToDelete.push_back(key);
-        dSurf->Unmap();
-        // XXX workaround for releasing Readlock. See Bug 1339625
-        if(host->GetType() == CompositableType::CONTENT_SINGLE) {
-          host->CleanupResources();
-        }
         break;
       }
       case WebRenderCommand::TOpDPPushIframe: {
@@ -489,56 +459,61 @@ WebRenderBridgeParent::RecvDPGetSnapshot(PTextureParent* aTexture)
 }
 
 mozilla::ipc::IPCResult
-WebRenderBridgeParent::RecvAddExternalImageId(const uint64_t& aImageId,
+WebRenderBridgeParent::RecvAddExternalImageId(const bool& aIsAsync,
+                                              const uint64_t& aImageId,
                                               const CompositableHandle& aHandle)
 {
   if (mDestroyed) {
     return IPC_OK();
   }
 
-  MOZ_ASSERT(!mExternalImageIds.Get(aImageId).get());
+  RefPtr<CompositableHost> compositable;
+  if (!aIsAsync) {
+    compositable = FindCompositable(aHandle);
+  } else {
+    ImageBridgeParent* imageBridge = ImageBridgeParent::GetInstance(OtherPid());
+    if (!imageBridge) {
+      return IPC_FAIL(this, "Can't find imageBridgeParent for async image");
+    }
+    compositable = imageBridge->FindCompositable(aHandle);
+  }
+  MOZ_ASSERT(compositable);
 
-  ImageBridgeParent* imageBridge = ImageBridgeParent::GetInstance(OtherPid());
-  if (!imageBridge) {
-     return IPC_FAIL_NO_REASON(this);
-  }
-  RefPtr<CompositableHost> host = imageBridge->FindCompositable(aHandle);
-  if (!host) {
-    NS_ERROR("CompositableHost not found in the map!");
-    return IPC_FAIL_NO_REASON(this);
-  }
-  if (host->GetType() != CompositableType::IMAGE &&
-      host->GetType() != CompositableType::CONTENT_SINGLE &&
-      host->GetType() != CompositableType::CONTENT_DOUBLE) {
+  if (compositable->GetType() != CompositableType::IMAGE &&
+      compositable->GetType() != CompositableType::IMAGE_BRIDGE) {
     NS_ERROR("Incompatible CompositableHost");
     return IPC_OK();
   }
 
-  mCompositableHolder->AddExternalImageId(aImageId, host);
-  mExternalImageIds.Put(aImageId, host);
+  MOZ_ASSERT(mExternalImages.count(aImageId) == 0);
 
-  return IPC_OK();
-}
+//  wr::ImageKey key;
+//  if (!aIsAsync) {
+//    TextureHost* texture = compositable->GetAsTextureHost();
+//    MOZ_ASSERT(texture);
+//    // XXX
+//    // get format from client
+//    //
+//    // before getting the format from client, use bufferTextureHost only now.
+//    BufferTextureHost* bufferTexture = texture->AsBufferTextureHost();
+//    MOZ_ASSERT(bufferTexture);
+//
+//    // XXX handle stride setting
+//    wr::ImageDescriptor descriptor(bufferTexture->GetSize(), 0, bufferTexture->GetFormat());
+//
+//    key = mApi->AddExternalImageBuffer(descriptor,
+//                                       compositable,
+//                                       aImageId);
+//  } else {
+//    // TODO:
+//    // In async mode, the compositable might still have no image here. We should
+//    // call the push_image() or push_yuv_image() in CompositableHost::UseTextureHost().
+//    MOZ_ASSERT_UNREACHABLE("video case isn't implemented yet.");
+//  }
 
-mozilla::ipc::IPCResult
-WebRenderBridgeParent::RecvAddExternalImageIdForCompositable(const uint64_t& aImageId,
-                                                             const CompositableHandle& aHandle)
-{
-  if (mDestroyed) {
-    return IPC_OK();
-  }
-  MOZ_ASSERT(!mExternalImageIds.Get(aImageId).get());
+  mExternalImages[aImageId] = compositable;
 
-  RefPtr<CompositableHost> host = FindCompositable(aHandle);
-  if (host->GetType() != CompositableType::IMAGE &&
-      host->GetType() != CompositableType::CONTENT_SINGLE &&
-      host->GetType() != CompositableType::CONTENT_DOUBLE) {
-    NS_ERROR("Incompatible CompositableHost");
-    return IPC_OK();
-  }
-
-  mCompositableHolder->AddExternalImageId(aImageId, host);
-  mExternalImageIds.Put(aImageId, host);
+  mApi->AddExternalImage(aImageId, compositable);
 
   return IPC_OK();
 }
@@ -549,9 +524,10 @@ WebRenderBridgeParent::RecvRemoveExternalImageId(const uint64_t& aImageId)
   if (mDestroyed) {
     return IPC_OK();
   }
-  MOZ_ASSERT(mExternalImageIds.Get(aImageId).get());
-  mExternalImageIds.Remove(aImageId);
-  mCompositableHolder->RemoveExternalImageId(aImageId);
+  MOZ_ASSERT(mExternalImages.count(aImageId));
+  mExternalImages.erase(aImageId);
+
+  mApi->RemoveExternalImage(aImageId);
 
   return IPC_OK();
 }
@@ -659,13 +635,7 @@ void
 WebRenderBridgeParent::ClearResources()
 {
   DeleteOldImages();
-  if (mCompositableHolder) {
-    for (auto iter = mExternalImageIds.Iter(); !iter.Done(); iter.Next()) {
-      uint64_t externalImageId = iter.Key();
-      mCompositableHolder->RemoveExternalImageId(externalImageId);
-    }
-  }
-  mExternalImageIds.Clear();
+  mExternalImages.clear();
 
   if (mBuilder.isSome()) {
     mBuilder.reset();

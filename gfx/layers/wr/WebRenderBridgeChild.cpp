@@ -7,6 +7,7 @@
 #include "mozilla/layers/WebRenderBridgeChild.h"
 
 #include "gfxPlatform.h"
+#include "ImageContainer.h"
 #include "mozilla/layers/CompositableClient.h"
 #include "mozilla/layers/CompositorBridgeChild.h"
 #include "mozilla/layers/ImageDataSerializer.h"
@@ -101,12 +102,18 @@ WebRenderBridgeChild::GetNextExternalImageId()
 }
 
 uint64_t
-WebRenderBridgeChild::AllocExternalImageId(const CompositableHandle& aHandle)
+WebRenderBridgeChild::AllocExternalImageIdForAsyncImageContainer(ImageContainer* aContainer)
 {
   MOZ_ASSERT(!mDestroyed);
+  MOZ_ASSERT(aContainer);
+  MOZ_ASSERT(aContainer->IsAsync());
+  MOZ_ASSERT(aContainer->GetAsyncContainerHandle());
 
+  CompositableHandle handle = aContainer->GetAsyncContainerHandle();
   uint64_t imageId = GetNextExternalImageId();
-  SendAddExternalImageId(imageId, aHandle);
+
+  SendAddExternalImageId(true, imageId, handle);
+
   return imageId;
 }
 
@@ -115,9 +122,13 @@ WebRenderBridgeChild::AllocExternalImageIdForCompositable(CompositableClient* aC
 {
   MOZ_ASSERT(!mDestroyed);
   MOZ_ASSERT(aCompositable->IsConnected());
+  MOZ_ASSERT(!aCompositable->GetAsyncHandle());
 
+  CompositableHandle handle = aCompositable->GetIPCHandle();
   uint64_t imageId = GetNextExternalImageId();
-  SendAddExternalImageIdForCompositable(imageId, aCompositable->GetIPCHandle());
+
+  SendAddExternalImageId(false, imageId, handle);
+
   return imageId;
 }
 
@@ -167,7 +178,7 @@ void
 WebRenderBridgeChild::UseTiledLayerBuffer(CompositableClient* aCompositable,
                                           const SurfaceDescriptorTiles& aTiledDescriptor)
 {
-
+  MOZ_CRASH("not reached");
 }
 
 void
@@ -175,7 +186,8 @@ WebRenderBridgeChild::UpdateTextureRegion(CompositableClient* aCompositable,
                                           const ThebesBufferData& aThebesBufferData,
                                           const nsIntRegion& aUpdatedRegion)
 {
-
+  //TODO: remove the usage of rotation buffer in ContentClient.
+  //MOZ_CRASH("not reached");
 }
 
 bool
@@ -262,7 +274,7 @@ WebRenderBridgeChild::UseComponentAlphaTextures(CompositableClient* aCompositabl
                                                 TextureClient* aClientOnBlack,
                                                 TextureClient* aClientOnWhite)
 {
-
+  MOZ_CRASH("not reached");
 }
 
 void

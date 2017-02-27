@@ -62,9 +62,14 @@ public:
 
   virtual void CleanupResources() override;
 
+  virtual void PushToRenderer() override;
+  virtual void ReleaseToCompositor() override;
+
 protected:
   // ImageComposite
   virtual TimeStamp GetCompositionTime() const override;
+
+  nsTArray<TimedImage> mRendererImages;
 };
 
 } // namespace layers
