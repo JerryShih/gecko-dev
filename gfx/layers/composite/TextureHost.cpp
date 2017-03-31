@@ -203,21 +203,25 @@ TextureHost::Create(const SurfaceDescriptor& aDesc,
     case SurfaceDescriptor::TSurfaceDescriptorDIB:
     case SurfaceDescriptor::TSurfaceDescriptorFileMapping:
     case SurfaceDescriptor::TSurfaceDescriptorGPUVideo:
+      printf_stderr("bignose th create:%d\n",__LINE__);
       result = CreateBackendIndependentTextureHost(aDesc, aDeallocator, aBackend, aFlags);
       break;
 
     case SurfaceDescriptor::TEGLImageDescriptor:
     case SurfaceDescriptor::TSurfaceTextureDescriptor:
     case SurfaceDescriptor::TSurfaceDescriptorSharedGLTexture:
+      printf_stderr("bignose th create:%d\n",__LINE__);
       result = CreateTextureHostOGL(aDesc, aDeallocator, aBackend, aFlags);
       break;
 
     case SurfaceDescriptor::TSurfaceDescriptorMacIOSurface:
       if (aBackend == LayersBackend::LAYERS_OPENGL ||
           aBackend == LayersBackend::LAYERS_WR) {
+        printf_stderr("bignose th create:%d\n",__LINE__);
         result = CreateTextureHostOGL(aDesc, aDeallocator, aBackend, aFlags);
         break;
       } else {
+        printf_stderr("bignose th create:%d\n",__LINE__);
         result = CreateTextureHostBasic(aDesc, aDeallocator, aBackend, aFlags);
         break;
       }

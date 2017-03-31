@@ -39,11 +39,26 @@ RenderMacIOSurfaceTextureHostOGL::Lock()
     MOZ_ASSERT(gl::GLContextCGL::Cast(mGL.get())->GetCGLContext());
 
     mGL->fGenTextures(1, &mTextureHandle);
+    printf_stderr("bignose gl f:%s, line:%d, error:%d\n",
+        __FILE__, __LINE__, mGL->fGetError());
     mGL->fActiveTexture(LOCAL_GL_TEXTURE0);
+    printf_stderr("bignose gl f:%s, line:%d, error:%d\n",
+        __FILE__, __LINE__, mGL->fGetError());
+
     gl::ScopedBindTexture texture(mGL, mTextureHandle, LOCAL_GL_TEXTURE_RECTANGLE_ARB);
+    printf_stderr("bignose gl f:%s, line:%d, error:%d\n",
+        __FILE__, __LINE__, mGL->fGetError());
     mGL->fTexParameteri(LOCAL_GL_TEXTURE_RECTANGLE_ARB, LOCAL_GL_TEXTURE_WRAP_T, LOCAL_GL_CLAMP_TO_EDGE);
     mGL->fTexParameteri(LOCAL_GL_TEXTURE_RECTANGLE_ARB, LOCAL_GL_TEXTURE_WRAP_S, LOCAL_GL_CLAMP_TO_EDGE);
+    printf_stderr("bignose gl f:%s, line:%d, error:%d\n",
+        __FILE__, __LINE__, mGL->fGetError());
+    printf_stderr("bignose gl f:%s, line:%d, error:%d\n",
+        __FILE__, __LINE__, mGL->fGetError());
     CGLError cglError = mSurface->CGLTexImageIOSurface2D(gl::GLContextCGL::Cast(mGL.get())->GetCGLContext(), 0);
+    printf_stderr("bignose gl f:%s, line:%d, error:%d\n",
+        __FILE__, __LINE__, mGL->fGetError());
+    printf_stderr("bignose cgl f:%s, line:%d, error:%d\n",
+        __FILE__, __LINE__, cglError);
   }
 
   return true;

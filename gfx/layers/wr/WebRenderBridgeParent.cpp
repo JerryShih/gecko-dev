@@ -345,6 +345,7 @@ WebRenderBridgeParent::ProcessWebRenderCommands(const gfx::IntSize &aSize,
         WebRenderTextureHost* wrTexture = texture->AsWebRenderTextureHost();
         if (wrTexture) {
           if (wrTexture->IsWrappingNativeHandle()) {
+            printf_stderr("bignose wr WrapNativeHandle\n");
             // XXX only for MacIOSurface right now.
             // XXX remove the redundant codes for both native handle and yuv case.
             wr::ImageDescriptor descriptor(wrTexture->GetSize(), wrTexture->GetReadFormat());
@@ -354,6 +355,7 @@ WebRenderBridgeParent::ProcessWebRenderCommands(const gfx::IntSize &aSize,
             mCompositableHolder->HoldExternalImage(mPipelineId, aEpoch, texture->AsWebRenderTextureHost());
             keysToDelete.push_back(key);
           } else {
+            printf_stderr("bignose wr bufferTexture\n");
             // XXX handling YUV
             gfx::SurfaceFormat format =
               wrTexture->GetFormat() == SurfaceFormat::YUV ? SurfaceFormat::B8G8R8A8 : wrTexture->GetFormat();

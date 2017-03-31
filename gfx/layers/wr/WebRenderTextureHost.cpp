@@ -48,6 +48,7 @@ WebRenderTextureHost::CreateRenderTextureHost(const layers::SurfaceDescriptor& a
 
   switch (aDesc.type()) {
     case SurfaceDescriptor::TSurfaceDescriptorBuffer: {
+      printf_stderr("bignose wr RenderBufferTextureHost\n");
       BufferTextureHost* bufferTexture = aTexture->AsBufferTextureHost();
       MOZ_ASSERT(bufferTexture);
       texture = new wr::RenderBufferTextureHost(bufferTexture->GetBuffer(),
@@ -57,6 +58,7 @@ WebRenderTextureHost::CreateRenderTextureHost(const layers::SurfaceDescriptor& a
     }
 #ifdef XP_MACOSX
     case SurfaceDescriptor::TSurfaceDescriptorMacIOSurface: {
+      printf_stderr("bignose wr RenderMacIOSurfaceTextureHostOGL\n");
       MacIOSurfaceTextureHostOGL* macTexture = aTexture->AsMacIOSurfaceTextureHost();
       MOZ_ASSERT(macTexture);
       texture = new wr::RenderMacIOSurfaceTextureHostOGL(macTexture->GetMacIOSurface());

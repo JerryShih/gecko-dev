@@ -66,6 +66,8 @@ ImageHost::UseTextureHost(const nsTArray<TimedTexture>& aTextures)
     img.mProducerID = t.mProducerID;
     img.mTextureHost->SetCropRect(img.mPictureRect);
     img.mTextureHost->Updated();
+
+    printf_stderr("bignose recv image:%s\n", t.mTexture->Name());
   }
 
   mImages.SwapElements(newImages);

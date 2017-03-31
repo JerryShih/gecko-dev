@@ -10,7 +10,7 @@ use webrender_traits::{AuxiliaryLists, AuxiliaryListsDescriptor, BorderDetails, 
 use webrender_traits::{BorderSide, BorderStyle, BorderWidths, BoxShadowClipMode, BuiltDisplayList};
 use webrender_traits::{BuiltDisplayListDescriptor, ClipRegion, ColorF, ComplexClipRegion};
 use webrender_traits::{DeviceUintPoint, DeviceUintRect, DeviceUintSize, Epoch, ExtendMode};
-use webrender_traits::{ExternalEvent, ExternalImageId, FilterOp, FontKey, GlyphInstance};
+use webrender_traits::{ExternalEvent, ExternalImageData, ExternalImageId, ExternalImageType, FilterOp, FontKey, GlyphInstance};
 use webrender_traits::{GradientStop, IdNamespace, ImageBorder, ImageData, ImageDescriptor};
 use webrender_traits::{ImageFormat, ImageKey, ImageMask, ImageRendering, ItemRange, LayerPixel};
 use webrender_traits::{LayoutPoint, LayoutRect, LayoutSize, LayoutTransform, MixBlendMode};
@@ -820,7 +820,11 @@ pub extern "C" fn wr_api_add_external_image_handle(api: &mut RenderApi,
     assert!(unsafe { is_in_compositor_thread() });
     api.add_image(image_key,
                   descriptor.to_descriptor(),
-                  ImageData::ExternalHandle(ExternalImageId(external_image_id)),
+                  ImageData::External(ExternalImageData {
+                    id: ExternalImageId(external_image_id),
+                    //bignose
+                    image_type: ExternalImageType::TextureRectHandle
+                  }),
                   None);
 }
 
@@ -832,7 +836,10 @@ pub extern "C" fn wr_api_add_external_image_buffer(api: &mut RenderApi,
     assert!(unsafe { is_in_compositor_thread() });
     api.add_image(image_key,
                   descriptor.to_descriptor(),
-                  ImageData::ExternalBuffer(ExternalImageId(external_image_id)),
+                  ImageData::External(ExternalImageData {
+                    id: ExternalImageId(external_image_id),
+                    image_type: ExternalImageType::ExternalBuffer
+                  }),
                   None);
 }
 
