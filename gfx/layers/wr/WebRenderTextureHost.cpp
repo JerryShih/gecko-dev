@@ -58,6 +58,13 @@ WebRenderTextureHost::CreateRenderTextureHost(const layers::SurfaceDescriptor& a
       break;
     }
 #endif
+#ifdef XP_WIN
+    case SurfaceDescriptor::TSurfaceDescriptorD3D10:
+    case SurfaceDescriptor::TSurfaceDescriptorDXGIYCbCr: {
+      mIsWrappingNativeHandle = true;
+      break;
+    }
+#endif
     case SurfaceDescriptor::TSurfaceDescriptorGPUVideo: {
       mIsWrappingNativeHandle = !aTexture->HasIntermediateBuffer();
       break;
