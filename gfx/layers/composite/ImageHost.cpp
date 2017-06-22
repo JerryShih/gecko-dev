@@ -15,6 +15,7 @@
 #include "nsDebug.h"                    // for NS_WARNING, NS_ASSERTION
 #include "nsPrintfCString.h"            // for nsPrintfCString
 #include "nsString.h"                   // for nsAutoCString
+#include "gfxUtils.h"
 
 namespace mozilla {
 
