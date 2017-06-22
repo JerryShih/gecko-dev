@@ -1070,7 +1070,7 @@ MediaDecoder::NotifyCompositor()
   RefPtr<LayerManager> layerManager =
     nsContentUtils::LayerManagerForDocument(ownerDoc);
   if (layerManager) {
-    RefPtr<KnowsCompositor> knowsCompositor = layerManager->AsShadowForwarder();
+    RefPtr<KnowsCompositor> knowsCompositor = layerManager->AsKnowsCompositor();
     mCompositorUpdatedEvent.Notify(knowsCompositor);
   }
 }
