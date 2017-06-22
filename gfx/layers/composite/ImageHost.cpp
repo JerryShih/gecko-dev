@@ -329,6 +329,15 @@ ImageHost::PrepareToRender(TextureSourceProvider* aProvider, RenderInfo* aOutInf
   aOutInfo->imageIndex = imageIndex;
   aOutInfo->img = img;
   aOutInfo->host = mCurrentTextureHost;
+
+  if (img->mFrameID > 295) {
+    if (mCurrentTextureHost->AsBufferTextureHost()) {
+      RefPtr<gfx::DataSourceSurface> data = mCurrentTextureHost->AsBufferTextureHost()->GetAsSurface();
+      printf_stderr("bignose dump frame:%d start\n",img->mFrameID);
+      gfxUtils::DumpAsDataURI(data.get());
+      printf_stderr("bignose dump frame:%d end\n",img->mFrameID);
+    }
+  }
   return true;
 }
 
