@@ -452,7 +452,7 @@ WMFVideoMFTManager::InitializeDXVA()
   }
   MOZ_ASSERT(!mDXVA2Manager);
   LayersBackend backend = GetCompositorBackendType(mKnowsCompositor);
-  if (backend != LayersBackend::LAYERS_D3D11) {
+  if (backend != LayersBackend::LAYERS_D3D11 && backend != LayersBackend::LAYERS_WR) {
     mDXVAFailureReason.AssignLiteral("Unsupported layers backend");
     return false;
   }
@@ -937,7 +937,7 @@ WMFVideoMFTManager::CreateD3DVideoFrame(IMFSample* aSample,
   return S_OK;
 }
 
-// Blocks until decoded sample is produced by the deoder.
+// Blocks until decoded sample is produced by the decoder.
 HRESULT
 WMFVideoMFTManager::Output(int64_t aStreamOffset,
                            RefPtr<MediaData>& aOutData)
