@@ -91,9 +91,12 @@ ImageComposite::ChooseImageIndex() const
     for (uint32_t i = 0; i < mImages.Length(); ++i) {
       if (mImages[i].mFrameID == mLastFrameID &&
           mImages[i].mProducerID == mLastProducerID) {
+        printf_stderr("bignose 1 image index:%d, frame id:%d, total:%d\n",
+          i,mImages[i].mFrameID,mImages.Length());
         return i;
       }
     }
+    printf_stderr("bignose 3 image, total:%d\n");
     return -1;
   }
 
@@ -102,6 +105,8 @@ ImageComposite::ChooseImageIndex() const
       GetBiasedTime(mImages[result + 1].mTimeStamp, mBias) <= now) {
     ++result;
   }
+  printf_stderr("bignose 2 image index:%d, frame id:%d, total:%d\n",
+        result,mImages[result].mFrameID,mImages.Length());
   return result;
 }
 
