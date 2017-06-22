@@ -464,9 +464,10 @@ public:
       // cheap (i.e. hardware accelerated).
       return LAYER_ACTIVE;
     }
-    HTMLMediaElement* elem =
-      static_cast<HTMLMediaElement*>(mFrame->GetContent());
-    return elem->IsPotentiallyPlaying() ? LAYER_ACTIVE_FORCE : LAYER_INACTIVE;
+//    HTMLMediaElement* elem =
+//      static_cast<HTMLMediaElement*>(mFrame->GetContent());
+//    return elem->IsPotentiallyPlaying() ? LAYER_ACTIVE_FORCE : LAYER_INACTIVE;
+    return LAYER_ACTIVE_FORCE;
   }
 };
 
