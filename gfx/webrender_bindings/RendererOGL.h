@@ -7,6 +7,8 @@
 #ifndef MOZILLA_LAYERS_RENDEREROGL_H
 #define MOZILLA_LAYERS_RENDEREROGL_H
 
+#include "mozilla/layers/CompositorTypes.h"
+#include "mozilla/layers/SyncObject.h"
 #include "mozilla/webrender/RenderThread.h"
 #include "mozilla/webrender/WebRenderTypes.h"
 #include "mozilla/webrender/webrender_ffi.h"
@@ -75,6 +77,8 @@ public:
   /// This can be called on the render thread only.
   bool Resume();
 
+  layers::RendererSyncObject* GetSyncObject() const { return mSyncObject.get(); }
+
   layers::CompositorBridgeParentBase* GetCompositorBridge() { return mBridge; }
 
   WrRenderedEpochs* FlushRenderedEpochs();
@@ -84,13 +88,13 @@ public:
   WrRenderer* GetWrRenderer() { return mWrRenderer; }
 
 protected:
-
   RefPtr<RenderThread> mThread;
   RefPtr<gl::GLContext> mGL;
   RefPtr<widget::CompositorWidget> mWidget;
   WrRenderer* mWrRenderer;
   layers::CompositorBridgeParentBase* mBridge;
   wr::WindowId mWindowId;
+  RefPtr<layers::RendererSyncObject> mSyncObject;
 };
 
 } // namespace wr

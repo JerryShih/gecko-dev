@@ -29,7 +29,8 @@ public:
               RefPtr<widget::CompositorWidget>&& aWidget,
               layers::SynchronousTask* aTask,
               bool aEnableProfiler,
-              LayoutDeviceIntSize aSize)
+              LayoutDeviceIntSize aSize,
+              layers::SyncHandle* aHandle)
     : mWrApi(aApi)
     , mMaxTextureSize(aMaxTextureSize)
     , mUseANGLE(aUseANGLE)
@@ -38,6 +39,7 @@ public:
     , mTask(aTask)
     , mEnableProfiler(aEnableProfiler)
     , mSize(aSize)
+    , mSyncHandle(aHandle)
   {
     MOZ_COUNT_CTOR(NewRenderer);
   }
@@ -91,6 +93,13 @@ public:
       wr_renderer_set_external_image_handler(wrRenderer, &handler);
     }
 
+    if (renderer) {
+      layers::RendererSyncObject* syncObj = renderer->GetSyncObject();
+      if (syncObj) {
+        *mSyncHandle = syncObj->GetSyncHandle();
+      }
+    }
+
     aRenderThread.AddRenderer(aWindowId, Move(renderer));
   }
 
@@ -103,6 +112,7 @@ private:
   layers::SynchronousTask* mTask;
   bool mEnableProfiler;
   LayoutDeviceIntSize mSize;
+  layers::SyncHandle* mSyncHandle;
 };
 
 class RemoveRenderer : public RendererEvent
@@ -146,13 +156,15 @@ WebRenderAPI::Create(bool aEnableProfiler,
   WrAPI* wrApi = nullptr;
   GLint maxTextureSize = 0;
   bool useANGLE = false;
+  layers::SyncHandle syncHandle = 0;
 
   // Dispatch a synchronous task because the WrApi object needs to be created
   // on the render thread. If need be we could delay waiting on this task until
   // the next time we need to access the WrApi object.
   layers::SynchronousTask task("Create Renderer");
   auto event = MakeUnique<NewRenderer>(&wrApi, aBridge, &maxTextureSize, &useANGLE,
-                                       Move(aWidget), &task, aEnableProfiler, aSize);
+                                       Move(aWidget), &task, aEnableProfiler, aSize,
+                                       &syncHandle);
   RenderThread::Get()->RunEvent(id, Move(event));
 
   task.Wait();
@@ -161,7 +173,7 @@ WebRenderAPI::Create(bool aEnableProfiler,
     return nullptr;
   }
 
-  return RefPtr<WebRenderAPI>(new WebRenderAPI(wrApi, id, maxTextureSize, useANGLE)).forget();
+  return RefPtr<WebRenderAPI>(new WebRenderAPI(wrApi, id, maxTextureSize, useANGLE, syncHandle)).forget();
 }
 
 WrIdNamespace
