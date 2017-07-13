@@ -643,7 +643,7 @@ private:
   RefPtr<MFTDecoder> mTransform;
   RefPtr<D3D11RecycleAllocator> mTextureClientAllocator;
   RefPtr<ID3D11VideoDecoder> mDecoder;
-  RefPtr<layers::SyncObject> mSyncObject;
+  RefPtr<layers::TextureSyncObject> mSyncObject;
   GUID mDecoderGUID;
   uint32_t mWidth = 0;
   uint32_t mHeight = 0;
@@ -711,9 +711,8 @@ D3D11DXVA2Manager::Init(layers::KnowsCompositor* aKnowsCompositor,
       // and because it allows color conversion ocurring directly from this texture
       // DXVA does not seem to accept IDXGIKeyedMutex textures as input.
       mSyncObject =
-        layers::SyncObject::CreateSyncObject(layers::ImageBridgeChild::GetSingleton()->
-                                               GetTextureFactoryIdentifier().mSyncHandle,
-                                             mDevice);
+        layers::TextureSyncObject::CreateTextureSyncObject(layers::ImageBridgeChild::GetSingleton()->GetTextureFactoryIdentifier().mSyncHandle,
+                                                           mDevice);
     }
   } else {
     mTextureClientAllocator =
@@ -723,8 +722,8 @@ D3D11DXVA2Manager::Init(layers::KnowsCompositor* aKnowsCompositor,
       // and because it allows color conversion ocurring directly from this texture
       // DXVA does not seem to accept IDXGIKeyedMutex textures as input.
       mSyncObject =
-        layers::SyncObject::CreateSyncObject(aKnowsCompositor->GetTextureFactoryIdentifier().mSyncHandle,
-                                             mDevice);
+        layers::TextureSyncObject::CreateTextureSyncObject(aKnowsCompositor->GetTextureFactoryIdentifier().mSyncHandle,
+                                                           mDevice);
     }
   }
   mTextureClientAllocator->SetMaxPoolSize(5);
@@ -956,7 +955,7 @@ D3D11DXVA2Manager::CopyToImage(IMFSample* aVideoSample,
   }
   if (!mutex && mDevice != DeviceManagerDx::Get()->GetCompositorDevice()) {
     client->SyncWithObject(mSyncObject);
-    mSyncObject->FinalizeFrame();
+    mSyncObject->Synchronize();
   }
 
   image.forget(aOutImage);

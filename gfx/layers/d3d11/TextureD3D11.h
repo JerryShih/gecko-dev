@@ -8,6 +8,7 @@
 
 #include "mozilla/gfx/2D.h"
 #include "mozilla/layers/Compositor.h"
+#include "mozilla/layers/SyncObject.h"
 #include "mozilla/layers/TextureClient.h"
 #include "mozilla/layers/TextureHost.h"
 #include "gfxWindowsPlatform.h"
@@ -89,7 +90,7 @@ public:
                 TextureFlags aFlags,
                 TextureAllocationFlags aAllocFlags) const override;
 
-  virtual void SyncWithObject(SyncObject* aSync) override;
+  virtual void SyncWithObject(TextureSyncObject* aSync) override;
 
   ID3D11Texture2D* GetD3D11Texture() { return mTexture; }
 
@@ -440,26 +441,47 @@ private:
   RefPtr<ID3D11RenderTargetView> mRTView;
 };
 
-class SyncObjectD3D11 : public SyncObject
+class SyncObjectD3D11Renderer : public RendererSyncObject
 {
 public:
-  explicit SyncObjectD3D11(SyncHandle aSyncHandle, ID3D11Device* aDevice);
-  virtual void FinalizeFrame();
-  virtual bool IsSyncObjectValid();
+  explicit SyncObjectD3D11Renderer(ID3D11Device* aDevice);
 
-  virtual SyncType GetSyncType() { return SyncType::D3D11; }
+  virtual bool Init() override;
+
+  virtual SyncHandle GetSyncHandle() override;
+
+  virtual bool Synchronize() override;
+
+private:
+  virtual ~SyncObjectD3D11Renderer() { }
+
+  SyncHandle mSyncHandle;
+  RefPtr<ID3D11Device> mDevice;
+  RefPtr<IDXGIResource> mSyncTexture;
+  RefPtr<IDXGIKeyedMutex> mKeyedMutex;
+};
+
+class SyncObjectD3D11Texture : public TextureSyncObject
+{
+public:
+  explicit SyncObjectD3D11Texture(SyncHandle aSyncHandle, ID3D11Device* aDevice);
+
+  virtual void Synchronize() override;
+
+  virtual bool IsSyncObjectValid() override;
+
+  virtual SyncType GetSyncType() override { return SyncType::D3D11; }
 
   void RegisterTexture(ID3D11Texture2D* aTexture);
 
 private:
   bool Init();
 
-private:
   SyncHandle mSyncHandle;
-  RefPtr<ID3D11Device> mD3D11Device;
-  RefPtr<ID3D11Texture2D> mD3D11Texture;
+  RefPtr<ID3D11Device> mDevice;
+  RefPtr<ID3D11Texture2D> mSyncTexture;
   RefPtr<IDXGIKeyedMutex> mKeyedMutex;
-  std::vector<ID3D11Texture2D*> mD3D11SyncedTextures;
+  std::vector<ID3D11Texture2D*> mSyncedTextures;
 };
 
 inline uint32_t GetMaxTextureSizeForFeatureLevel(D3D_FEATURE_LEVEL aFeatureLevel)

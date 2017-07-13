@@ -80,7 +80,7 @@ public:
 
   static void IdentifyTextureHost(const layers::TextureFactoryIdentifier& aIdentifier);
   layers::LayersBackend GetBackendType() const;
-  layers::SyncObject* GetSyncObject() { return mSyncObject; }
+  layers::TextureSyncObject* GetSyncObject() { return mSyncObject; }
 
   virtual MessageLoop* GetMessageLoop() const override { return mMessageLoop; }
   virtual base::ProcessId GetParentPid() const override { return OtherPid(); }
@@ -194,7 +194,7 @@ private:
   nsDataHashtable<nsUint64HashKey, RefPtr<layers::TextureClient> > mTexturesWaitingRecycled;
 
   layers::LayersBackend mBackend;
-  RefPtr<layers::SyncObject> mSyncObject;
+  RefPtr<layers::TextureSyncObject> mSyncObject;
   nsRefPtrHashtable<nsUint32HashKey, dom::Promise> mGamepadPromiseList; // TODO: check if it can merge into one list?
   uint32_t mPromiseID;
   nsRefPtrHashtable<nsUint32HashKey, dom::Promise> mPromiseList;
