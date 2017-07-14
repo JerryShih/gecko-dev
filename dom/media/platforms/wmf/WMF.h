@@ -21,6 +21,7 @@
 #include <dxva2api.h>
 #include <wmcodecdsp.h>
 #include <codecapi.h>
+#include <mftransform.h>
 
 // The Windows headers helpfully declare min and max macros, which don't
 // compile in the presence of std::min and std::max and unified builds.

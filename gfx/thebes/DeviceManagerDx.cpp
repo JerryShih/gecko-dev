@@ -570,6 +570,7 @@ DeviceManagerDx::CreateDecoderDevice()
   }
 
   if (reuseDevice) {
+	  printf_stderr("bignose create decoder device, reuse\n");
     if (mCompositorDevice && mCompositorDeviceSupportsVideo && !mDecoderDevice) {
       mDecoderDevice = mCompositorDevice;
 
@@ -599,6 +600,7 @@ DeviceManagerDx::CreateDecoderDevice()
   HRESULT hr;
   RefPtr<ID3D11Device> device;
 
+  printf_stderr("bignose create decoder device, new device\n");
   UINT flags = D3D11_CREATE_DEVICE_PREVENT_INTERNAL_THREADING_OPTIMIZATIONS |
                D3D11_CREATE_DEVICE_VIDEO_SUPPORT;
   if (!CreateDevice(adapter, D3D_DRIVER_TYPE_UNKNOWN, flags, hr, device)) {

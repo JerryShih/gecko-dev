@@ -10,6 +10,8 @@
 #include "mozilla/gfx/Logging.h"
 #include "ScopedGLHelpers.h"
 
+#include "yuvtest.inl"
+
 namespace mozilla {
 namespace wr {
 
@@ -52,6 +54,58 @@ RenderDXGITextureHostOGL::Lock()
   gl::GLLibraryEGL* egl = &gl::sEGLLibrary;
 
   if (mFormat != gfx::SurfaceFormat::NV12) {
+
+//    static const size_t rgbatest_width = 128;
+//    static const size_t rgbatest_height = 128;
+//    static unsigned char rgbatest_data[rgbatest_width * rgbatest_height * 4];
+//    static bool init = false;
+//    if (!init) {
+//      init = true;
+//      int pos = 0;
+//      for (int i = 0; i < rgbatest_height; ++i) {
+//        for (int j = 0; j < rgbatest_width; ++j) {
+//          rgbatest_data[pos++] = 255; //r
+//          rgbatest_data[pos++] = 255;
+//          rgbatest_data[pos++] = 0;
+//          rgbatest_data[pos++] = 255;
+//        }
+//      }
+//    }
+//
+//    // Fetch the D3D11 device.
+//    EGLDeviceEXT eglDevice = nullptr;
+//    egl->fQueryDisplayAttribEXT(egl->Display(), LOCAL_EGL_DEVICE_EXT, (EGLAttrib*)&eglDevice);
+//    MOZ_ASSERT(eglDevice);
+//    ID3D11Device* device = nullptr;
+//    egl->fQueryDeviceAttribEXT(eglDevice, LOCAL_EGL_D3D11_DEVICE_ANGLE, (EGLAttrib*)&device);
+//    MOZ_ASSERT(device);
+//
+//    HRESULT res;
+//    D3D11_TEXTURE2D_DESC desc;
+//    desc.Width              = rgbatest_width;
+//    desc.Height             = rgbatest_height;
+//    desc.Format             = DXGI_FORMAT_R8G8B8A8_UNORM;
+//    desc.MipLevels          = 1;
+//    desc.ArraySize          = 1;
+//    desc.SampleDesc.Count   = 1;
+//    desc.SampleDesc.Quality = 0;
+//    desc.Usage              = D3D11_USAGE_DEFAULT;
+//    desc.BindFlags          = D3D11_BIND_SHADER_RESOURCE;
+//    desc.CPUAccessFlags     = 0;
+//    desc.MiscFlags          = D3D11_RESOURCE_MISC_SHARED;
+//    D3D11_SUBRESOURCE_DATA subres;
+//    subres.pSysMem          = rgbatest_data;
+//    subres.SysMemPitch      = rgbatest_width;
+//    subres.SysMemSlicePitch = rgbatest_width * rgbatest_height * 4;
+//    res                      = device->CreateTexture2D(&desc, &subres, (ID3D11Texture2D**)getter_AddRefs(mTexture));
+//
+//    IDXGIResource* resource = nullptr;
+//    mTexture->QueryInterface(&resource);
+//    resource->GetSharedHandle((HANDLE*)&mHandle);
+
+
+
+    printf_stderr("bignose d3d lock: non-nv12\n");
     EGLint pbuffer_attributes[] = {
         LOCAL_EGL_WIDTH, mSize.width,
         LOCAL_EGL_HEIGHT, mSize.height,
@@ -69,18 +123,21 @@ RenderDXGITextureHostOGL::Lock()
     void* keyedMutex = nullptr;
     egl->fQuerySurfacePointerANGLE(egl->Display(), mSurface, LOCAL_EGL_DXGI_KEYED_MUTEX_ANGLE, &keyedMutex);
     mKeyedMutex = static_cast<IDXGIKeyedMutex*>(keyedMutex);
+	if (mKeyedMutex) {
+		mKeyedMutex->AcquireSync(0, 10000);
+	}
 
     mGL->fGenTextures(1, &mTextureHandle[0]);
     mGL->fActiveTexture(LOCAL_GL_TEXTURE0);
     mGL->fBindTexture(LOCAL_GL_TEXTURE_2D, mTextureHandle[0]);
     mGL->fTexParameterf(LOCAL_GL_TEXTURE_2D, LOCAL_GL_TEXTURE_WRAP_S, LOCAL_GL_CLAMP_TO_EDGE);
     mGL->fTexParameterf(LOCAL_GL_TEXTURE_2D, LOCAL_GL_TEXTURE_WRAP_T, LOCAL_GL_CLAMP_TO_EDGE);
+    mGL->fTexParameterf(LOCAL_GL_TEXTURE_2D, LOCAL_GL_TEXTURE_MAG_FILTER, LOCAL_GL_NEAREST);
+    mGL->fTexParameterf(LOCAL_GL_TEXTURE_2D, LOCAL_GL_TEXTURE_MIN_FILTER, LOCAL_GL_NEAREST);
     egl->fBindTexImage(egl->Display(), mSurface, LOCAL_EGL_BACK_BUFFER);
-
-    if (mKeyedMutex) {
-      mKeyedMutex->AcquireSync(0, 10000);
-    }
   } else {
+    printf_stderr("bignose d3d lock: nv12\n");
+
     // Fetch the D3D11 device.
     EGLDeviceEXT eglDevice = nullptr;
     egl->fQueryDisplayAttribEXT(egl->Display(), LOCAL_EGL_DEVICE_EXT, (EGLAttrib*)&eglDevice);
@@ -94,8 +151,36 @@ RenderDXGITextureHostOGL::Lock()
                                           __uuidof(ID3D11Texture2D),
                                           (void**)(ID3D11Texture2D**)getter_AddRefs(mTexture)))) {
       NS_WARNING("Failed to open shared texture");
+
       return false;
     }
+
+    mTexture->QueryInterface((IDXGIKeyedMutex**)getter_AddRefs(mKeyedMutex));
+    if (mKeyedMutex) {
+      mKeyedMutex->AcquireSync(0, 10000);
+    }
+
+//    // Create the NV12 test D3D11 texture
+//    HRESULT res;
+//    D3D11_TEXTURE2D_DESC desc;
+//    desc.Width              = yuvtest_width;
+//    desc.Height             = yuvtest_height;
+//    desc.Format             = DXGI_FORMAT_NV12;
+//    desc.MipLevels          = 1;
+//    desc.ArraySize          = 1;
+//    desc.SampleDesc.Count   = 1;
+//    desc.SampleDesc.Quality = 0;
+//    desc.Usage              = D3D11_USAGE_DEFAULT;
+//    desc.BindFlags          = D3D11_BIND_SHADER_RESOURCE;
+//    desc.CPUAccessFlags     = 0;
+//    desc.MiscFlags          = 0;
+//    D3D11_SUBRESOURCE_DATA subres;
+//    subres.pSysMem          = yuvtest_data;
+//    subres.SysMemPitch      = yuvtest_width;
+//    subres.SysMemSlicePitch = yuvtest_width * yuvtest_height * 3 / 2;
+//    ID3D11Texture2D *texture = nullptr;
+//    res                      = device->CreateTexture2D(&desc, &subres, (ID3D11Texture2D**)getter_AddRefs(mTexture));
+
 
     // Create the stream.
     const EGLint streamAttributes[] = {
@@ -190,6 +275,9 @@ RenderDXGITextureHostOGL::GetGLHandle(uint8_t aChannelIndex) const
 {
   MOZ_ASSERT(mFormat != gfx::SurfaceFormat::NV12 || aChannelIndex < 2);
   MOZ_ASSERT(mFormat == gfx::SurfaceFormat::NV12 || aChannelIndex < 1);
+
+  printf_stderr("bignose d3d gethandle, index:%d, id:%d\n",
+      aChannelIndex, mTextureHandle[aChannelIndex]);
 
   return mTextureHandle[aChannelIndex];
 }

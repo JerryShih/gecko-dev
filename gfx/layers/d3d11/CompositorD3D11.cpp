@@ -843,6 +843,7 @@ CompositorD3D11::DrawGeometry(const Geometry& aGeometry,
     break;
   case EffectTypes::NV12:
     {
+	  printf_stderr("bignose NV12 texture\n");
       TexturedEffect* texturedEffect =
         static_cast<TexturedEffect*>(aEffectChain.mPrimaryEffect.get());
 
@@ -883,6 +884,7 @@ CompositorD3D11::DrawGeometry(const Geometry& aGeometry,
     }
     break;
   case EffectTypes::YCBCR: {
+	  printf_stderr("bignose ycbcr texture\n");
       EffectYCbCr* ycbcrEffect =
         static_cast<EffectYCbCr*>(aEffectChain.mPrimaryEffect.get());
 

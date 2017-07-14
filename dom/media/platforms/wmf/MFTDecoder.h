@@ -47,6 +47,8 @@ public:
   // Returns the MFT's IMFAttributes object.
   already_AddRefed<IMFAttributes> GetAttributes();
 
+  already_AddRefed<IMFMediaType> GetInputCurrentType();
+
   // Retrieves the media type being output. This may not be valid until
   //  the first sample is decoded.
   HRESULT GetOutputMediaType(RefPtr<IMFMediaType>& aMediaType);

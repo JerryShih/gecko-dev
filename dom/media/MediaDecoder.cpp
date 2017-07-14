@@ -1069,8 +1069,10 @@ MediaDecoder::NotifyCompositor()
 
   RefPtr<LayerManager> layerManager =
     nsContentUtils::LayerManagerForDocument(ownerDoc);
+  printf_stderr("bignose NotifyCompositor, layerM:%p\n",layerManager.get());
   if (layerManager) {
     RefPtr<KnowsCompositor> knowsCompositor = layerManager->AsKnowsCompositor();
+    printf_stderr("bignose NotifyCompositor, knowsCompositor:%p\n",knowsCompositor.get());
     mCompositorUpdatedEvent.Notify(knowsCompositor);
   }
 }

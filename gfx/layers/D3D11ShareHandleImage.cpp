@@ -86,6 +86,7 @@ D3D11ShareHandleImage::GetAsSourceSurface()
   HRESULT hr;
 
   if (desc.Format == DXGI_FORMAT_NV12) {
+    printf_stderr("bignose D3D11ShareHandleImage::GetAsSourceSurface, convert DXGI_FORMAT_NV12\n");
     nsAutoCString error;
     std::unique_ptr<DXVA2Manager> manager(DXVA2Manager::CreateD3D11DXVA(nullptr, error, device));
 
@@ -199,6 +200,9 @@ D3D11RecycleAllocator::CreateOrRecycleClient(gfx::SurfaceFormat aFormat,
   if (gfxPrefs::PDMWMFUseSyncTexture() || mDevice == DeviceManagerDx::Get()->GetCompositorDevice()) {
     // If our device is the compositor device, we don't need any synchronization in practice.
     allocFlags = TextureAllocationFlags::ALLOC_MANUAL_SYNCHRONIZATION;
+    printf_stderr("bignose recycle d3d11 texture without mutex\n");
+  } else {
+    printf_stderr("bignose recycle d3d11 texture with mutex\n");
   }
   RefPtr<TextureClient> textureClient =
     CreateOrRecycle(aFormat,
