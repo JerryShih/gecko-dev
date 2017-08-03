@@ -1433,6 +1433,8 @@ WebRenderBridgeParent::GetTextureFactoryIdentifier()
 {
   MOZ_ASSERT(mApi);
 
+  //printf_stderr("bignose GetTextureFactoryIdentifier, sync handle:%p\n", mApi->GetSyncHandle());
+
   return TextureFactoryIdentifier(LayersBackend::LAYERS_WR,
                                   XRE_GetProcessType(),
                                   mApi->GetMaxTextureSize(),

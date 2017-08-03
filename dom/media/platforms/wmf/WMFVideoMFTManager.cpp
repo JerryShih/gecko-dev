@@ -408,6 +408,7 @@ public:
       } else {
         mDXVA2Manager =
           DXVA2Manager::CreateD3D11DXVA(mKnowsCompositor, *failureReason);
+        printf_stderr("bignose CreateD3D11DXVA\n");
         if (mDXVA2Manager) {
           return NS_OK;
         }
@@ -425,6 +426,7 @@ public:
     } else {
       mDXVA2Manager =
         DXVA2Manager::CreateD3D9DXVA(mKnowsCompositor, *failureReason);
+      printf_stderr("bignose CreateD3D9DXVA\n");
       // Make sure we include the messages from both attempts (if applicable).
       mFailureReason.Append(secondFailureReason);
     }
@@ -581,6 +583,24 @@ WMFVideoMFTManager::InitInternal()
   RefPtr<IMFMediaType> outputType;
   hr = mDecoder->GetOutputMediaType(outputType);
   NS_ENSURE_TRUE(SUCCEEDED(hr), hr);
+
+  //bignose test input format
+  RefPtr<IMFMediaType> type = mDecoder->GetInputCurrentType();
+  GUID subtype = GUID_NULL;
+  hr = type->GetGUID(MF_MT_SUBTYPE, &subtype);
+  //NS_ENSURE_TRUE(SUCCEEDED(hr), hr);
+  printf_stderr("bignose hr=0x%08lx\n", hr);
+
+  if (subtype==MFVideoFormat_NV12) {
+    printf_stderr("bignose subtype is nv12\n");
+  } else if (subtype==MFVideoFormat_H264) {
+    printf_stderr("bignose subtype is h264\n");
+  } else if (subtype==GUID_NULL) {
+    printf_stderr("bignose subtype is null\n");
+  } else {
+    printf_stderr("bignose subtype is other\n");
+  }
+
 
   if (mUseHwAccel && !CanUseDXVA(outputType)) {
     mDXVAEnabled = false;
@@ -1040,6 +1060,9 @@ WMFVideoMFTManager::Output(int64_t aStreamOffset,
     NS_WARNING("WMFVideoMFTManager::Output() unexpected error");
     return hr;
   }
+
+  static int count = 0;
+  printf_stderr("bignose output frame:%d\n", count++);
 
   RefPtr<VideoData> frame;
   if (mUseHwAccel) {

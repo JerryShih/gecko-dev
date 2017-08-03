@@ -235,6 +235,9 @@ RenderDXGITextureHostOGL::GetGLHandle(uint8_t aChannelIndex) const
   MOZ_ASSERT(mFormat != gfx::SurfaceFormat::NV12 || aChannelIndex < 2);
   MOZ_ASSERT(mFormat == gfx::SurfaceFormat::NV12 || aChannelIndex < 1);
 
+  printf_stderr("bignose d3d gethandle, index:%d, id:%d\n",
+      aChannelIndex, mTextureHandle[aChannelIndex]);
+
   return mTextureHandle[aChannelIndex];
 }
 

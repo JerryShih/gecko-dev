@@ -30,6 +30,7 @@ wr::WrExternalImage LockExternalImage(void* aObj, wr::WrExternalImageId aId, uin
 
     return RawDataToWrExternalImage(data.mData, data.mBufferSize);
   } else {
+    printf_stderr("bignose LockExternalImage, gl\n");
     // texture handle case
     RenderTextureHostOGL* textureOGL = texture->AsTextureHostOGL();
     MOZ_ASSERT(textureOGL);
@@ -92,6 +93,8 @@ RendererOGL::RendererOGL(RefPtr<RenderThread>&& aThread,
         mSyncObject = nullptr;
       }
     }
+
+    printf_stderr("bignose RendererOGL:sync handle:%p\n",mSyncObject->GetSyncHandle());
   }
 #endif
 }

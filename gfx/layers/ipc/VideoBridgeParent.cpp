@@ -61,6 +61,8 @@ VideoBridgeParent::AllocPTextureParent(const SurfaceDescriptor& aSharedData,
                                        const TextureFlags& aFlags,
                                        const uint64_t& aSerial)
 {
+  printf_stderr("bignose VideoBridgeParent::AllocPTextureParent, type:%d\n",
+      aSharedData.type());
   PTextureParent* parent =
     TextureHost::CreateIPDLActor(this, aSharedData, aLayersBackend, aFlags, aSerial, Nothing());
   mTextureMap[aSerial] = parent;

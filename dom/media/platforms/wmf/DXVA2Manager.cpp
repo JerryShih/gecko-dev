@@ -164,7 +164,8 @@ HRESULT ConvertMFTypeToDXVAType(IMFMediaType *pType, DXVA2_VideoDesc *pDesc)
   // The D3D format is the first DWORD of the subtype GUID.
   GUID subtype = GUID_NULL;
   HRESULT hr = pType->GetGUID(MF_MT_SUBTYPE, &subtype);
-  NS_ENSURE_TRUE(SUCCEEDED(hr), hr);
+  //NS_ENSURE_TRUE(SUCCEEDED(hr), hr);
+  printf_stderr("bignose hr=0x%08lx\n", hr);
   pDesc->Format = (D3DFORMAT)subtype.Data1;
 
   UINT32 width = 0;
@@ -441,6 +442,10 @@ D3D9DXVA2Manager::CopyToImage(IMFSample* aSample,
                               const nsIntRect& aRegion,
                               Image** aOutImage)
 {
+  static int count = 0;
+  printf_stderr("bignose D3D9DXVA2Manager::CopyToImage, count:%d\n",count++);
+
+
   RefPtr<IMFMediaBuffer> buffer;
   HRESULT hr = aSample->GetBufferByIndex(0, getter_AddRefs(buffer));
   NS_ENSURE_TRUE(SUCCEEDED(hr), hr);
@@ -683,6 +688,7 @@ D3D11DXVA2Manager::Init(layers::KnowsCompositor* aKnowsCompositor,
     // thread. Managers initialized off the main thread have to pass a device
     // and can only be used for color conversion.
     MOZ_ASSERT(aDevice);
+	printf_stderr("bignose f:%s, line:%d\n",__FILE__,__LINE__);
     return InitInternal(aKnowsCompositor, aFailureReason, aDevice);
   }
 
@@ -693,6 +699,7 @@ D3D11DXVA2Manager::Init(layers::KnowsCompositor* aKnowsCompositor,
   if (crashGuard.Crashed()) {
     NS_WARNING("DXVA2D3D11 crash detected");
     aFailureReason.AssignLiteral("DXVA2D3D11 crashes detected in the past");
+	printf_stderr("bignose f:%s, line:%d\n", __FILE__, __LINE__);
     return E_FAIL;
   }
 
@@ -700,6 +707,7 @@ D3D11DXVA2Manager::Init(layers::KnowsCompositor* aKnowsCompositor,
   NS_ENSURE_TRUE(SUCCEEDED(hr), hr);
 
   if (layers::ImageBridgeChild::GetSingleton() || !aKnowsCompositor) {
+	  printf_stderr("bignose f:%s, line:%d\n", __FILE__, __LINE__);
     // There's no proper KnowsCompositor for ImageBridge currently (and it
     // implements the interface), so just use that if it's available.
     mTextureClientAllocator = new D3D11RecycleAllocator(
@@ -707,6 +715,7 @@ D3D11DXVA2Manager::Init(layers::KnowsCompositor* aKnowsCompositor,
 
     if (ImageBridgeChild::GetSingleton() && gfxPrefs::PDMWMFUseSyncTexture() &&
         mDevice != DeviceManagerDx::Get()->GetCompositorDevice()) {
+      printf_stderr("bignose f:%s, line:%d\n", __FILE__, __LINE__);
       // We use a syncobject to avoid the cost of the mutex lock when compositing,
       // and because it allows color conversion ocurring directly from this texture
       // DXVA does not seem to accept IDXGIKeyedMutex textures as input.
@@ -717,9 +726,11 @@ D3D11DXVA2Manager::Init(layers::KnowsCompositor* aKnowsCompositor,
             mDevice);
     }
   } else {
+	  printf_stderr("bignose f:%s, line:%d\n", __FILE__, __LINE__);
     mTextureClientAllocator =
       new D3D11RecycleAllocator(aKnowsCompositor, mDevice);
     if (gfxPrefs::PDMWMFUseSyncTexture()) {
+      printf_stderr("bignose f:%s, line:%d\n", __FILE__, __LINE__);
       // We use a syncobject to avoid the cost of the mutex lock when compositing,
       // and because it allows color conversion ocurring directly from this texture
       // DXVA does not seem to accept IDXGIKeyedMutex textures as input.
@@ -891,11 +902,29 @@ D3D11DXVA2Manager::CreateOutputSample(RefPtr<IMFSample>& aSample,
   return S_OK;
 }
 
+class AutoTextureLockLog
+{
+public:
+  AutoTextureLockLog()
+  {
+    printf_stderr("bignose lock begin\n");
+  }
+
+  ~AutoTextureLockLog()
+  {
+    printf_stderr("bignose lock end\n");
+  }
+};
+
+
 HRESULT
 D3D11DXVA2Manager::CopyToImage(IMFSample* aVideoSample,
                                const nsIntRect& aRegion,
                                Image** aOutImage)
 {
+  static int count = 0;
+  printf_stderr("bignose D3D11DXVA2Manager::CopyToImage, count:%d\n",count++);
+
   NS_ENSURE_TRUE(aVideoSample, E_POINTER);
   NS_ENSURE_TRUE(aOutImage, E_POINTER);
   MOZ_ASSERT(mTextureClientAllocator);
@@ -914,11 +943,17 @@ D3D11DXVA2Manager::CopyToImage(IMFSample* aVideoSample,
 
   texture->QueryInterface((IDXGIKeyedMutex**)getter_AddRefs(mutex));
 
+  printf_stderr("bignose dxva decoding\n");
+
   {
     AutoTextureLock(mutex, hr, 2000);
     if (mutex && (FAILED(hr) || hr == WAIT_TIMEOUT || hr == WAIT_ABANDONED)) {
       return hr;
     }
+
+    printf_stderr("bignose mutex:%p\n",mutex.get());
+    printf_stderr("bignose mdevice:%p\n", mDevice);
+    printf_stderr("bignose dx manager device:%p\n", DeviceManagerDx::Get()->GetCompositorDevice());
 
     if (!mutex && mDevice != DeviceManagerDx::Get()->GetCompositorDevice()) {
       NS_ENSURE_TRUE(mSyncObject, E_FAIL);
@@ -944,18 +979,67 @@ D3D11DXVA2Manager::CopyToImage(IMFSample* aVideoSample,
       UINT index;
       dxgiBuf->GetSubresourceIndex(&index);
       mContext->CopySubresourceRegion(texture, 0, 0, 0, 0, tex, index, nullptr);
+      printf_stderr("bignose output nv12\n");
     } else {
       // Our video sample is in NV12 format but our output texture is in BGRA.
       // Use MFT to do color conversion.
+
+      //bignose test input format
+      RefPtr<IMFMediaType> type = mTransform->GetInputCurrentType();
+      GUID subtype = GUID_NULL;
+      hr = type->GetGUID(MF_MT_SUBTYPE, &subtype);
+      //NS_ENSURE_TRUE(SUCCEEDED(hr), hr);
+      printf_stderr("bignose hr=0x%08lx\n", hr);
+
+      if (subtype==MFVideoFormat_NV12) {
+        printf_stderr("bignose subtype is nv12\n");
+      } else if (subtype==MFVideoFormat_H264) {
+        printf_stderr("bignose subtype is h264\n");
+      } else if (subtype==GUID_NULL) {
+        printf_stderr("bignose subtype is null\n");
+      } else {
+        printf_stderr("bignose subtype is other\n");
+      }
+
+
       hr = mTransform->Input(aVideoSample);
       NS_ENSURE_TRUE(SUCCEEDED(hr), hr);
 
       RefPtr<IMFSample> sample;
+
+      // test a
       hr = CreateOutputSample(sample, texture);
       NS_ENSURE_TRUE(SUCCEEDED(hr), hr);
 
       hr = mTransform->Output(&sample);
       NS_ENSURE_TRUE(SUCCEEDED(hr), hr);
+
+
+      // test b
+//      // Win7 doesn't support the keyed-mutex output buffer. So, we don't pass
+//      // our textureClient's buffer to the MTFDecoder. Instead, we should copy
+//      // the converted content from decoder's internal buffer to our
+//      // textureClient.
+//      hr = mTransform->Output(&sample);
+//      NS_ENSURE_TRUE(SUCCEEDED(hr), hr);
+//
+//
+//      RefPtr<IMFMediaBuffer> buffer;
+//      hr = sample->GetBufferByIndex(0, getter_AddRefs(buffer));
+//      NS_ENSURE_TRUE(SUCCEEDED(hr), hr);
+//
+//      RefPtr<IMFDXGIBuffer> dxgiBuf;
+//      hr = buffer->QueryInterface((IMFDXGIBuffer**)getter_AddRefs(dxgiBuf));
+//      NS_ENSURE_TRUE(SUCCEEDED(hr), hr);
+//
+//      RefPtr<ID3D11Texture2D> tex;
+//      hr = dxgiBuf->GetResource(__uuidof(ID3D11Texture2D), getter_AddRefs(tex));
+//      NS_ENSURE_TRUE(SUCCEEDED(hr), hr);
+//      UINT index;
+//      dxgiBuf->GetSubresourceIndex(&index);
+//      mContext->CopySubresourceRegion(texture, 0, 0, 0, 0, tex, index, nullptr);
+//      mContext->Flush();
+      printf_stderr("bignose output bgra\n");
     }
   }
 
@@ -975,6 +1059,8 @@ HRESULT
 D3D11DXVA2Manager::CopyToBGRATexture(ID3D11Texture2D *aInTexture,
                                      ID3D11Texture2D** aOutTexture)
 {
+  printf_stderr("bignose D3D11DXVA2Manager::CopyToBGRATexture\n");
+
   NS_ENSURE_TRUE(aInTexture, E_POINTER);
   NS_ENSURE_TRUE(aOutTexture, E_POINTER);
 
@@ -1105,6 +1191,23 @@ D3D11DXVA2Manager::ConfigureForSize(uint32_t aWidth, uint32_t aHeight)
   gfx::IntSize size(mWidth, mHeight);
   hr = mTransform->SetMediaTypes(inputType, outputType, ConfigureOutput, &size);
   NS_ENSURE_TRUE(SUCCEEDED(hr), hr);
+
+  //bignose test input format
+  RefPtr<IMFMediaType> type = mTransform->GetInputCurrentType();
+  GUID subtype = GUID_NULL;
+  hr = type->GetGUID(MF_MT_SUBTYPE, &subtype);
+  //NS_ENSURE_TRUE(SUCCEEDED(hr), hr);
+  printf_stderr("bignose hr=0x%08lx\n", hr);
+
+  if (subtype==MFVideoFormat_NV12) {
+    printf_stderr("bignose subtype is nv12\n");
+  } else if (subtype==MFVideoFormat_H264) {
+    printf_stderr("bignose subtype is h264\n");
+  } else if (subtype==GUID_NULL) {
+    printf_stderr("bignose subtype is null\n");
+  } else {
+    printf_stderr("bignose subtype is other\n");
+  }
 
   return S_OK;
 }

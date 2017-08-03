@@ -75,6 +75,15 @@ MFTDecoder::GetAttributes()
   return attr.forget();
 }
 
+already_AddRefed<IMFMediaType>
+MFTDecoder::GetInputCurrentType()
+{
+  RefPtr<IMFMediaType> type;
+  HRESULT hr = mDecoder->GetInputCurrentType(0, getter_AddRefs(type));
+  NS_ENSURE_TRUE(SUCCEEDED(hr), nullptr);
+  return type.forget();
+}
+
 HRESULT
 MFTDecoder::SetDecoderOutputType(bool aMatchAllAttributes,
                                  ConfigureOutputCallback aCallback,
@@ -221,10 +230,12 @@ MFTDecoder::Output(RefPtr<IMFSample>* aOutput)
   if (*aOutput) {
     output.pSample = *aOutput;
     providedSample = true;
+    printf_stderr("bignose %p MFTDecoder::Output, pSample:%p, line:%d\n",this, output.pSample, __LINE__);
   } else if (!mMFTProvidesOutputSamples) {
     hr = CreateOutputSample(&sample);
     NS_ENSURE_TRUE(SUCCEEDED(hr), hr);
     output.pSample = sample;
+    printf_stderr("bignose %p MFTDecoder::Output, line:%d\n",this,__LINE__);
   }
 
   DWORD status = 0;
@@ -237,18 +248,23 @@ MFTDecoder::Output(RefPtr<IMFSample>* aOutput)
   }
 
   if (hr == MF_E_TRANSFORM_STREAM_CHANGE) {
+    printf_stderr("bignose %p MFTDecoder::Output, hr=0x%08lx\n",this,hr);
     return MF_E_TRANSFORM_STREAM_CHANGE;
   }
 
   if (hr == MF_E_TRANSFORM_NEED_MORE_INPUT) {
     // Not enough input to produce output. This is an expected failure,
     // so don't warn on encountering it.
+    printf_stderr("bignose %p MFTDecoder::Output, hr=0x%08lx\n",this,hr);
     return hr;
   }
+
+  printf_stderr("bignose %p MFTDecoder::Output, hr=0x%08lx\n",this,hr);
   // Treat other errors as unexpected, and warn.
   NS_ENSURE_TRUE(SUCCEEDED(hr), hr);
 
   if (!output.pSample) {
+    printf_stderr("bignose %p MFTDecoder::Output, no sample",this);
     return S_OK;
   }
 
@@ -289,9 +305,11 @@ MFTDecoder::Input(IMFSample* aSample)
 {
   HRESULT hr = mDecoder->ProcessInput(0, aSample, 0);
   if (hr == MF_E_NOTACCEPTING) {
+    printf_stderr("bignose %p, MFTDecoder::Input return MF_E_NOTACCEPTING\n",this);
     // MFT *already* has enough data to produce a sample. Retrieve it.
     return MF_E_NOTACCEPTING;
   }
+  printf_stderr("bignose %p, MFTDecoder::Input hr=0x%08lx\n",this, hr);
   NS_ENSURE_TRUE(SUCCEEDED(hr), hr);
 
   return S_OK;
