@@ -2136,6 +2136,9 @@ ContentParent::~ContentParent()
     mForceKillTimer->Cancel();
   }
 
+  printf_stderr("@bignose gpu:%d parent:%d pid::%d tid:%d ContentParent::~ContentParent\n",
+      (int)XRE_IsGPUProcess(), (int)XRE_IsParentProcess(), base::GetCurrentProcId(), PlatformThread::CurrentId());
+  NS_ASSERTION2(false, "~ContentParent");
   NS_ASSERTION(NS_IsMainThread(), "Wrong thread!");
 
   // We should be removed from all these lists in ActorDestroy.

@@ -850,7 +850,12 @@ PrintStackFrame(uint32_t aFrameNumber, void* aPC, void* aSP, void* aClosure)
 
   MozDescribeCodeAddress(aPC, &details);
   MozFormatCodeAddressDetails(buf, sizeof(buf), aFrameNumber, aPC, &details);
-  fprintf(stream, "%s\n", buf);
+  if (aFrameNumber == 1) {
+    fprintf(stream, "@bignose gpu:%d parent:%d pid::%d tid:%d %s\n", (int)XRE_IsGPUProcess(), (int)XRE_IsParentProcess(), base::GetCurrentProcId(), PlatformThread::CurrentId(), buf);
+  } else {
+    fprintf(stream, "@bignose %s\n", buf);
+  }
+
   fflush(stream);
 }
 
@@ -879,7 +884,7 @@ RecordStackFrame(uint32_t /*aFrameNumber*/, void* aPC, void* /*aSP*/,
 void
 nsTraceRefcnt::WalkTheStack(FILE* aStream)
 {
-  MozStackWalk(PrintStackFrame, /* skipFrames */ 2, /* maxFrames */ 0, aStream);
+  MozStackWalk(PrintStackFrame, /* skipFrames */ 2, /* maxFrames */ 5, aStream);
 }
 
 /**

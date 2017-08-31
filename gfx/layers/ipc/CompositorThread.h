@@ -18,7 +18,18 @@ namespace layers {
 
 class CompositorThreadHolder final
 {
-  NS_INLINE_DECL_THREADSAFE_REFCOUNTING_WITH_MAIN_THREAD_DESTRUCTION(CompositorThreadHolder)
+  //NS_INLINE_DECL_THREADSAFE_REFCOUNTING_WITH_MAIN_THREAD_DESTRUCTION(CompositorThreadHolder)
+public:
+  NS_METHOD_(MozExternalRefCountType) AddRef(void);
+  void DeleteToBeCalledOnMainThread();
+  NS_METHOD_(MozExternalRefCountType) Release(void);
+
+protected:
+  ::mozilla::ThreadSafeAutoRefCnt mRefCnt;
+private:
+  ::mozilla::layers::HelperForMainThreadDestruction mHelperForMainThreadDestruction;
+
+  ///////////////////////////////////
 
 public:
   CompositorThreadHolder();
