@@ -908,7 +908,14 @@ ShutdownXPCOM(nsIServiceManager* aServMgr)
     // Shutdown all remaining threads.  This method does not return until
     // all threads created using the thread manager (with the exception of
     // the main thread) have exited.
+
+    printf_stderr("@bignose gpu:%d parent:%d pid::%d tid:%d nsThreadManager::get().Shutdown() start\n",
+        (int)XRE_IsGPUProcess(), (int)XRE_IsParentProcess(), base::GetCurrentProcId(), PlatformThread::CurrentId());
+
     nsThreadManager::get().Shutdown();
+
+    printf_stderr("@bignose gpu:%d parent:%d pid::%d tid:%d nsThreadManager::get().Shutdown() end\n",
+        (int)XRE_IsGPUProcess(), (int)XRE_IsParentProcess(), base::GetCurrentProcId(), PlatformThread::CurrentId());
 
     NS_ProcessPendingEvents(thread);
 

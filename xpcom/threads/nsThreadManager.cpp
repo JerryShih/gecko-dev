@@ -318,6 +318,7 @@ nsThreadManager::GetMainThread(nsIThread** aResult)
 {
   // Keep this functioning during Shutdown
   if (NS_WARN_IF(!mMainThread)) {
+    NS_ASSERTION2(false, "@bignose nsThreadManager::GetMainThread failed");
     return NS_ERROR_NOT_INITIALIZED;
   }
   NS_ADDREF(*aResult = mMainThread);

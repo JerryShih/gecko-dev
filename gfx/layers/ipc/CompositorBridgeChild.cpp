@@ -204,6 +204,13 @@ CompositorBridgeChild::Destroy()
 void
 CompositorBridgeChild::ShutDown()
 {
+  printf_stderr("@bignose gpu:%d parent:%d pid::%d tid:%d CompositorBridgeChild::ShutDown\n",
+      (int)XRE_IsGPUProcess(), (int)XRE_IsParentProcess(), base::GetCurrentProcId(), PlatformThread::CurrentId());
+  NS_ASSERTION2(false, "@bignose CompositorBridgeChild::ShutDown");
+
+//  if (!XRE_IsParentProcess()) {
+//    SpinEventLoopUntil([&]() { return false; });
+//  }
   if (sCompositorBridge) {
     sCompositorBridge->Destroy();
     SpinEventLoopUntil([&]() { return !sCompositorBridge; });

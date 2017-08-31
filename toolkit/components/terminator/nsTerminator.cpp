@@ -152,9 +152,18 @@ RunWatchdog(void* arg)
     usleep(1000000 /* usec */);
 #endif
 
-    if (gHeartbeat++ < timeToLive) {
-      continue;
+    if (XRE_IsParentProcess()) {
+      if (gHeartbeat++ < timeToLive) {
+        continue;
+      }
+    } else {
+      if (gHeartbeat++ < timeToLive / 3) {
+        continue;
+      }
     }
+//    if (gHeartbeat++ < timeToLive) {
+//      continue;
+//    }
 
     // Shutdown is apparently dead. Crash the process.
     MOZ_CRASH("Shutdown too long, probably frozen, causing a crash.");
@@ -343,6 +352,8 @@ nsTerminator::SelfInit()
   if (!os) {
     return NS_ERROR_UNEXPECTED;
   }
+
+  NS_ASSERTION2(false, "@bignose nsTerminator::SelfInit()");
 
   for (auto& shutdownStep : sShutdownSteps) {
     DebugOnly<nsresult> rv = os->AddObserver(this, shutdownStep.mTopic, false);

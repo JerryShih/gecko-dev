@@ -25,6 +25,58 @@ static bool sFinishedCompositorShutDown = false;
 // See ImageBridgeChild.cpp
 void ReleaseImageBridgeParentSingleton();
 
+
+NS_METHOD_(MozExternalRefCountType)
+CompositorThreadHolder::AddRef(void)
+{
+  MOZ_ASSERT_TYPE_OK_FOR_REFCOUNTING(CompositorThreadHolder)
+    MOZ_ASSERT(int32_t(mRefCnt) >= 0, "illegal refcnt");
+  nsrefcnt count = ++mRefCnt;
+
+  printf_stderr("@bignose CompositorThreadHolder::AddRef, count:%d\n",count);
+  NS_ASSERTION2(false, "@bignose CompositorThreadHolder::AddRef");
+
+  return (nsrefcnt) count;
+}
+
+void
+CompositorThreadHolder::DeleteToBeCalledOnMainThread()
+{
+  MOZ_ASSERT(NS_IsMainThread());
+
+  NS_ASSERTION2(false, "@bignose CompositorThreadHolder::DeleteToBeCalledOnMainThread");
+
+  delete this;
+}
+
+NS_METHOD_(MozExternalRefCountType)
+CompositorThreadHolder::CompositorThreadHolder::Release(void)
+{
+  MOZ_ASSERT(int32_t(mRefCnt) > 0, "dup release");
+  nsrefcnt count = --mRefCnt;
+
+  printf_stderr("@bignose gpu:%d parent:%d pid::%d tid:%d CompositorThreadHolder::Release, count:%d\n",
+      (int)XRE_IsGPUProcess(), (int)XRE_IsParentProcess(), base::GetCurrentProcId(), PlatformThread::CurrentId(), count);
+
+  if (count == 0) {
+    if (NS_IsMainThread()) {
+      printf_stderr("@bignose gpu:%d parent:%d pid::%d tid:%d CompositorThreadHolder::Release delete immediately\n",
+          (int)XRE_IsGPUProcess(), (int)XRE_IsParentProcess(), base::GetCurrentProcId(), PlatformThread::CurrentId());
+      NS_ASSERTION2(false, "@bignose CompositorThreadHolder::Release delete immediately");
+      DeleteToBeCalledOnMainThread();
+    } else {
+      printf_stderr("@bignose gpu:%d parent:%d pid::%d tid:%d CompositorThreadHolder::Release defer delete\n",
+          (int)XRE_IsGPUProcess(), (int)XRE_IsParentProcess(), base::GetCurrentProcId(), PlatformThread::CurrentId());
+      NS_ASSERTION2(false, "@bignose CompositorThreadHolder::Release defer delete");
+      NS_DispatchToMainThread(
+          new mozilla::layers::DeleteOnMainThreadTask<CompositorThreadHolder>(this));
+    }
+  } else {
+    NS_ASSERTION2(false, "@bignose CompositorThreadHolder::Release");
+  }
+  return count;
+}
+
 CompositorThreadHolder* GetCompositorThreadHolder()
 {
   return sCompositorThreadHolder;
@@ -131,10 +183,21 @@ CompositorThreadHolder::Shutdown()
   MediaSystemResourceService::Shutdown();
 
   sCompositorThreadHolder = nullptr;
+  printf_stderr("@bignose gpu:%d parent:%d pid::%d tid:%d CompositorThreadHolder::Shutdown for sCompositorThreadHolder start\n",
+      (int)XRE_IsGPUProcess(), (int)XRE_IsParentProcess(), base::GetCurrentProcId(), PlatformThread::CurrentId());
 
   // No locking is needed around sFinishedCompositorShutDown because it is only
   // ever accessed on the main thread.
-  SpinEventLoopUntil([&]() { return sFinishedCompositorShutDown; });
+  SpinEventLoopUntil([&]() {
+    printf_stderr("@bignose gpu:%d parent:%d pid::%d tid:%d CompositorThreadHolder::Shutdown for sCompositorThreadHolder in spin loop\n",
+        (int)XRE_IsGPUProcess(), (int)XRE_IsParentProcess(), base::GetCurrentProcId(), PlatformThread::CurrentId());
+
+    return sFinishedCompositorShutDown;
+    //return false;
+  });
+
+  printf_stderr("@bignose gpu:%d parent:%d pid::%d tid:%d CompositorThreadHolder::Shutdown for sCompositorThreadHolder end\n",
+      (int)XRE_IsGPUProcess(), (int)XRE_IsParentProcess(), base::GetCurrentProcId(), PlatformThread::CurrentId());
 
   CompositorBridgeParent::FinishShutdown();
 }
