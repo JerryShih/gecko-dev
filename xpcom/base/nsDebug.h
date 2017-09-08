@@ -105,6 +105,16 @@ inline void MOZ_PretendNoReturn()
 #define NS_ASSERTION(expr, str)        do { /* nothing */ } while(0)
 #endif
 
+inline void MOZ_PretendNoReturn2()
+  MOZ_PRETEND_NORETURN_FOR_STATIC_ANALYSIS {}
+#define NS_ASSERTION2(expr, str)                               \
+  do {                                                        \
+    if (!(expr)) {                                            \
+      NS_DebugBreak(NS_DEBUG_ASSERTION, str, #expr, __FILE__, __LINE__); \
+      MOZ_PretendNoReturn2();                                         \
+    }                                                         \
+  } while(0)
+
 /**
  * NS_PRECONDITION/POSTCONDITION are synonyms for NS_ASSERTION.
  */
