@@ -9,6 +9,26 @@
 #include "CompositorBridgeParent.h"
 #include "mozilla/layers/ImageBridgeParent.h"
 #include "mozilla/media/MediaSystemResourceService.h"
+#include "mozilla/StackWalk.h"
+
+extern "C" {
+static void
+PrintCompositorThreadHolderStackFrame(uint32_t aFrameNumber, void* aPC, void* aSP, void* aClosure)
+{
+  MozCodeAddressDetails details;
+
+  MozDescribeCodeAddress(aPC, &details);
+  if (aFrameNumber == 1) {
+    gfxCriticalNote << "gpu:" << XRE_IsGPUProcess() << "," <<
+        "parent:" << XRE_IsGPUProcess() << "," <<
+        "pid:" << base::GetCurrentProcId() << "," <<
+        "tid:" << PlatformThread::CurrentId() << "," <<
+        "f:0, addr:" << details.loffset;
+  } else {
+    gfxCriticalNote << "f:" << aFrameNumber << ",addr:" << details.loffset;
+  }
+}
+}
 
 namespace mozilla {
 
@@ -24,6 +44,76 @@ static bool sFinishedCompositorShutDown = false;
 
 // See ImageBridgeChild.cpp
 void ReleaseImageBridgeParentSingleton();
+
+NS_METHOD_(MozExternalRefCountType)
+CompositorThreadHolder::AddRef(void)
+{
+  MOZ_ASSERT_TYPE_OK_FOR_REFCOUNTING(CompositorThreadHolder);
+  MOZ_ASSERT(int32_t(mRefCnt) >= 0, "illegal refcnt");
+  nsrefcnt count = ++mRefCnt;
+
+  gfxCriticalNote << "[gfx] CompositorThreadHolder::AddRef, " <<
+      "gpu:" << XRE_IsGPUProcess() << ", " <<
+      "parent:" << XRE_IsGPUProcess() << ", " <<
+      "pid:" << base::GetCurrentProcId() << ", " <<
+      "tid:" << PlatformThread::CurrentId() << ", " <<
+      "ref-count:" << count;
+  MozStackWalk(PrintCompositorThreadHolderStackFrame, 2, 5, nullptr);
+
+  return (nsrefcnt) count;
+}
+
+void
+CompositorThreadHolder::DeleteToBeCalledOnMainThread()
+{
+  MOZ_ASSERT(NS_IsMainThread());
+
+  gfxCriticalNote << "[gfx] CompositorThreadHolder::DeleteToBeCalledOnMainThread, " <<
+      "gpu:" << XRE_IsGPUProcess() << ", " <<
+      "parent:" << XRE_IsGPUProcess() << ", " <<
+      "pid:" << base::GetCurrentProcId() << ", " <<
+      "tid:" << PlatformThread::CurrentId();
+  MozStackWalk(PrintCompositorThreadHolderStackFrame, 2, 5, nullptr);
+
+  delete this;
+}
+
+NS_METHOD_(MozExternalRefCountType)
+CompositorThreadHolder::CompositorThreadHolder::Release(void)
+{
+  MOZ_ASSERT(int32_t(mRefCnt) > 0, "dup release");
+  nsrefcnt count = --mRefCnt;
+
+  if (count == 0) {
+    if (NS_IsMainThread()) {
+      DeleteToBeCalledOnMainThread();
+      gfxCriticalNote << "[gfx] CompositorThreadHolder::Release, delete directly, " <<
+          "gpu:" << XRE_IsGPUProcess() << ", " <<
+          "parent:" << XRE_IsGPUProcess() << ", " <<
+          "pid:" << base::GetCurrentProcId() << ", " <<
+          "tid:" << PlatformThread::CurrentId();
+      MozStackWalk(PrintCompositorThreadHolderStackFrame, 2, 5, nullptr);
+    } else {
+      NS_DispatchToMainThread(
+          new mozilla::layers::DeleteOnMainThreadTask<CompositorThreadHolder>(this));
+      gfxCriticalNote << "[gfx] CompositorThreadHolder::Release, defer, " <<
+          "gpu:" << XRE_IsGPUProcess() << ", " <<
+          "parent:" << XRE_IsGPUProcess() << ", " <<
+          "pid:" << base::GetCurrentProcId() << ", " <<
+          "tid:" << PlatformThread::CurrentId();
+      MozStackWalk(PrintCompositorThreadHolderStackFrame, 2, 5, nullptr);
+    }
+  } else {
+    gfxCriticalNote << "[gfx] CompositorThreadHolder::Release, " <<
+        "gpu:" << XRE_IsGPUProcess() << ", " <<
+        "parent:" << XRE_IsGPUProcess() << ", " <<
+        "pid:" << base::GetCurrentProcId() << ", " <<
+        "tid:" << PlatformThread::CurrentId() << ", " <<
+        "ref-count:" << count;
+   MozStackWalk(PrintCompositorThreadHolderStackFrame, 2, 5, nullptr);
+  }
+  return count;
+}
 
 CompositorThreadHolder* GetCompositorThreadHolder()
 {
@@ -132,9 +222,21 @@ CompositorThreadHolder::Shutdown()
 
   sCompositorThreadHolder = nullptr;
 
+  gfxCriticalNote << "[gfx] CompositorThreadHolder::Shutdown start, " <<
+      "gpu:" << XRE_IsGPUProcess() << ", " <<
+      "parent:" << XRE_IsGPUProcess() << ", " <<
+      "pid:" << base::GetCurrentProcId() << ", " <<
+      "tid:" << PlatformThread::CurrentId();
+
   // No locking is needed around sFinishedCompositorShutDown because it is only
   // ever accessed on the main thread.
   SpinEventLoopUntil([&]() { return sFinishedCompositorShutDown; });
+
+  gfxCriticalNote << "[gfx] CompositorThreadHolder::Shutdown end," <<
+      "gpu:" << XRE_IsGPUProcess() << ", " <<
+      "parent:" << XRE_IsGPUProcess() << ", " <<
+      "pid:" << base::GetCurrentProcId() << ", " <<
+      "tid:" << PlatformThread::CurrentId();
 
   CompositorBridgeParent::FinishShutdown();
 }

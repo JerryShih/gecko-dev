@@ -18,7 +18,16 @@ namespace layers {
 
 class CompositorThreadHolder final
 {
-  NS_INLINE_DECL_THREADSAFE_REFCOUNTING_WITH_MAIN_THREAD_DESTRUCTION(CompositorThreadHolder)
+  // XXX: We try to check the ref-counting for bug 1389021. So, we use the
+  // customize AddRef/Release impl for CompositorThreadHolder
+  //NS_INLINE_DECL_THREADSAFE_REFCOUNTING_WITH_MAIN_THREAD_DESTRUCTION(CompositorThreadHolder)
+public:
+  NS_METHOD_(MozExternalRefCountType) AddRef(void);
+  NS_METHOD_(MozExternalRefCountType) Release(void);
+  void DeleteToBeCalledOnMainThread();
+private:
+  ThreadSafeAutoRefCnt mRefCnt;
+  HelperForMainThreadDestruction mHelperForMainThreadDestruction;
 
 public:
   CompositorThreadHolder();
