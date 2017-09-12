@@ -74,7 +74,7 @@ CompositorThreadHolder::AddRef(void)
       (int)XRE_IsGPUProcess(), (int)XRE_IsParentProcess(),  base::GetCurrentProcId(), PlatformThread::CurrentId(),
       this, count);
 
-  MozStackWalk(PrintCompositorThreadHolderStackFrame, 2, 5, stderr);
+  MozStackWalk(PrintCompositorThreadHolderStackFrame, 0, 7, stderr);
 
   return (nsrefcnt) count;
 }
@@ -89,7 +89,7 @@ CompositorThreadHolder::DeleteToBeCalledOnMainThread()
 //      "parent:" << XRE_IsGPUProcess() << ", " <<
 //      "pid:" << base::GetCurrentProcId() << ", " <<
 //      "tid:" << PlatformThread::CurrentId();
-  MozStackWalk(PrintCompositorThreadHolderStackFrame, 2, 5, stderr);
+  MozStackWalk(PrintCompositorThreadHolderStackFrame, 0, 7, stderr);
 
   delete this;
 }
@@ -102,17 +102,24 @@ CompositorThreadHolder::CompositorThreadHolder::Release(void)
 
   if (count == 0) {
     if (NS_IsMainThread()) {
+      printf_stderr("@bignose gpu:%d paprent:%d, pid:%d, tid:%d obj:%p CompositorThreadHolder::Release delete at main, count:%d\n",
+          (int)XRE_IsGPUProcess(), (int)XRE_IsParentProcess(),  base::GetCurrentProcId(), PlatformThread::CurrentId(),
+          this, count);
+      MozStackWalk(PrintCompositorThreadHolderStackFrame, 0, 7, stderr);
+
       DeleteToBeCalledOnMainThread();
 //      gfxCriticalNote << "[gfx] CompositorThreadHolder::Release, delete directly, " <<
 //          "gpu:" << XRE_IsGPUProcess() << ", " <<
 //          "parent:" << XRE_IsGPUProcess() << ", " <<
 //          "pid:" << base::GetCurrentProcId() << ", " <<
 //          "tid:" << PlatformThread::CurrentId();
-      printf_stderr("@bignose gpu:%d paprent:%d, pid:%d, tid:%d obj:%p CompositorThreadHolder::Release delete at main, count:%d\n",
+    } else {
+      printf_stderr("@bignose gpu:%d paprent:%d, pid:%d, tid:%d obj:%p CompositorThreadHolder::Release delete deferring, count:%d\n",
           (int)XRE_IsGPUProcess(), (int)XRE_IsParentProcess(),  base::GetCurrentProcId(), PlatformThread::CurrentId(),
           this, count);
-      MozStackWalk(PrintCompositorThreadHolderStackFrame, 2, 5, stderr);
-    } else {
+
+      MozStackWalk(PrintCompositorThreadHolderStackFrame, 0, 7, stderr);
+
       NS_DispatchToMainThread(
           new mozilla::layers::DeleteOnMainThreadTask<CompositorThreadHolder>(this));
 //      gfxCriticalNote << "[gfx] CompositorThreadHolder::Release, defer, " <<
@@ -120,11 +127,6 @@ CompositorThreadHolder::CompositorThreadHolder::Release(void)
 //          "parent:" << XRE_IsGPUProcess() << ", " <<
 //          "pid:" << base::GetCurrentProcId() << ", " <<
 //          "tid:" << PlatformThread::CurrentId();
-      printf_stderr("@bignose gpu:%d paprent:%d, pid:%d, tid:%d obj:%p CompositorThreadHolder::Release delete deferring, count:%d\n",
-          (int)XRE_IsGPUProcess(), (int)XRE_IsParentProcess(),  base::GetCurrentProcId(), PlatformThread::CurrentId(),
-          this, count);
-
-      MozStackWalk(PrintCompositorThreadHolderStackFrame, 2, 5, stderr);
     }
   } else {
 //    gfxCriticalNote << "[gfx] CompositorThreadHolder::Release, " <<
@@ -138,7 +140,7 @@ CompositorThreadHolder::CompositorThreadHolder::Release(void)
         (int)XRE_IsGPUProcess(), (int)XRE_IsParentProcess(),  base::GetCurrentProcId(), PlatformThread::CurrentId(),
         this, count);
 
-    MozStackWalk(PrintCompositorThreadHolderStackFrame, 2, 5, stderr);
+    MozStackWalk(PrintCompositorThreadHolderStackFrame, 0, 7, stderr);
   }
   return count;
 }
