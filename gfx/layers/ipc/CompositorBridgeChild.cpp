@@ -215,10 +215,21 @@ CompositorBridgeChild::Destroy()
 void
 CompositorBridgeChild::ShutDown()
 {
+  printf_stderr("@bignose gpu:%d paprent:%d, pid:%d, tid:%d CompositorBridgeChild::ShutDown start\n",
+      (int)XRE_IsGPUProcess(), (int)XRE_IsParentProcess(),  base::GetCurrentProcId(), PlatformThread::CurrentId());
+
   if (sCompositorBridge) {
     sCompositorBridge->Destroy();
-    SpinEventLoopUntil([&]() { return !sCompositorBridge; });
+    SpinEventLoopUntil([&]() {
+      printf_stderr("@bignose gpu:%d paprent:%d, pid:%d, tid:%d CompositorBridgeChild::ShutDown loop\n",
+          (int)XRE_IsGPUProcess(), (int)XRE_IsParentProcess(),  base::GetCurrentProcId(), PlatformThread::CurrentId());
+
+      return !sCompositorBridge;
+    });
   }
+
+  printf_stderr("@bignose gpu:%d paprent:%d, pid:%d, tid:%d CompositorBridgeChild::ShutDown end\n",
+      (int)XRE_IsGPUProcess(), (int)XRE_IsParentProcess(),  base::GetCurrentProcId(), PlatformThread::CurrentId());
 }
 
 bool
