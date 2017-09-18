@@ -308,7 +308,7 @@ CreateD3D11TextureClientWithDevice(gfx::IntSize aSize, gfx::SurfaceFormat aForma
 /**
  * A TextureHost for shared D3D11 textures.
  */
-class DXGITextureHostD3D11 : public TextureHost
+class DXGITextureHostD3D11 final : public TextureHost
 {
 public:
   DXGITextureHostD3D11(TextureFlags aFlags,
@@ -338,7 +338,7 @@ public:
   virtual void GetWRImageKeys(nsTArray<wr::ImageKey>& aImageKeys,
                               const std::function<wr::ImageKey()>& aImageKeyAllocator) override;
 
-  virtual void AddWRImage(wr::ResourceUpdateQueue& aAPI,
+  virtual void AddWRImage(wr::ResourceUpdateQueue& aResources,
                           Range<const wr::ImageKey>& aImageKeys,
                           const wr::ExternalImageId& aExtID) override;
 
@@ -348,7 +348,7 @@ public:
                                  wr::ImageRendering aFilter,
                                  Range<const wr::ImageKey>& aImageKeys) override;
 
-protected:
+private:
   bool LockInternal();
   void UnlockInternal();
 
@@ -367,7 +367,7 @@ protected:
   bool mIsLocked;
 };
 
-class DXGIYCbCrTextureHostD3D11 : public TextureHost
+class DXGIYCbCrTextureHostD3D11 final : public TextureHost
 {
 public:
   DXGIYCbCrTextureHostD3D11(TextureFlags aFlags,
@@ -386,8 +386,10 @@ public:
   virtual YUVColorSpace GetYUVColorSpace() const override { return YUVColorSpace::BT601; }
 
   virtual bool Lock() override;
-
   virtual void Unlock() override;
+
+  virtual bool LockWithoutCompositor() override;
+  virtual void UnlockWithoutCompositor() override;
 
   virtual gfx::IntSize GetSize() const override { return mSize; }
 
@@ -412,13 +414,16 @@ public:
                                  Range<const wr::ImageKey>& aImageKeys) override;
 
 private:
+  bool LockInternal();
+  void UnlockInternal();
+
   bool EnsureTextureSource();
 
-protected:
   RefPtr<ID3D11Device> GetDevice();
 
   bool EnsureTexture();
 
+  RefPtr<ID3D11Device> mDevice;
   RefPtr<ID3D11Texture2D> mTextures[3];
   RefPtr<DataTextureSourceD3D11> mTextureSources[3];
 

@@ -873,9 +873,9 @@ bool
 DXGITextureHostD3D11::Lock()
 {
   if (!mProvider) {
-    // Make an early return here if we call SetCompositor() with an incompatible
-    // compositor. This check tries to prevent the problem where we use that
-    // incompatible compositor to compose this texture.
+    // Make an early return here if we call SetTextureSourceProvider() with an
+    // incompatible compositor. This check tries to prevent the problem where we
+    // use that incompatible compositor to compose this texture.
     return false;
   }
 
@@ -886,8 +886,8 @@ bool
 DXGITextureHostD3D11::LockWithoutCompositor()
 {
   // Unlike the normal Lock() function, this function may be called when
-  // mCompositor is nullptr such as during WebVR frame submission. So, there is
-  // no 'mCompositor' checking here.
+  // mProvider is nullptr such as during WebVR frame submission. So, there is
+  // no 'mProvider' checking here.
   if (!mDevice) {
     mDevice = DeviceManagerDx::Get()->GetCompositorDevice();
   }
@@ -1221,13 +1221,18 @@ DXGIYCbCrTextureHostD3D11::GetDevice()
     return nullptr;
   }
 
-  return mProvider->GetD3D11Device();
+  if (mProvider) {
+    return mProvider->GetD3D11Device();
+  } else {
+    return mDevice;
+  }
 }
 
 void
 DXGIYCbCrTextureHostD3D11::SetTextureSourceProvider(TextureSourceProvider* aProvider)
 {
   if (!aProvider || !aProvider->GetD3D11Device()) {
+    mDevice = nullptr;
     mProvider = nullptr;
     mTextureSources[0] = nullptr;
     mTextureSources[1] = nullptr;
@@ -1236,6 +1241,7 @@ DXGIYCbCrTextureHostD3D11::SetTextureSourceProvider(TextureSourceProvider* aProv
   }
 
   mProvider = aProvider;
+  mDevice = aProvider->GetD3D11Device();
 
   if (mTextureSources[0]) {
     mTextureSources[0]->SetTextureSourceProvider(aProvider);
@@ -1245,39 +1251,37 @@ DXGIYCbCrTextureHostD3D11::SetTextureSourceProvider(TextureSourceProvider* aProv
 bool
 DXGIYCbCrTextureHostD3D11::Lock()
 {
-  if (!EnsureTextureSource()) {
+  if (!mProvider) {
+    // Please check DXGITextureHostD3D11::Lock().
     return false;
   }
 
-  mIsLocked = LockD3DTexture(mTextureSources[0]->GetD3D11Texture()) &&
-              LockD3DTexture(mTextureSources[1]->GetD3D11Texture()) &&
-              LockD3DTexture(mTextureSources[2]->GetD3D11Texture());
-
-  return mIsLocked;
+  return LockInternal();
 }
 
 bool
 DXGIYCbCrTextureHostD3D11::EnsureTextureSource()
 {
-  if (!mProvider) {
-    NS_WARNING("no suitable compositor");
-    return false;
-  }
-
-  if (!GetDevice()) {
-    NS_WARNING("trying to lock a TextureHost without a D3D device");
-    return false;
-  }
   if (!mTextureSources[0]) {
     if (!EnsureTexture()) {
+      DeviceManagerDx::Get()->ForceDeviceReset(ForcedDeviceResetReason::OPENSHAREDHANDLE);
       return false;
     }
 
-    MOZ_ASSERT(mTextures[1] && mTextures[2]);
+    MOZ_ASSERT(mTextures[0] && mTextures[1] && mTextures[2]);
 
-    mTextureSources[0] = new DataTextureSourceD3D11(SurfaceFormat::A8, mProvider, mTextures[0]);
-    mTextureSources[1] = new DataTextureSourceD3D11(SurfaceFormat::A8, mProvider, mTextures[1]);
-    mTextureSources[2] = new DataTextureSourceD3D11(SurfaceFormat::A8, mProvider, mTextures[2]);
+    if (mProvider) {
+      if (!mProvider->IsValid()) {
+        return false;
+      }
+      mTextureSources[0] = new DataTextureSourceD3D11(SurfaceFormat::A8, mProvider, mTextures[0]);
+      mTextureSources[1] = new DataTextureSourceD3D11(SurfaceFormat::A8, mProvider, mTextures[1]);
+      mTextureSources[2] = new DataTextureSourceD3D11(SurfaceFormat::A8, mProvider, mTextures[2]);
+    } else {
+      mTextureSources[0] = new DataTextureSourceD3D11(mDevice, SurfaceFormat::A8, mTextures[0]);
+      mTextureSources[1] = new DataTextureSourceD3D11(mDevice, SurfaceFormat::A8, mTextures[1]);
+      mTextureSources[2] = new DataTextureSourceD3D11(mDevice, SurfaceFormat::A8, mTextures[2]);
+    }
     mTextureSources[0]->SetNextSibling(mTextureSources[1]);
     mTextureSources[1]->SetNextSibling(mTextureSources[2]);
   }
@@ -1287,11 +1291,7 @@ DXGIYCbCrTextureHostD3D11::EnsureTextureSource()
 void
 DXGIYCbCrTextureHostD3D11::Unlock()
 {
-  MOZ_ASSERT(mIsLocked);
-  UnlockD3DTexture(mTextureSources[0]->GetD3D11Texture());
-  UnlockD3DTexture(mTextureSources[1]->GetD3D11Texture());
-  UnlockD3DTexture(mTextureSources[2]->GetD3D11Texture());
-  mIsLocked = false;
+  UnlockInternal();
 }
 
 bool
@@ -1307,7 +1307,10 @@ DXGIYCbCrTextureHostD3D11::BindTextureSource(CompositableTextureSourceRef& aText
 void
 DXGIYCbCrTextureHostD3D11::CreateRenderTexture(const wr::ExternalImageId& aExternalImageId)
 {
-  // We use AddImage() directly. It's no corresponding RenderTextureHost.
+  RefPtr<wr::RenderTextureHost> texture =
+      new wr::RenderDXGIYCbCrTextureHostOGL(mHandles, mSize);
+
+  wr::RenderThread::Get()->RegisterExternalImage(wr::AsUint64(aExternalImageId), texture.forget());
 }
 
 void
@@ -1316,9 +1319,11 @@ DXGIYCbCrTextureHostD3D11::GetWRImageKeys(nsTArray<wr::ImageKey>& aImageKeys,
 {
   MOZ_ASSERT(aImageKeys.IsEmpty());
 
-  // 1 image key
+  // 3 image key for y, cb and cr ext image.
   aImageKeys.AppendElement(aImageKeyAllocator());
-  MOZ_ASSERT(aImageKeys.Length() == 1);
+  aImageKeys.AppendElement(aImageKeyAllocator());
+  aImageKeys.AppendElement(aImageKeyAllocator());
+  MOZ_ASSERT(aImageKeys.Length() == 3);
 }
 
 void
@@ -1328,31 +1333,26 @@ DXGIYCbCrTextureHostD3D11::AddWRImage(wr::ResourceUpdateQueue& aResources,
 {
   // TODO - This implementation is very slow (read-back, copy on the copy and re-upload).
 
-  MOZ_ASSERT(mTextures[0] && mTextures[1] && mTextures[2]);
-  MOZ_ASSERT(aImageKeys.length() == 1);
+  MOZ_ASSERT(aImageKeys.length() == 3);
 
-  // There are 3 A8 channel data in DXGIYCbCrTextureHostD3D11, but ANGLE doesn't
-  // support for converting the D3D A8 texture to OpenGL texture handle. So, we
-  // use the DataSourceSurface to get the raw buffer and push that raw buffer
-  // into WR using AddImage().
-  NS_WARNING("WR doesn't support DXGIYCbCrTextureHostD3D11 directly. It's a slower path.");
-
-  RefPtr<DataSourceSurface> dataSourceSurface = GetAsSurface();
-  if (!dataSourceSurface) {
-    return;
-  }
-  DataSourceSurface::MappedSurface map;
-  if (!dataSourceSurface->Map(gfx::DataSourceSurface::MapType::READ, &map)) {
-    return;
-  }
-
-  IntSize size = dataSourceSurface->GetSize();
-  wr::ImageDescriptor descriptor(size, map.mStride, dataSourceSurface->GetFormat());
-  wr::Vec_u8 imgBytes;
-  imgBytes.PushBytes(Range<uint8_t>(map.mData, size.height * map.mStride));
-  aResources.AddImage(aImageKeys[0], descriptor, imgBytes);
-
-  dataSourceSurface->Unmap();
+  wr::ImageDescriptor descriptor0(GetSize(), gfx::SurfaceFormat::A8);
+  wr::ImageDescriptor descriptor1(GetSize() / 2, gfx::SurfaceFormat::A8);
+  wr::ImageDescriptor descriptor2(GetSize() / 2, gfx::SurfaceFormat::A8);
+  aResources.AddExternalImage(aImageKeys[0],
+                              descriptor0,
+                              aExtID,
+                              wr::WrExternalImageBufferType::TextureExternalHandle,
+                              0);
+  aResources.AddExternalImage(aImageKeys[1],
+                              descriptor1,
+                              aExtID,
+                              wr::WrExternalImageBufferType::TextureExternalHandle,
+                              1);
+  aResources.AddExternalImage(aImageKeys[2],
+                              descriptor2,
+                              aExtID,
+                              wr::WrExternalImageBufferType::TextureExternalHandle,
+                              2);
 }
 
 void
@@ -1362,9 +1362,15 @@ DXGIYCbCrTextureHostD3D11::PushExternalImage(wr::DisplayListBuilder& aBuilder,
                                              wr::ImageRendering aFilter,
                                              Range<const wr::ImageKey>& aImageKeys)
 {
-  // 1 image key
-  MOZ_ASSERT(aImageKeys.length() == 1);
-  aBuilder.PushImage(aBounds, aClip, aFilter, aImageKeys[0]);
+  MOZ_ASSERT(aImageKeys.length() == 3);
+
+  aBuilder.PushYCbCrPlanarImage(aBounds,
+                                aClip,
+                                aImageKeys[0],
+                                aImageKeys[1],
+                                aImageKeys[2],
+                                wr::WrYuvColorSpace::Rec601,
+                                aFilter);
 }
 
 bool
@@ -1375,6 +1381,52 @@ DXGIYCbCrTextureHostD3D11::AcquireTextureSource(CompositableTextureSourceRef& aT
   }
   aTexture = mTextureSources[0].get();
   return !!aTexture;
+}
+
+
+bool
+DXGIYCbCrTextureHostD3D11::LockWithoutCompositor()
+{
+  // Please check DXGITextureHostD3D11::LockWithoutCompositor().
+  if (!mDevice) {
+    mDevice = DeviceManagerDx::Get()->GetCompositorDevice();
+  }
+  return LockInternal();
+}
+
+void
+DXGIYCbCrTextureHostD3D11::UnlockWithoutCompositor()
+{
+  UnlockInternal();
+}
+
+bool
+DXGIYCbCrTextureHostD3D11::LockInternal()
+{
+  if (!GetDevice()) {
+    NS_WARNING("trying to lock a TextureHost without a D3D device");
+    return false;
+  }
+
+  if (!EnsureTextureSource()) {
+    return false;
+  }
+
+  mIsLocked = LockD3DTexture(mTextureSources[0]->GetD3D11Texture()) &&
+              LockD3DTexture(mTextureSources[1]->GetD3D11Texture()) &&
+              LockD3DTexture(mTextureSources[2]->GetD3D11Texture());
+
+  return mIsLocked;
+}
+
+void
+DXGIYCbCrTextureHostD3D11::UnlockInternal()
+{
+  MOZ_ASSERT(mIsLocked);
+  UnlockD3DTexture(mTextureSources[0]->GetD3D11Texture());
+  UnlockD3DTexture(mTextureSources[1]->GetD3D11Texture());
+  UnlockD3DTexture(mTextureSources[2]->GetD3D11Texture());
+  mIsLocked = false;
 }
 
 bool
