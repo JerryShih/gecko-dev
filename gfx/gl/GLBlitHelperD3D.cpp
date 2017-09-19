@@ -67,88 +67,72 @@ OpenSharedTexture(ID3D11Device* const d3d, const WindowsHandle handle)
 
 // -------------------------------------
 
-class BindAnglePlanes final
+BindAnglePlanes::BindAnglePlanes(GLContext* gl, const uint8_t numPlanes,
+                                 const RefPtr<ID3D11Texture2D>* const texD3DList,
+                                 const EGLAttrib* const* postAttribsList)
+    : mGL(gl)
+    , mNumPlanes(numPlanes)
+    , mMultiTex(gl, mNumPlanes, LOCAL_GL_TEXTURE_EXTERNAL)
+    , mTempTexs{0}
+    , mStreams{0}
+    , mSuccess(true)
 {
-    const GLBlitHelper& mParent;
-    const uint8_t mNumPlanes;
-    const ScopedSaveMultiTex mMultiTex;
-    GLuint mTempTexs[3];
-    EGLStreamKHR mStreams[3];
-    RefPtr<IDXGIKeyedMutex> mMutexList[3];
-    bool mSuccess;
+    MOZ_RELEASE_ASSERT(numPlanes >= 1 && numPlanes <= 3);
 
-public:
-    BindAnglePlanes(const GLBlitHelper* const parent, const uint8_t numPlanes,
-                    const RefPtr<ID3D11Texture2D>* const texD3DList,
-                    const EGLAttrib* const* postAttribsList = nullptr)
-        : mParent(*parent)
-        , mNumPlanes(numPlanes)
-        , mMultiTex(mParent.mGL, mNumPlanes, LOCAL_GL_TEXTURE_EXTERNAL)
-        , mTempTexs{0}
-        , mStreams{0}
-        , mSuccess(true)
-    {
-        MOZ_RELEASE_ASSERT(numPlanes >= 1 && numPlanes <= 3);
+    auto& egl = sEGLLibrary;
+    const auto& display = egl.Display();
 
-        const auto& gl = mParent.mGL;
-        auto& egl = sEGLLibrary;
-        const auto& display = egl.Display();
+    gl->fGenTextures(numPlanes, mTempTexs);
 
-        gl->fGenTextures(numPlanes, mTempTexs);
-
-        for (uint8_t i = 0; i < mNumPlanes; i++) {
-            gl->fActiveTexture(LOCAL_GL_TEXTURE0 + i);
-            gl->fBindTexture(LOCAL_GL_TEXTURE_EXTERNAL, mTempTexs[i]);
-            const EGLAttrib* postAttribs = nullptr;
-            if (postAttribsList) {
-                postAttribs = postAttribsList[i];
-            }
-            mStreams[i] = StreamFromD3DTexture(texD3DList[i], postAttribs);
-            mSuccess &= bool(mStreams[i]);
+    for (uint8_t i = 0; i < mNumPlanes; i++) {
+        gl->fActiveTexture(LOCAL_GL_TEXTURE0 + i);
+        gl->fBindTexture(LOCAL_GL_TEXTURE_EXTERNAL, mTempTexs[i]);
+        const EGLAttrib* postAttribs = nullptr;
+        if (postAttribsList) {
+            postAttribs = postAttribsList[i];
         }
+        mStreams[i] = StreamFromD3DTexture(texD3DList[i], postAttribs);
+        mSuccess &= bool(mStreams[i]);
+    }
 
-        if (mSuccess) {
-            for (uint8_t i = 0; i < mNumPlanes; i++) {
-                MOZ_ALWAYS_TRUE( egl.fStreamConsumerAcquireKHR(display, mStreams[i]) );
+    if (mSuccess) {
+        for (uint8_t i = 0; i < mNumPlanes; i++) {
+            MOZ_ALWAYS_TRUE( egl.fStreamConsumerAcquireKHR(display, mStreams[i]) );
 
-                auto& mutex = mMutexList[i];
-                texD3DList[i]->QueryInterface(_uuidof(IDXGIKeyedMutex),
-                                              (void**)getter_AddRefs(mutex));
-                if (mutex) {
-                    const auto hr = mutex->AcquireSync(0, 100);
-                    if (FAILED(hr)) {
-                        NS_WARNING("BindAnglePlanes failed to acquire KeyedMutex.");
-                        mSuccess = false;
-                    }
+            auto& mutex = mMutexList[i];
+            texD3DList[i]->QueryInterface(_uuidof(IDXGIKeyedMutex),
+                                          (void**)getter_AddRefs(mutex));
+            if (mutex) {
+                const auto hr = mutex->AcquireSync(0, 100);
+                if (FAILED(hr)) {
+                    NS_WARNING("BindAnglePlanes failed to acquire KeyedMutex.");
+                    mSuccess = false;
                 }
             }
         }
     }
+}
 
-    ~BindAnglePlanes()
-    {
-        const auto& gl = mParent.mGL;
-        auto& egl = sEGLLibrary;
-        const auto& display = egl.Display();
+BindAnglePlanes::~BindAnglePlanes()
+{
+    auto& egl = sEGLLibrary;
+    const auto& display = egl.Display();
 
-        if (mSuccess) {
-            for (uint8_t i = 0; i < mNumPlanes; i++) {
-                MOZ_ALWAYS_TRUE( egl.fStreamConsumerReleaseKHR(display, mStreams[i]) );
-                if (mMutexList[i]) {
-                    mMutexList[i]->ReleaseSync(0);
-                }
+    if (mSuccess) {
+        for (uint8_t i = 0; i < mNumPlanes; i++) {
+            MOZ_ALWAYS_TRUE( egl.fStreamConsumerReleaseKHR(display, mStreams[i]) );
+            if (mMutexList[i]) {
+                mMutexList[i]->ReleaseSync(0);
             }
         }
-
-        for (uint8_t i = 0; i < mNumPlanes; i++) {
-            (void)egl.fDestroyStreamKHR(display, mStreams[i]);
-        }
-
-        gl->fDeleteTextures(mNumPlanes, mTempTexs);
     }
 
-    const bool& Success() const { return mSuccess; }
-};
+    for (uint8_t i = 0; i < mNumPlanes; i++) {
+        (void)egl.fDestroyStreamKHR(display, mStreams[i]);
+    }
+
+    mGL->fDeleteTextures(mNumPlanes, mTempTexs);
+}
 
 // -------------------------------------
 
@@ -278,7 +262,7 @@ GLBlitHelper::BlitDescriptor(const layers::SurfaceDescriptorD3D10& desc,
     // /layers/d3d11/CompositorD3D11.cpp uses bt601 for EffectTypes::NV12.
     //return BlitAngleNv12(tex, YUVColorSpace::BT601, destSize, destOrigin);
 
-    const BindAnglePlanes bindPlanes(this, 2, texList, postAttribsList);
+    const BindAnglePlanes bindPlanes(mGL, 2, texList, postAttribsList);
 
     D3D11_TEXTURE2D_DESC texDesc = {0};
     tex->GetDesc(&texDesc);
@@ -324,7 +308,7 @@ GLBlitHelper::BlitAngleYCbCr(const WindowsHandle (&handleList)[3],
         OpenSharedTexture(d3d, handleList[1]),
         OpenSharedTexture(d3d, handleList[2])
     };
-    const BindAnglePlanes bindPlanes(this, 3, texList);
+    const BindAnglePlanes bindPlanes(mGL, 3, texList);
 
     const bool yFlip = destOrigin != srcOrigin;
     const DrawBlitProg::BaseArgs baseArgs = { destSize, yFlip, clipRect, ySize };

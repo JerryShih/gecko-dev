@@ -19,6 +19,8 @@
 #include <windows.h>
 #endif
 
+struct IDXGIKeyedMutex;
+
 namespace mozilla {
 
 namespace layers {
@@ -35,7 +37,6 @@ class SurfaceDescriptorDXGIYCbCr;
 
 namespace gl {
 
-class BindAnglePlanes;
 class GLContext;
 
 bool
@@ -96,6 +97,30 @@ public:
     ScopedSaveMultiTex(GLContext* gl, uint8_t texCount, GLenum texTarget);
     ~ScopedSaveMultiTex();
 };
+
+#ifdef XP_WIN
+// GLBlitHelperD3D.cpp:
+class BindAnglePlanes final
+{
+public:
+    BindAnglePlanes(GLContext* gl, const uint8_t numPlanes,
+                    const RefPtr<ID3D11Texture2D>* const texD3DList,
+                    const EGLAttrib* const* postAttribsList = nullptr);
+
+    ~BindAnglePlanes();
+
+    const bool& Success() const { return mSuccess; }
+
+private:
+    GLContext* const mGL;
+    const uint8_t mNumPlanes;
+    const ScopedSaveMultiTex mMultiTex;
+    GLuint mTempTexs[3];
+    EGLStreamKHR mStreams[3];
+    RefPtr<IDXGIKeyedMutex> mMutexList[3];
+    bool mSuccess;
+};
+#endif
 
 /** Buffer blitting helper */
 class GLBlitHelper final
