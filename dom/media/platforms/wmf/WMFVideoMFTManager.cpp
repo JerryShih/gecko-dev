@@ -989,6 +989,31 @@ WMFVideoMFTManager::CreateBasicVideoFrame(IMFSample* aSample,
   uint32_t halfHeight = (videoHeight + 1) / 2;
   uint32_t halfWidth = (videoWidth + 1) / 2;
 
+//  UniquePtr<uint8_t[]> cbBuffer(new uint8_t[halfWidth * halfHeight]);
+//  UniquePtr<uint8_t[]> crBuffer(new uint8_t[halfWidth * halfHeight]);
+//
+//  for (int i = 0; i < halfHeight; ++i) {
+//    for (int j = 0; j < halfWidth; ++j) {
+//      cbBuffer[j*halfHeight+i] = data[y_size + stride * i + 2*j ];
+//      crBuffer[j*halfHeight+i] = data[y_size + stride * i + 2*j +1];
+//    }
+//  }
+//  // U plane (Cb)
+//  b.mPlanes[1].mData = cbBuffer.get();
+//  b.mPlanes[1].mStride = halfWidth;
+//  b.mPlanes[1].mHeight = halfHeight;
+//  b.mPlanes[1].mWidth = halfWidth;
+//  b.mPlanes[1].mOffset = 0;
+//  b.mPlanes[1].mSkip = 0;
+//
+//  // V plane (Cr)
+//  b.mPlanes[2].mData = crBuffer.get();
+//  b.mPlanes[2].mStride = halfWidth;
+//  b.mPlanes[2].mHeight = halfHeight;
+//  b.mPlanes[2].mWidth = halfWidth;
+//  b.mPlanes[2].mOffset = 0;
+//  b.mPlanes[2].mSkip = 0;
+
   // U plane (Cb)
   b.mPlanes[1].mData = data + y_size + v_size;
   b.mPlanes[1].mStride = halfStride;
@@ -1202,8 +1227,8 @@ WMFVideoMFTManager::Output(int64_t aStreamOffset,
 
   RefPtr<VideoData> frame;
   if (mUseHwAccel) {
-    hr = CreateD3DVideoFrame(sample, aStreamOffset, getter_AddRefs(frame));
-  } else {
+  //  hr = CreateD3DVideoFrame(sample, aStreamOffset, getter_AddRefs(frame));
+  //} else {
     hr = CreateBasicVideoFrame(sample, aStreamOffset, getter_AddRefs(frame));
   }
   // Frame should be non null only when we succeeded.

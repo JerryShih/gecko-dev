@@ -1068,6 +1068,7 @@ DXGITextureHostD3D11::PushResourceUpdates(wr::ResourceUpdateQueue& aResources,
                                           const Range<wr::ImageKey>& aImageKeys,
                                           const wr::ExternalImageId& aExtID)
 {
+  printf_stderr("bignose DXGITextureHostD3D11::AddWRImage, format:%d\n", mFormat);
   MOZ_ASSERT(mHandle);
   auto method = aOp == TextureHost::ADD_IMAGE ? &wr::ResourceUpdateQueue::AddExternalImage
                                               : &wr::ResourceUpdateQueue::UpdateExternalImage;
@@ -1312,7 +1313,7 @@ DXGIYCbCrTextureHostD3D11::PushResourceUpdates(wr::ResourceUpdateQueue& aResourc
                                                const Range<wr::ImageKey>& aImageKeys,
                                                const wr::ExternalImageId& aExtID)
 {
-  MOZ_ASSERT(mHandles[0] && mHandles[1] && mHandles[2]);
+  printf_stderr("bignose DXGIYCbCrTextureHostD3D11::AddWRImage\n");
   MOZ_ASSERT(aImageKeys.length() == 3);
   MOZ_ASSERT(GetSize().width % 2 == 0);
   MOZ_ASSERT(GetSize().height % 2 == 0);
