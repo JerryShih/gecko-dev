@@ -399,8 +399,14 @@ GLuint
 RenderDXGIYCbCrTextureHostOGL::GetGLHandle(uint8_t aChannelIndex) const
 {
   MOZ_ASSERT(aChannelIndex < 3);
+  if (aChannelIndex == 0) {
+    return mTextureHandles[0];
+  } else {
+    return 0;
+  }
+  return 0;
 
-  return mTextureHandles[aChannelIndex];
+  //return mTextureHandles[aChannelIndex];
 }
 
 gfx::IntSize

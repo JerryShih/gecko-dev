@@ -1076,6 +1076,7 @@ DXGITextureHostD3D11::AddWRImage(wr::ResourceUpdateQueue& aResources,
                                  Range<const wr::ImageKey>& aImageKeys,
                                  const wr::ExternalImageId& aExtID)
 {
+  printf_stderr("bignose DXGITextureHostD3D11::AddWRImage, format:%d\n", mFormat);
   MOZ_ASSERT(mHandle);
 
   switch (mFormat) {
@@ -1331,6 +1332,7 @@ DXGIYCbCrTextureHostD3D11::AddWRImage(wr::ResourceUpdateQueue& aResources,
                                       Range<const wr::ImageKey>& aImageKeys,
                                       const wr::ExternalImageId& aExtID)
 {
+  printf_stderr("bignose DXGIYCbCrTextureHostD3D11::AddWRImage\n");
   // TODO - This implementation is very slow (read-back, copy on the copy and re-upload).
 
   MOZ_ASSERT(aImageKeys.length() == 3);

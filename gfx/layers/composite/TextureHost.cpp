@@ -590,6 +590,7 @@ BufferTextureHost::AddWRImage(wr::ResourceUpdateQueue& aResources,
                               Range<const wr::ImageKey>& aImageKeys,
                               const wr::ExternalImageId& aExtID)
 {
+  printf_stderr("bignose BufferTextureHost::AddWRImage\n");
   if (GetFormat() != gfx::SurfaceFormat::YUV) {
     MOZ_ASSERT(aImageKeys.length() == 1);
 
