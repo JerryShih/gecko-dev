@@ -1023,7 +1023,8 @@ WMFVideoMFTManager::CreateBasicVideoFrame(IMFSample* aSample,
                                    b,
                                    false,
                                    TimeUnit::FromMicroseconds(-1),
-                                   pictureRegion);
+                                   pictureRegion,
+                                   mKnowsCompositor);
     if (twoDBuffer) {
       twoDBuffer->Unlock2D();
     } else {
