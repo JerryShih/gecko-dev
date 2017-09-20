@@ -457,7 +457,7 @@ ImageContainer::GetD3D11YCbCrRecycleAllocator(KnowsCompositor* aAllocator)
   }
 
   LayersBackend backend = aAllocator->GetCompositorBackendType();
-  if (!device || backend != LayersBackend::LAYERS_D3D11) {
+  if (!device || (backend != LayersBackend::LAYERS_D3D11 && backend != LayersBackend::LAYERS_WR)) {
     return nullptr;
   }
 
