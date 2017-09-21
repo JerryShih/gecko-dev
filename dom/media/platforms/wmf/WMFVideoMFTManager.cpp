@@ -989,46 +989,88 @@ WMFVideoMFTManager::CreateBasicVideoFrame(IMFSample* aSample,
   uint32_t halfHeight = (videoHeight + 1) / 2;
   uint32_t halfWidth = (videoWidth + 1) / 2;
 
-//  UniquePtr<uint8_t[]> cbBuffer(new uint8_t[halfWidth * halfHeight]);
-//  UniquePtr<uint8_t[]> crBuffer(new uint8_t[halfWidth * halfHeight]);
-//
-//  for (int i = 0; i < halfHeight; ++i) {
-//    for (int j = 0; j < halfWidth; ++j) {
-//      cbBuffer[j*halfHeight+i] = data[y_size + stride * i + 2*j ];
-//      crBuffer[j*halfHeight+i] = data[y_size + stride * i + 2*j +1];
-//    }
-//  }
-//  // U plane (Cb)
-//  b.mPlanes[1].mData = cbBuffer.get();
-//  b.mPlanes[1].mStride = halfWidth;
-//  b.mPlanes[1].mHeight = halfHeight;
-//  b.mPlanes[1].mWidth = halfWidth;
-//  b.mPlanes[1].mOffset = 0;
-//  b.mPlanes[1].mSkip = 0;
-//
-//  // V plane (Cr)
-//  b.mPlanes[2].mData = crBuffer.get();
-//  b.mPlanes[2].mStride = halfWidth;
-//  b.mPlanes[2].mHeight = halfHeight;
-//  b.mPlanes[2].mWidth = halfWidth;
-//  b.mPlanes[2].mOffset = 0;
-//  b.mPlanes[2].mSkip = 0;
+  //UniquePtr<uint8_t[]> yBuffer(new uint8_t[videoWidth * videoHeight]);
+  //UniquePtr<uint8_t[]> cbBuffer(new uint8_t[halfWidth * halfHeight]);
+  UniquePtr<uint8_t[]> cbBuffer(new uint8_t[videoWidth * videoHeight]);
+  UniquePtr<uint8_t[]> crBuffer(new uint8_t[videoWidth * videoHeight]);
+  //UniquePtr<uint8_t[]> crBuffer(new uint8_t[halfWidth * halfHeight]);
 
+  //for (int i = 0; i < halfHeight; ++i) {
+  //  for (int j = 0; j < halfWidth; ++j) {
+  //    yBuffer[videoWidth*(2 * i) + 2 * j] = data[y_size + stride * i + 2*j +1];
+  //    yBuffer[videoWidth*(2 * i+1) + 2 * j] = data[y_size + stride * i + 2 * j +1];
+  //    yBuffer[videoWidth*(2 * i) + 2 * j+1] = data[y_size + stride * i + 2 * j +1];
+  //    yBuffer[videoWidth*(2 * i+1) + 2 * j+1] = data[y_size + stride * i + 2 * j +1];
+  //  }
+  //}
+
+  //// Y (Y') plane
+  //b.mPlanes[0].mData = yBuffer.get();
+  //b.mPlanes[0].mStride = videoWidth;
+
+  for (int i = 0; i < halfHeight; ++i) {
+    for (int j = 0; j < halfWidth; ++j) {
+      cbBuffer[videoWidth*(2 * i) + 2 * j] = data[y_size + stride * i + 2*j ];
+      cbBuffer[videoWidth*(2 * i+1) + 2 * j] = data[y_size + stride * i + 2 * j ];
+      cbBuffer[videoWidth*(2 * i) + 2 * j+1] = data[y_size + stride * i + 2 * j ];
+      cbBuffer[videoWidth*(2 * i+1) + 2 * j+1] = data[y_size + stride * i + 2 * j ];
+
+      crBuffer[videoWidth*(2 * i) + 2 * j] = data[y_size + stride * i + 2 * j + 1];
+      crBuffer[videoWidth*(2 * i + 1) + 2 * j] = data[y_size + stride * i + 2 * j + 1];
+      crBuffer[videoWidth*(2 * i) + 2 * j + 1] = data[y_size + stride * i + 2 * j + 1];
+      crBuffer[videoWidth*(2 * i + 1) + 2 * j + 1] = data[y_size + stride * i + 2 * j + 1];
+
+      //cbBuffer[i*halfHeight+j] = data[y_size + stride * i + 2*j ];
+      //crBuffer[i*halfHeight+j] = data[y_size + stride * i + 2*j +1];
+    }
+  }
   // U plane (Cb)
-  b.mPlanes[1].mData = data + y_size + v_size;
-  b.mPlanes[1].mStride = halfStride;
-  b.mPlanes[1].mHeight = halfHeight;
-  b.mPlanes[1].mWidth = halfWidth;
+  b.mPlanes[1].mData = cbBuffer.get();
+  b.mPlanes[1].mStride = videoWidth;
+  b.mPlanes[1].mHeight = videoHeight;
+  b.mPlanes[1].mWidth = videoWidth;
   b.mPlanes[1].mOffset = 0;
   b.mPlanes[1].mSkip = 0;
 
   // V plane (Cr)
-  b.mPlanes[2].mData = data + y_size;
-  b.mPlanes[2].mStride = halfStride;
-  b.mPlanes[2].mHeight = halfHeight;
-  b.mPlanes[2].mWidth = halfWidth;
+  b.mPlanes[2].mData = crBuffer.get();
+  b.mPlanes[2].mStride = videoWidth;
+  b.mPlanes[2].mHeight = videoHeight;
+  b.mPlanes[2].mWidth = videoWidth;
   b.mPlanes[2].mOffset = 0;
   b.mPlanes[2].mSkip = 0;
+
+  //// U plane (Cb)
+  //b.mPlanes[1].mData = cbBuffer.get();
+  //b.mPlanes[1].mStride = halfWidth;
+  //b.mPlanes[1].mHeight = halfHeight;
+  //b.mPlanes[1].mWidth = halfWidth;
+  //b.mPlanes[1].mOffset = 0;
+  //b.mPlanes[1].mSkip = 0;
+
+  //// V plane (Cr)
+  //b.mPlanes[2].mData = crBuffer.get();
+  //b.mPlanes[2].mStride = halfWidth;
+  //b.mPlanes[2].mHeight = halfHeight;
+  //b.mPlanes[2].mWidth = halfWidth;
+  //b.mPlanes[2].mOffset = 0;
+  //b.mPlanes[2].mSkip = 0;
+
+  //// U plane (Cb)
+  //b.mPlanes[1].mData = data + y_size + v_size;
+  //b.mPlanes[1].mStride = halfStride;
+  //b.mPlanes[1].mHeight = halfHeight;
+  //b.mPlanes[1].mWidth = halfWidth;
+  //b.mPlanes[1].mOffset = 0;
+  //b.mPlanes[1].mSkip = 0;
+
+  //// V plane (Cr)
+  //b.mPlanes[2].mData = data + y_size;
+  //b.mPlanes[2].mStride = halfStride;
+  //b.mPlanes[2].mHeight = halfHeight;
+  //b.mPlanes[2].mWidth = halfWidth;
+  //b.mPlanes[2].mOffset = 0;
+  //b.mPlanes[2].mSkip = 0;
 
   TimeUnit pts = GetSampleTime(aSample);
   NS_ENSURE_TRUE(pts.IsValid(), E_FAIL);
