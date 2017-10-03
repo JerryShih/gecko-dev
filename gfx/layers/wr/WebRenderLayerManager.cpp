@@ -561,7 +561,13 @@ WebRenderLayerManager::GenerateFallbackData(nsDisplayItem* aItem,
   nsRect itemBounds = aItem->GetBounds(aDisplayListBuilder, &snap);
   nsRect clippedBounds = itemBounds;
 
-  printf_stderr("bignose item:%p itemBound:(%d,%d,%d,%d)\n",
+  bool dump = false;
+  auto itemType = aItem->GetType();
+  if (itemType == DisplayItemType::TYPE_TRANSFORM) {
+    dump = true;
+  }
+
+  if (dump) printf_stderr("bignose item:%p itemBound:(%d,%d,%d,%d)\n",
       aItem,
       itemBounds.x, itemBounds.y, itemBounds.width, itemBounds.height);
 
@@ -571,7 +577,7 @@ WebRenderLayerManager::GenerateFallbackData(nsDisplayItem* aItem,
   if (clip.HasClip() && !gfxPrefs::WebRenderBlobImages()) {
     clippedBounds = itemBounds.Intersect(clip.GetClipRect());
 
-    printf_stderr("bignose item:%p clipBound:(%d,%d,%d,%d)\n",
+    if (dump) printf_stderr("bignose item:%p clipBound:(%d,%d,%d,%d)\n",
         aItem,
         clippedBounds.x, clippedBounds.y, clippedBounds.width, clippedBounds.height);
   }
@@ -586,7 +592,7 @@ WebRenderLayerManager::GenerateFallbackData(nsDisplayItem* aItem,
   int i = 0;
   for (auto iterator = visibleRegion.RectIter(); !iterator.Done(); iterator.Next(), ++i) {
     auto& rect = iterator.Get();
-    printf_stderr("bignose item:%p visibleRegion, rect%d:(%d,%d,%d,%d)\n",
+    if (dump) printf_stderr("bignose item:%p visibleRegion, rect%d:(%d,%d,%d,%d)\n",
         aItem,
         i,
         rect.x, rect.y, rect.width, rect.height);
@@ -597,14 +603,14 @@ WebRenderLayerManager::GenerateFallbackData(nsDisplayItem* aItem,
       LayoutDeviceRect::FromAppUnits(clippedBounds, appUnitsPerDevPixel),
       PixelCastJustification::WebRenderHasUnitResolution);
 
-  printf_stderr("bignose item:%p bounds:(%f,%f,%f,%f)\n",
+  if (dump) printf_stderr("bignose item:%p bounds:(%f,%f,%f,%f)\n",
       aItem,
       bounds.x, bounds.y, bounds.width, bounds.height);
 
   gfx::Size scale = aSc.GetInheritedScale();
   LayerIntSize paintSize = RoundedToInt(LayerSize(bounds.width * scale.width, bounds.height * scale.height));
 
-  printf_stderr("bignose item:%p scale:(%f,%f)\n",
+  if (dump) printf_stderr("bignose item:%p scale:(%f,%f)\n",
       aItem,
       scale.width, scale.height);
 
@@ -746,7 +752,13 @@ WebRenderLayerManager::PushItemAsImage(nsDisplayItem* aItem,
   wr::LayoutRect dest = aSc.ToRelativeLayoutRect(imageRect);
   SamplingFilter sampleFilter = nsLayoutUtils::GetSamplingFilterForFrame(aItem->Frame());
 
-  printf_stderr("bignose item:%p, layoutRect:(%f,%f,%f,%f)\n",
+  bool dump = false;
+  auto itemType = aItem->GetType();
+  if (itemType == DisplayItemType::TYPE_BACKGROUND) {
+    dump = true;
+  }
+
+  if (dump) printf_stderr("bignose item:%p, layoutRect:(%f,%f,%f,%f)\n",
       aItem,
       imageRect.x, imageRect.y, imageRect.width, imageRect.height);
 

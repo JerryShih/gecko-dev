@@ -653,6 +653,13 @@ WebRenderBridgeParent::ProcessWebRenderParentCommands(const InfallibleTArray<Web
           // Store the default transform
           if (op.transform().type() == OptionalTransform::TMatrix4x4) {
             Matrix4x4 transform(Move(op.transform().get_Matrix4x4()));
+            transform = transform.Translation(200,200,0);
+            printf_stderr("bignose dump mat:\n");
+            printf_stderr("%f %f %f %f\n", transform._11, transform._21, transform._31, transform._41);
+            printf_stderr("%f %f %f %f\n", transform._12, transform._22, transform._32, transform._42);
+            printf_stderr("%f %f %f %f\n", transform._13, transform._23, transform._33, transform._43);
+            printf_stderr("%f %f %f %f\n", transform._14, transform._24, transform._34, transform._44);
+
             mAnimStorage->SetAnimatedValue(data.id(), Move(transform));
           }
         }
@@ -1060,8 +1067,13 @@ WebRenderBridgeParent::SampleAnimations(nsTArray<wr::WrOpacityProperty>& aOpacit
         !iter.Done(); iter.Next()) {
       AnimatedValue * value = iter.UserData();
       if (value->mType == AnimatedValue::TRANSFORM) {
+        gfx::Matrix4x4 mat = value->mTransform.mTransformInDevSpace;
+        mat = mat.Translation(200, -200, 0);
+
+//        aTransformArray.AppendElement(
+//          wr::ToWrTransformProperty(iter.Key(), value->mTransform.mTransformInDevSpace));
         aTransformArray.AppendElement(
-          wr::ToWrTransformProperty(iter.Key(), value->mTransform.mTransformInDevSpace));
+          wr::ToWrTransformProperty(iter.Key(), mat));
       } else if (value->mType == AnimatedValue::OPACITY) {
         aOpacityArray.AppendElement(
           wr::ToWrOpacityProperty(iter.Key(), value->mOpacity));
