@@ -344,6 +344,7 @@ WebRenderLayerManager::CreateWebRenderCommandsFromDisplayList(nsDisplayList* aDi
       // this function if the |item| is a wrapper for a sublist.
       if (!item->CreateWebRenderCommands(aBuilder, aResources, aSc, this,
                                          aDisplayListBuilder)) {
+        //fallback path for a item.
         PushItemAsImage(item, aBuilder, aResources, aSc, aDisplayListBuilder);
       }
     }
