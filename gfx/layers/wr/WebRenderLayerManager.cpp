@@ -562,7 +562,7 @@ WebRenderLayerManager::GenerateFallbackData(nsDisplayItem* aItem,
   nsRect clippedBounds = itemBounds;
 
   printf_stderr("bignose item:%p itemBound:(%d,%d,%d,%d)\n",
-      this,
+      aItem,
       itemBounds.x, itemBounds.y, itemBounds.width, itemBounds.height);
 
   const DisplayItemClip& clip = aItem->GetClip();
@@ -572,7 +572,7 @@ WebRenderLayerManager::GenerateFallbackData(nsDisplayItem* aItem,
     clippedBounds = itemBounds.Intersect(clip.GetClipRect());
 
     printf_stderr("bignose item:%p clipBound:(%d,%d,%d,%d)\n",
-        this,
+        aItem,
         clippedBounds.x, clippedBounds.y, clippedBounds.width, clippedBounds.height);
   }
 
@@ -587,7 +587,7 @@ WebRenderLayerManager::GenerateFallbackData(nsDisplayItem* aItem,
   for (auto iterator = visibleRegion.RectIter(); !iterator.Done(); iterator.Next(), ++i) {
     auto& rect = iterator.Get();
     printf_stderr("bignose item:%p visibleRegion, rect%d:(%d,%d,%d,%d)\n",
-        this,
+        aItem,
         i,
         rect.x, rect.y, rect.width, rect.height);
   }
@@ -598,14 +598,14 @@ WebRenderLayerManager::GenerateFallbackData(nsDisplayItem* aItem,
       PixelCastJustification::WebRenderHasUnitResolution);
 
   printf_stderr("bignose item:%p bounds:(%f,%f,%f,%f)\n",
-      this,
+      aItem,
       bounds.x, bounds.y, bounds.width, bounds.height);
 
   gfx::Size scale = aSc.GetInheritedScale();
   LayerIntSize paintSize = RoundedToInt(LayerSize(bounds.width * scale.width, bounds.height * scale.height));
 
   printf_stderr("bignose item:%p scale:(%f,%f)\n",
-      this,
+      aItem,
       scale.width, scale.height);
 
   if (paintSize.width == 0 || paintSize.height == 0) {
@@ -745,6 +745,11 @@ WebRenderLayerManager::PushItemAsImage(nsDisplayItem* aItem,
 
   wr::LayoutRect dest = aSc.ToRelativeLayoutRect(imageRect);
   SamplingFilter sampleFilter = nsLayoutUtils::GetSamplingFilterForFrame(aItem->Frame());
+
+  printf_stderr("bignose item:%p, layoutRect:(%f,%f,%f,%f)\n",
+      aItem,
+      imageRect.x, imageRect.y, imageRect.width, imageRect.height);
+
   aBuilder.PushImage(dest,
                      dest,
                      !aItem->BackfaceIsHidden(),
