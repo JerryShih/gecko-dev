@@ -1011,6 +1011,8 @@ impl PrimitiveStore {
                 metadata
             }
         };
+        
+        println!("bignose metadata: {:?}", metadata);
 
         self.cpu_metadata.push(metadata);
 

@@ -564,6 +564,8 @@ impl Frame {
         let prim_info = item.get_layer_primitive_info(&reference_frame_relative_offset);
         match *item.item() {
             SpecificDisplayItem::Image(ref info) => {
+                //println!("bignose image info {:?}", item.item());
+
                 if let Some(tiling) = context.tiled_image_map.get(&info.image_key) {
                     // The image resource is tiled. We have to generate an image primitive
                     // for each tile.
@@ -617,6 +619,8 @@ impl Frame {
                 }
             }
             SpecificDisplayItem::Rectangle(ref info) => {
+                //println!("bignose rect item {:?}", item.item());
+
                 if !try_to_add_rectangle_splitting_on_clip(
                     context,
                     &prim_info,
@@ -706,6 +710,8 @@ impl Frame {
                 );
             }
             SpecificDisplayItem::PushStackingContext(ref info) => {
+                //println!("bignose push stacking context info {:?}", item.item());
+
                 let mut subtraversal = item.sub_iter();
                 self.flatten_stacking_context(
                     &mut subtraversal,
