@@ -243,6 +243,14 @@ ClientSingleTiledLayerBuffer::PaintThebes(const nsIntRegion& aNewValidRegion,
   // The new buffer is now validated, remove the dirty region from it.
   mTile.mInvalidBack.SubOut(tileDirtyRegion);
 
+  static int count = 0;
+  count++;
+  char file_name[100];
+  sprintf(file_name, "/Users/bignose/tmp/dump/%s_%d_%d.png", XRE_IsParentProcess() ? "P" : "C" ,getpid(), count);
+
+  printf_stderr("bignose dump:%s\n", file_name);
+  gfxUtils::WriteAsPNG(dt.get(), file_name);
+
   dt = nullptr;
 
   mTile.Flip();
