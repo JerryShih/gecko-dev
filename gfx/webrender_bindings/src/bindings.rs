@@ -17,6 +17,7 @@ use app_units::Au;
 use rayon;
 use euclid::SideOffsets2D;
 use bincode;
+use log::{set_logger, shutdown_logger, Log, LogMetadata, LogRecord};
 
 extern crate webrender_api;
 
@@ -401,6 +402,8 @@ extern "C" {
     fn gfx_use_wrench() -> bool;
     fn gfx_wr_resource_path_override() -> *const c_char;
     fn gfx_critical_note(msg: *const c_char);
+    fn gfx_critical_error(msg: *const c_char);
+    fn gecko_printf_stderr_output(msg: *const c_char);
 }
 
 struct CppNotifier {
@@ -1818,4 +1821,63 @@ extern "C" {
                                tile_offset: *const TileOffset,
                                output: MutByteSlice)
                                -> bool;
+}
+
+type ExternalMessageHandler = unsafe extern "C" fn(msg: *const c_char);
+
+#[repr(C)]
+struct WrExternalLogHandler {
+    error_msg: ExternalMessageHandler,
+    warn_msg: ExternalMessageHandler,
+    info_msg: ExternalMessageHandler,
+    debug_msg: ExternalMessageHandler,
+    trace_msg: ExternalMessageHandler,
+}
+
+impl WrExternalLogHandler {
+    fn new() -> WrExternalLogHandler {
+        WrExternalLogHandler {
+            error_msg: gfx_critical_error,
+            warn_msg: gfx_critical_note,
+            info_msg: gecko_printf_stderr_output,
+            debug_msg: gecko_printf_stderr_output,
+            trace_msg: gecko_printf_stderr_output,
+        }
+    }
+}
+
+impl Log for WrExternalLogHandler {
+    fn enabled(&self, _: &LogMetadata) -> bool {
+        true
+    }
+
+    fn log(&self, _: &LogRecord) {
+    /*
+        if self.enabled(record.metadata()) {
+            let level = if self.colors {
+                level_style(record.level()).paint(record.location().module_path()).to_string()
+            } else {
+                record.location().module_path().to_string()
+            };
+
+            if record.level() <= LogLevel::Warn {
+                let _ = writeln!(&mut io::stderr(), "{}: {}", level, record.args());
+            } else {
+                println!("{}: {}", level, record.args());
+            }
+        }
+        */
+    }
+}
+
+#[no_mangle]
+pub extern "C" fn wr_init_external_log_handler() {
+    set_logger(|_| {
+        Box::new(WrExternalLogHandler::new())
+    });
+}
+
+#[no_mangle]
+pub extern "C" fn wr_shutdown_external_log_handler() {
+    let _ = shutdown_logger();
 }

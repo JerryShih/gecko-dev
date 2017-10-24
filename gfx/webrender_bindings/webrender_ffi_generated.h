@@ -873,6 +873,10 @@ typedef TypedRect_u32__DevicePixel DeviceUintRect;
  *   2. Run `rustup run nightly cbindgen toolkit/library/rust/ --crate webrender_bindings -o gfx/webrender_bindings/webrender_ffi_generated.h`
  */
 
+extern void gecko_printf_stderr_output(const char *aMsg);
+
+extern void gfx_critical_error(const char *aMsg);
+
 extern void gfx_critical_note(const char *aMsg);
 
 extern bool gfx_use_wrench();
@@ -1256,6 +1260,10 @@ WR_INLINE
 void wr_dp_save(WrState *aState)
 WR_FUNC;
 
+WR_INLINE
+void wr_init_external_log_handler()
+WR_FUNC;
+
 extern bool wr_moz2d_render_cb(ByteSlice aBlob,
                                uint32_t aWidth,
                                uint32_t aHeight,
@@ -1433,6 +1441,10 @@ void wr_scroll_layer_with_id(DocumentHandle *aDh,
                              WrPipelineId aPipelineId,
                              uint64_t aScrollId,
                              LayoutPoint aNewScrollOrigin)
+WR_FUNC;
+
+WR_INLINE
+void wr_shutdown_external_log_handler()
 WR_FUNC;
 
 WR_INLINE
