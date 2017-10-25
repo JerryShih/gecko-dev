@@ -17,7 +17,8 @@ use app_units::Au;
 use rayon;
 use euclid::SideOffsets2D;
 use bincode;
-use log::{set_logger, shutdown_logger, Log, LogMetadata, LogRecord};
+use log::{set_logger, shutdown_logger, Log, LogLevel, LogMetadata, LogRecord};
+use env_logger::Logger;
 
 extern crate webrender_api;
 
@@ -480,7 +481,7 @@ pub extern "C" fn wr_renderer_render(renderer: &mut Renderer,
                 let msg = CString::new(format!("wr_renderer_render: {:?}", e)).unwrap();
                 unsafe {
                     gfx_critical_note(msg.as_ptr());
-               }
+                }
             }
             false
         },
@@ -1832,48 +1833,54 @@ struct WrExternalLogHandler {
     info_msg: ExternalMessageHandler,
     debug_msg: ExternalMessageHandler,
     trace_msg: ExternalMessageHandler,
+    log_level: LogLevel,
 }
 
 impl WrExternalLogHandler {
-    fn new() -> WrExternalLogHandler {
+    fn new(log_level: LogLevel) -> WrExternalLogHandler {
         WrExternalLogHandler {
             error_msg: gfx_critical_error,
             warn_msg: gfx_critical_note,
             info_msg: gecko_printf_stderr_output,
             debug_msg: gecko_printf_stderr_output,
             trace_msg: gecko_printf_stderr_output,
+            log_level: log_level,
         }
     }
 }
 
 impl Log for WrExternalLogHandler {
-    fn enabled(&self, _: &LogMetadata) -> bool {
-        true
+    fn enabled(&self, metadata : &LogMetadata) -> bool {
+        metadata.level() <= self.log_level
     }
 
-    fn log(&self, _: &LogRecord) {
-    /*
+    fn log(&self, record: &LogRecord) {
         if self.enabled(record.metadata()) {
-            let level = if self.colors {
-                level_style(record.level()).paint(record.location().module_path()).to_string()
-            } else {
-                record.location().module_path().to_string()
-            };
-
-            if record.level() <= LogLevel::Warn {
-                let _ = writeln!(&mut io::stderr(), "{}: {}", level, record.args());
-            } else {
-                println!("{}: {}", level, record.args());
+            let msg = CString::new(format!("WR: {} {} {:?}",
+                                           record.args(),
+                                           record.target(),
+                                           record.location())).unwrap();
+            unsafe {
+                match record.level() {
+                    LogLevel::Error => (self.error_msg)(msg.as_ptr()),
+                    LogLevel::Warn => (self.warn_msg)(msg.as_ptr()),
+                    LogLevel::Info => (self.info_msg)(msg.as_ptr()),
+                    LogLevel::Debug => (self.debug_msg)(msg.as_ptr()),
+                    LogLevel::Trace => (self.trace_msg)(msg.as_ptr()),
+                }
             }
         }
-        */
     }
 }
 
 #[no_mangle]
 pub extern "C" fn wr_init_external_log_handler() {
-    set_logger(|_| {
-        Box::new(WrExternalLogHandler::new())
+    let _ = set_logger(|max_log_level| {
+        let env_logger = Logger::new();
+        max_log_level.set(env_logger.filter());
+        Box::new(WrExternalLogHandler::new(env_logger.filter()
+                                                     .to_log_level()
+                                                     .unwrap_or(LogLevel::Error)))
     });
 }
 

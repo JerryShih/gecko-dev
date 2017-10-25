@@ -13,6 +13,7 @@ extern crate rayon;
 extern crate thread_profiler;
 extern crate bincode;
 extern crate log;
+extern crate env_logger;
 
 #[allow(non_snake_case)]
 pub mod bindings;
