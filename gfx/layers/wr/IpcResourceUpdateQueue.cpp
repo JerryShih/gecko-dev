@@ -302,9 +302,16 @@ bool
 IpcResourceUpdateQueue::AddRawFont(wr::FontKey aKey, Range<uint8_t> aBytes, uint32_t aIndex)
 {
   auto bytes = mWriter.Write(aBytes);
+  printf_stderr("bignose try to add font size:%d", aBytes.length());
   if (!bytes.length()) {
+    printf_stderr(" failed\n");
     return false;
   }
+
+  if (aBytes.length() > 100000000) {
+    printf_stderr("bignose too large");
+  }
+  printf_stderr(" success\n");
   mUpdates.AppendElement(layers::OpAddRawFont(bytes, aIndex, aKey));
   return true;
 }

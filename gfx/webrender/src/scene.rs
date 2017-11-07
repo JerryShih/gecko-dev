@@ -55,7 +55,7 @@ impl SceneProperties {
                 .get(&key.id)
                 .cloned()
                 .unwrap_or_else(|| {
-                    warn!("Property binding {:?} has an invalid value.", key);
+                    //warn!("Property binding {:?} has an invalid value.", key);
                     LayoutTransform::identity()
                 }),
         }
@@ -69,7 +69,7 @@ impl SceneProperties {
                 .get(&key.id)
                 .cloned()
                 .unwrap_or_else(|| {
-                    warn!("Property binding {:?} has an invalid value.", key);
+                    //warn!("Property binding {:?} has an invalid value.", key);
                     default_value
                 }),
         }
