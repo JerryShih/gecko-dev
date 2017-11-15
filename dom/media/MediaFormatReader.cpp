@@ -2510,8 +2510,7 @@ MediaFormatReader::Update(TrackType aTrack)
                        "No error can occur while an internal seek is pending");
     bool needsNewDecoder =
       decoder.mError.ref() == NS_ERROR_DOM_MEDIA_NEED_NEW_DECODER;
-    if (!needsNewDecoder &&
-        ++decoder.mNumOfConsecutiveError > decoder.mMaxConsecutiveError) {
+    if (++decoder.mNumOfConsecutiveError > decoder.mMaxConsecutiveError) {
       NotifyError(aTrack, decoder.mError.ref());
       return;
     }

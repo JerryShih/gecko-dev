@@ -120,7 +120,8 @@ WMFMediaDataDecoder::ProcessError(HRESULT aError, const char* aReason)
   // NS_ERROR_DOM_MEDIA_NEED_NEW_DECODER to get the latest device. Maybe retry
   // up to 3 times.
   return DecodePromise::CreateAndReject(
-    MediaResult(NS_ERROR_DOM_MEDIA_DECODE_ERR,
+    MediaResult((aError == DXGI_ERROR_DEVICE_RESET) ? NS_ERROR_DOM_MEDIA_NEED_NEW_DECODER
+                                                    : NS_ERROR_DOM_MEDIA_DECODE_ERR,
                 RESULT_DETAIL("%s:%x", aReason, aError)),
     __func__);
 }

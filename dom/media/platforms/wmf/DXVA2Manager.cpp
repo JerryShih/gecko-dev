@@ -988,6 +988,7 @@ D3D11DXVA2Manager::CopyToImage(IMFSample* aVideoSample,
     // is null. It's better to avoid that crash.
     client->SyncWithObject(mSyncObject);
     if (!mSyncObject->Synchronize(true)) {
+      printf_stderr("bignose dxgi error\n");
       return DXGI_ERROR_DEVICE_RESET;
     }
   }
