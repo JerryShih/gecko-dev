@@ -1283,9 +1283,12 @@ protected:
    * index in the layer, if any.
    */
   struct MaskLayerKey;
-  already_AddRefed<ImageLayer>
-  CreateOrRecycleMaskImageLayerFor(const MaskLayerKey& aKey,
-                                   void(*aSetUserData)(Layer* aLayer));
+  template<typename UserData>
+  already_AddRefed<ImageLayer> CreateOrRecycleMaskImageLayerFor(
+      const MaskLayerKey& aKey,
+      UserData&& aUserData,
+      bool(*aCompareUserData)(Layer* aLayer, const UserData& aUserData),
+      void(*aSetUserData)(Layer* aLayer, UserData&& aUserData));
   /**
    * Grabs all PaintedLayers and ColorLayers from the ContainerLayer and makes them
    * available for recycling.
@@ -1618,6 +1621,12 @@ struct CSSMaskLayerUserData : public LayerUserData
     : mMaskStyle(nsStyleImageLayers::LayerType::Mask)
   { }
 
+  CSSMaskLayerUserData(CSSMaskLayerUserData&& aOther)
+    : mMaskBounds(Move(aOther.mMaskBounds))
+    , mMaskStyle(Move(aOther.mMaskStyle))
+    , mMaskLayerOffset(aOther.mMaskLayerOffset)
+  { }
+
   CSSMaskLayerUserData(nsIFrame* aFrame, const nsIntRect& aMaskBounds,
                        const nsPoint& aMaskLayerOffset)
     : mMaskBounds(aMaskBounds),
@@ -1764,15 +1773,6 @@ private:
   RefPtr<gfx::DrawTarget> mDrawTarget;
   RefPtr<TextureClient> mTextureClient;
 };
-
-/**
-  * Helper functions for getting user data and casting it to the correct type.
-  * aLayer is the layer where the user data is stored.
-  */
-MaskLayerUserData* GetMaskLayerUserData(Layer* aLayer)
-{
-  return static_cast<MaskLayerUserData*>(aLayer->GetUserData(&gMaskLayerUserData));
-}
 
 PaintedDisplayItemLayerUserData* GetPaintedDisplayItemLayerUserData(Layer* aLayer)
 {
@@ -2205,12 +2205,17 @@ ContainerState::CreateOrRecycleImageLayer(PaintedLayer *aPainted)
   return layer.forget();
 }
 
+template<typename UserData>
 already_AddRefed<ImageLayer>
-ContainerState::CreateOrRecycleMaskImageLayerFor(const MaskLayerKey& aKey,
-                                                 void(*aSetUserData)(Layer* aLayer))
+ContainerState::CreateOrRecycleMaskImageLayerFor(
+    const MaskLayerKey& aKey,
+    UserData&& aUserData,
+    bool(*aCompareUserData)(UserData& aUserData),
+    void(*aSetUserData)(Layer* aLayer, UserData&& aUserData))
 {
   RefPtr<ImageLayer> result = mRecycledMaskImageLayers.Get(aKey);
-  if (result) {
+
+  if (result && aCompareUserData(aUserData)) {
     mRecycledMaskImageLayers.Remove(aKey);
     aKey.mLayer->ClearExtraDumpInfo();
     // XXX if we use clip on mask layers, null it out here
@@ -2219,10 +2224,25 @@ ContainerState::CreateOrRecycleMaskImageLayerFor(const MaskLayerKey& aKey,
     result = mManager->CreateImageLayer();
     if (!result)
       return nullptr;
-    aSetUserData(result);
+    aSetUserData(result, aUserData);
   }
 
   return result.forget();
+
+//  RefPtr<ImageLayer> result = mRecycledMaskImageLayers.Get(aKey);
+//  if (result) {
+//    mRecycledMaskImageLayers.Remove(aKey);
+//    aKey.mLayer->ClearExtraDumpInfo();
+//    // XXX if we use clip on mask layers, null it out here
+//  } else {
+//    // Create a new layer
+//    result = mManager->CreateImageLayer();
+//    if (!result)
+//      return nullptr;
+//    aSetUserData(result);
+//  }
+//
+//  return result.forget();
 }
 
 static const double SUBPIXEL_OFFSET_EPSILON = 0.02;
@@ -3858,20 +3878,38 @@ GetASRForPerspective(const ActiveScrolledRoot* aASR, nsIFrame* aPerspectiveFrame
   return nullptr;
 }
 
-void
-SetCSSMaskLayerUserData(Layer* aMaskLayer)
+bool
+CompareCSSMaskLayerUserData(Layer* aMaskLayer, const CSSMaskLayerUserData& aUserData)
 {
-  aMaskLayer->SetUserData(&gCSSMaskLayerUserData,
-                          new CSSMaskLayerUserData());
+  if (!aMaskLayer) {
+    return false;
+  }
+
+  CSSMaskLayerUserData* oldUserData =
+    static_cast<CSSMaskLayerUserData*>(aMaskLayer->GetUserData(&gCSSMaskLayerUserData));
+  if (!oldUserData) {
+    return false;
+  }
+
+  return (*oldUserData == aUserData);
+}
+
+void
+SetCSSMaskLayerUserData(Layer* aMaskLayer, CSSMaskLayerUserData&& aUserData)
+{
+  MOZ_ASSERT(aMaskLayer);
+
+  CSSMaskLayerUserData *data = new CSSMaskLayerUserData(Move(aUserData));
+  aMaskLayer->SetUserData(&gCSSMaskLayerUserData, data);
 }
 
 void
 ContainerState::SetupMaskLayerForCSSMask(Layer* aLayer,
                                          nsDisplayMask* aMaskItem)
 {
-  RefPtr<ImageLayer> maskLayer =
-    CreateOrRecycleMaskImageLayerFor(MaskLayerKey(aLayer, Nothing()),
-                                     SetCSSMaskLayerUserData);
+  RefPtr<ImageLayer> maskLayer = nullptr;
+//    CreateOrRecycleMaskImageLayerFor(MaskLayerKey(aLayer, Nothing()),
+//                                     SetCSSMaskLayerUserData);
 
   CSSMaskLayerUserData* oldUserData =
     static_cast<CSSMaskLayerUserData*>(maskLayer->GetUserData(&gCSSMaskLayerUserData));
@@ -6327,11 +6365,29 @@ ContainerState::SetupMaskLayer(Layer *aLayer,
   SetClipCount(paintedData, aRoundedRectClipCount);
 }
 
-void
-SetMaskLayerUserData(Layer* aMaskLayer)
+bool
+CompareMaskLayerUserData(Layer* aMaskLayer, const MaskLayerUserData& aUserData)
 {
-  aMaskLayer->SetUserData(&gMaskLayerUserData,
-                          new MaskLayerUserData());
+  if (!aMaskLayer) {
+    return false;
+  }
+
+  MaskLayerUserData* oldUserData =
+    static_cast<MaskLayerUserData*>(aMaskLayer->GetUserData(&gMaskLayerUserData));
+  if (!oldUserData) {
+    return false;
+  }
+
+  return (*oldUserData == aUserData);
+}
+
+void
+SetMaskLayerUserData(Layer* aMaskLayer, MaskLayerUserData&& aUserData)
+{
+  MOZ_ASSERT(aMaskLayer);
+
+  MaskLayerUserData *data = new MaskLayerUserData(Move(aUserData));
+  aMaskLayer->SetUserData(&gMaskLayerUserData, data);
 }
 
 already_AddRefed<Layer>
@@ -6349,8 +6405,8 @@ ContainerState::CreateMaskLayer(Layer *aLayer,
 
   // check if we can re-use the mask layer
   MaskLayerKey recycleKey(aLayer, aForAncestorMaskLayer);
-  RefPtr<ImageLayer> maskLayer =
-    CreateOrRecycleMaskImageLayerFor(recycleKey, SetMaskLayerUserData);
+  RefPtr<ImageLayer> maskLayer = nullptr;
+  //  CreateOrRecycleMaskImageLayerFor(recycleKey, SetMaskLayerUserData);
   MaskLayerUserData* userData = GetMaskLayerUserData(maskLayer);
 
   int32_t A2D = mContainerFrame->PresContext()->AppUnitsPerDevPixel();
