@@ -261,14 +261,12 @@ GLTextureSource::GLTextureSource(TextureSourceProvider* aProvider,
                                  GLuint aTextureHandle,
                                  GLenum aTarget,
                                  gfx::IntSize aSize,
-                                 gfx::SurfaceFormat aFormat,
-                                 bool aExternallyOwned)
+                                 gfx::SurfaceFormat aFormat)
   : mGL(aProvider->GetGLContext())
   , mTextureHandle(aTextureHandle)
   , mTextureTarget(aTarget)
   , mSize(aSize)
   , mFormat(aFormat)
-  , mExternallyOwned(aExternallyOwned)
 {
   MOZ_COUNT_CTOR(GLTextureSource);
 }
@@ -276,17 +274,13 @@ GLTextureSource::GLTextureSource(TextureSourceProvider* aProvider,
 GLTextureSource::~GLTextureSource()
 {
   MOZ_COUNT_DTOR(GLTextureSource);
-  if (!mExternallyOwned) {
-    DeleteTextureHandle();
-  }
+  DeleteTextureHandle();
 }
 
 void
 GLTextureSource::DeallocateDeviceData()
 {
-  if (!mExternallyOwned) {
-    DeleteTextureHandle();
-  }
+  DeleteTextureHandle();
 }
 
 void
@@ -782,8 +776,7 @@ GLTextureHost::Lock()
                                          mTexture,
                                          mTarget,
                                          mSize,
-                                         format,
-                                         false /* owned by the client */);
+                                         format);
   }
 
   return true;
