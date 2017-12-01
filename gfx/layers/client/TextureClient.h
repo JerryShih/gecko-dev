@@ -211,6 +211,9 @@ public:
 
   virtual NonBlockingTextureReadLock* AsNonBlockingLock() { return nullptr; }
 
+  virtual uint32_t GetPID() { return 0; }
+  virtual uint32_t GetSerialID() { return 0; }
+
 protected:
   NS_DECL_OWNINGTHREAD
 };

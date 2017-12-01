@@ -167,6 +167,14 @@ FixedSizeSmallShmemSectionAllocator::AllocShmemSection(uint32_t aSize, ShmemSect
 
   aShmemSection->size() = aSize;
   aShmemSection->offset() = (heap + sizeof(ShmemSectionHeapAllocation)) - aShmemSection->shmem().get<uint8_t>();
+
+  //bignose
+  static uint32_t count = 0;
+  count++;
+  uint32_t uniqueID = getpid();
+  aShmemSection->pid() = getpid();
+  aShmemSection->uniqueID() = count;
+
   ShrinkShmemSectionHeap();
   return true;
 }

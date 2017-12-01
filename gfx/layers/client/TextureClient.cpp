@@ -1508,6 +1508,9 @@ public:
       (mShmemSection.shmem().get<char>() + mShmemSection.offset());
   }
 
+  virtual uint32_t GetPID() { return mShmemSection.pid(); }
+  virtual uint32_t GetSerialID() { return mShmemSection.uniqueID(); }
+
   RefPtr<LayersIPCChannel> mClientAllocator;
   mozilla::layers::ShmemSection mShmemSection;
   bool mAllocSuccess;
