@@ -39,6 +39,7 @@ ClearCallback(nsITimer *aTimer, void *aClosure)
 }
 
 TextureClientPool::TextureClientPool(LayersBackend aLayersBackend,
+                                     bool aSupportsTextureDirectMapping,
                                      int32_t aMaxTextureSize,
                                      gfx::SurfaceFormat aFormat,
                                      gfx::IntSize aSize,
@@ -60,6 +61,7 @@ TextureClientPool::TextureClientPool(LayersBackend aLayersBackend,
   , mOutstandingClients(0)
   , mSurfaceAllocator(aAllocator)
   , mDestroyed(false)
+  , mSupportsTextureDirectMapping(aSupportsTextureDirectMapping)
 {
   TCP_LOG("TexturePool %p created with maximum unused texture clients %u\n",
       this, mInitialPoolSize);
@@ -157,12 +159,14 @@ TextureClientPool::AllocateTextureClient()
                                               mFormat, mSize,
                                               gfx::BackendType::NONE,
                                               mBackend,
+                                              mSupportsTextureDirectMapping,
                                               mFlags, ALLOC_DEFAULT);
   } else {
     newClient =
       TextureClient::CreateForDrawing(mSurfaceAllocator,
                                       mFormat, mSize,
                                       mBackend,
+                                      mSupportsTextureDirectMapping,
                                       mMaxTextureSize,
                                       BackendSelector::Content,
                                       mFlags);

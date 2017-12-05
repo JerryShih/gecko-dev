@@ -28,6 +28,7 @@ public:
   virtual TextureData*
   CreateSimilar(LayersIPCChannel* aAllocator,
                 LayersBackend aLayersBackend,
+                bool SupportsTextureDirectMapping = false,
                 TextureFlags aFlags = TextureFlags::DEFAULT,
                 TextureAllocationFlags aAllocFlags = ALLOC_DEFAULT) const override;
 
@@ -222,6 +223,7 @@ MemoryDIBTextureData::UpdateFromSurface(gfx::SourceSurface* aSurface)
 TextureData*
 ShmemDIBTextureData::CreateSimilar(LayersIPCChannel* aAllocator,
                                    LayersBackend aLayersBackend,
+                                   bool SupportsTextureDirectMapping,
                                    TextureFlags aFlags,
                                    TextureAllocationFlags aAllocFlags) const
 {

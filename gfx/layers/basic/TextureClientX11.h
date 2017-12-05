@@ -35,6 +35,7 @@ public:
   virtual TextureData*
   CreateSimilar(LayersIPCChannel* aAllocator,
                 LayersBackend aLayersBackend,
+                bool SupportsTextureDirectMapping = false,
                 TextureFlags aFlags = TextureFlags::DEFAULT,
                 TextureAllocationFlags aAllocFlags = ALLOC_DEFAULT) const override;
 

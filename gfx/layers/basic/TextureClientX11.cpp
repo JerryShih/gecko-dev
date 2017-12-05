@@ -115,6 +115,7 @@ X11TextureData::Deallocate(LayersIPCChannel*)
 TextureData*
 X11TextureData::CreateSimilar(LayersIPCChannel* aAllocator,
                               LayersBackend aLayersBackend,
+                              bool SupportsTextureDirectMapping,
                               TextureFlags aFlags,
                               TextureAllocationFlags aAllocFlags) const
 {

@@ -658,7 +658,10 @@ TextureClient::UpdateFromSurface(gfx::SourceSurface* aSurface)
 
 
 already_AddRefed<TextureClient>
-TextureClient::CreateSimilar(LayersBackend aLayersBackend, TextureFlags aFlags, TextureAllocationFlags aAllocFlags) const
+TextureClient::CreateSimilar(LayersBackend aLayersBackend,
+                             bool aSupportsTextureDirectMapping,
+                             TextureFlags aFlags,
+                             TextureAllocationFlags aAllocFlags) const
 {
   MOZ_ASSERT(IsValid());
 
@@ -668,7 +671,11 @@ TextureClient::CreateSimilar(LayersBackend aLayersBackend, TextureFlags aFlags, 
   }
 
   LockActor();
-  TextureData* data = mData->CreateSimilar(mAllocator, aLayersBackend, aFlags, aAllocFlags);
+  TextureData* data = mData->CreateSimilar(mAllocator,
+                                           aLayersBackend,
+                                           aSupportsTextureDirectMapping,
+                                           aFlags,
+                                           aAllocFlags);
   UnlockActor();
 
   if (!data) {
@@ -1048,6 +1055,7 @@ TextureClient::CreateForDrawing(KnowsCompositor* aAllocator,
   return TextureClient::CreateForDrawing(aAllocator->GetTextureForwarder(),
                                          aFormat, aSize,
                                          layersBackend,
+                                         aAllocator->SupportsTextureDirectMapping(),
                                          aAllocator->GetMaxTextureSize(),
                                          aSelector,
                                          aTextureFlags,
@@ -1060,6 +1068,7 @@ TextureClient::CreateForDrawing(TextureForwarder* aAllocator,
                                 gfx::SurfaceFormat aFormat,
                                 gfx::IntSize aSize,
                                 LayersBackend aLayersBackend,
+                                bool aSupportsTextureDirectMapping,
                                 int32_t aMaxTextureSize,
                                 BackendSelector aSelector,
                                 TextureFlags aTextureFlags,
@@ -1140,6 +1149,7 @@ TextureClient::CreateForDrawing(TextureForwarder* aAllocator,
   // Can't do any better than a buffer texture client.
   return TextureClient::CreateForRawBufferAccess(aAllocator, aFormat, aSize,
                                                  moz2DBackend, aLayersBackend,
+                                                 aSupportsTextureDirectMapping,
                                                  aTextureFlags, aAllocFlags);
 }
 
@@ -1215,6 +1225,7 @@ TextureClient::CreateForRawBufferAccess(KnowsCompositor* aAllocator,
   return CreateForRawBufferAccess(aAllocator->GetTextureForwarder(),
                                   aFormat, aSize, aMoz2DBackend,
                                   aAllocator->GetCompositorBackendType(),
+                                  aAllocator->SupportsTextureDirectMapping(),
                                   aTextureFlags, aAllocFlags);
 }
 
@@ -1225,6 +1236,7 @@ TextureClient::CreateForRawBufferAccess(LayersIPCChannel* aAllocator,
                                         gfx::IntSize aSize,
                                         gfx::BackendType aMoz2DBackend,
                                         LayersBackend aLayersBackend,
+                                        bool aSupportsTextureDirectMapping,
                                         TextureFlags aTextureFlags,
                                         TextureAllocationFlags aAllocFlags)
 {
@@ -1256,7 +1268,8 @@ TextureClient::CreateForRawBufferAccess(LayersIPCChannel* aAllocator,
 
   TextureData* texData = BufferTextureData::Create(aSize, aFormat, gfx::BackendType::SKIA,
                                                    aLayersBackend, aTextureFlags,
-                                                   aAllocFlags, aAllocator);
+                                                   aAllocFlags, aAllocator,
+                                                   aSupportsTextureDirectMapping);
   if (!texData) {
     return nullptr;
   }

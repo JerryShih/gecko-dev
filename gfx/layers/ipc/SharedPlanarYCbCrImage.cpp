@@ -115,7 +115,8 @@ SharedPlanarYCbCrImage::AdoptData(const Data& aData)
 
   auto fwd = mCompositable->GetForwarder();
   bool hasIntermediateBuffer = ComputeHasIntermediateBuffer(
-    gfx::SurfaceFormat::YUV, fwd->GetCompositorBackendType());
+    gfx::SurfaceFormat::YUV, fwd->GetCompositorBackendType(),
+    fwd->SupportsTextureDirectMapping());
 
   static_cast<BufferTextureData*>(mTextureClient->GetInternalData())
     ->SetDesciptor(YCbCrDescriptor(aData.mYSize,

@@ -125,7 +125,7 @@ CreateTextureClientWithBackend(LayersBackend aLayersBackend)
   if (!data && aLayersBackend == LayersBackend::LAYERS_BASIC) {
     // Create BufferTextureData.
     data = BufferTextureData::Create(size, format, moz2DBackend, aLayersBackend,
-                                     textureFlags, allocFlags, nullptr);
+                                     textureFlags, allocFlags, nullptr, false);
   }
 
   if (data) {

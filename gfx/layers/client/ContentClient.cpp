@@ -763,6 +763,7 @@ ContentClientRemoteBuffer::CreateBufferInternal(const gfx::IntRect& aRect,
   if (aFlags & TextureFlags::COMPONENT_ALPHA) {
     textureClientOnWhite = textureClient->CreateSimilar(
       mForwarder->GetCompositorBackendType(),
+      mForwarder->SupportsTextureDirectMapping(),
       aFlags | ExtraTextureFlags(),
       TextureAllocationFlags::ALLOC_CLEAR_BUFFER_WHITE
     );

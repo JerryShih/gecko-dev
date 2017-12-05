@@ -94,6 +94,7 @@ public:
   virtual TextureData*
   CreateSimilar(LayersIPCChannel* aAllocator,
                 LayersBackend aLayersBackend,
+                bool SupportsTextureDirectMapping,
                 TextureFlags aFlags,
                 TextureAllocationFlags aAllocFlags) const override;
 

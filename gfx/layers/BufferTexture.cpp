@@ -28,11 +28,13 @@ public:
                                    LayersBackend aLayersBackend,
                                    TextureFlags aFlags,
                                    TextureAllocationFlags aAllocFlags,
-                                   LayersIPCChannel* aAllocator);
+                                   LayersIPCChannel* aAllocator,
+                                   bool aSupportsTextireDirectMapping);
 
   virtual TextureData*
   CreateSimilar(LayersIPCChannel* aAllocator,
                 LayersBackend aLayersBackend,
+                bool aSupportsTextureDirectMapping,
                 TextureFlags aFlags = TextureFlags::DEFAULT,
                 TextureAllocationFlags aAllocFlags = ALLOC_DEFAULT) const override;
 
@@ -68,11 +70,13 @@ public:
                                   LayersBackend aLayersBackend,
                                   TextureFlags aFlags,
                                   TextureAllocationFlags aAllocFlags,
-                                  LayersIPCChannel* aAllocator);
+                                  LayersIPCChannel* aAllocator,
+                                  bool aSupportsTextireDirectMapping);
 
   virtual TextureData*
   CreateSimilar(LayersIPCChannel* aAllocator,
                 LayersBackend aLayersBackend,
+                bool aSupportsTextureDirectMapping,
                 TextureFlags aFlags = TextureFlags::DEFAULT,
                 TextureAllocationFlags aAllocFlags = ALLOC_DEFAULT) const override;
 
@@ -105,8 +109,13 @@ static bool UsingX11Compositor()
 }
 
 bool ComputeHasIntermediateBuffer(gfx::SurfaceFormat aFormat,
-                                  LayersBackend aLayersBackend)
+                                  LayersBackend aLayersBackend,
+                                  bool aSupportsTextureDirectMapping)
 {
+  if (aSupportsTextureDirectMapping) {
+    return false;
+  }
+
   return aLayersBackend != LayersBackend::LAYERS_BASIC
       || UsingX11Compositor()
       || aFormat == gfx::SurfaceFormat::UNKNOWN;
@@ -117,16 +126,19 @@ BufferTextureData::Create(gfx::IntSize aSize, gfx::SurfaceFormat aFormat,
                           gfx::BackendType aMoz2DBackend,
                           LayersBackend aLayersBackend, TextureFlags aFlags,
                           TextureAllocationFlags aAllocFlags,
-                          LayersIPCChannel* aAllocator)
+                          LayersIPCChannel* aAllocator,
+                          bool aSupportsTextureDirectMapping)
 {
   if (!aAllocator || aAllocator->IsSameProcess()) {
     return MemoryTextureData::Create(aSize, aFormat, aMoz2DBackend,
                                      aLayersBackend, aFlags,
-                                     aAllocFlags, aAllocator);
+                                     aAllocFlags, aAllocator,
+                                     aSupportsTextureDirectMapping);
   } else {
     return ShmemTextureData::Create(aSize, aFormat, aMoz2DBackend,
                                     aLayersBackend, aFlags,
-                                    aAllocFlags, aAllocator);
+                                    aAllocFlags, aAllocator,
+                                    aSupportsTextureDirectMapping);
   }
 }
 
@@ -168,7 +180,8 @@ BufferTextureData::CreateForYCbCrWithBufferSize(KnowsCompositor* aAllocator,
   }
 
   bool hasIntermediateBuffer = aAllocator ? ComputeHasIntermediateBuffer(gfx::SurfaceFormat::YUV,
-                                                                         aAllocator->GetCompositorBackendType())
+                                                                         aAllocator->GetCompositorBackendType(),
+                                                                         aAllocator->SupportsTextureDirectMapping())
                                           : true;
 
   // Initialize the metadata with something, even if it will have to be rewritten
@@ -210,7 +223,8 @@ BufferTextureData::CreateForYCbCr(KnowsCompositor* aAllocator,
   bool hasIntermediateBuffer =
     aAllocator
       ? ComputeHasIntermediateBuffer(gfx::SurfaceFormat::YUV,
-                                     aAllocator->GetCompositorBackendType())
+                                     aAllocator->GetCompositorBackendType(),
+                                     aAllocator->SupportsTextureDirectMapping())
       : true;
 
   YCbCrDescriptor descriptor = YCbCrDescriptor(aYSize, aYStride,
@@ -505,7 +519,8 @@ MemoryTextureData::Create(gfx::IntSize aSize, gfx::SurfaceFormat aFormat,
                           gfx::BackendType aMoz2DBackend,
                           LayersBackend aLayersBackend, TextureFlags aFlags,
                           TextureAllocationFlags aAllocFlags,
-                          LayersIPCChannel* aAllocator)
+                          LayersIPCChannel* aAllocator,
+                          bool aSupportsTextureDirectMapping)
 {
   // Should have used CreateForYCbCr.
   MOZ_ASSERT(aFormat != gfx::SurfaceFormat::YUV);
@@ -525,7 +540,9 @@ MemoryTextureData::Create(gfx::IntSize aSize, gfx::SurfaceFormat aFormat,
     return nullptr;
   }
 
-  bool hasIntermediateBuffer = ComputeHasIntermediateBuffer(aFormat, aLayersBackend);
+  bool hasIntermediateBuffer = ComputeHasIntermediateBuffer(aFormat,
+                                                            aLayersBackend,
+                                                            aSupportsTextureDirectMapping);
 
   GfxMemoryImageReporter::DidAlloc(buf);
 
@@ -546,11 +563,13 @@ MemoryTextureData::Deallocate(LayersIPCChannel*)
 TextureData*
 MemoryTextureData::CreateSimilar(LayersIPCChannel* aAllocator,
                                  LayersBackend aLayersBackend,
+                                 bool aSupportsTextureDirectMapping,
                                  TextureFlags aFlags,
                                  TextureAllocationFlags aAllocFlags) const
 {
   return MemoryTextureData::Create(GetSize(), GetFormat(), mMoz2DBackend,
-                                   aLayersBackend, aFlags, aAllocFlags, aAllocator);
+                                   aLayersBackend, aFlags, aAllocFlags, aAllocator,
+                                   aSupportsTextureDirectMapping);
 }
 
 bool
@@ -571,7 +590,8 @@ ShmemTextureData::Create(gfx::IntSize aSize, gfx::SurfaceFormat aFormat,
                          gfx::BackendType aMoz2DBackend,
                          LayersBackend aLayersBackend, TextureFlags aFlags,
                          TextureAllocationFlags aAllocFlags,
-                         LayersIPCChannel* aAllocator)
+                         LayersIPCChannel* aAllocator,
+                         bool aSupportsTextureDirectMapping)
 {
   MOZ_ASSERT(aAllocator);
   // Should have used CreateForYCbCr.
@@ -601,7 +621,9 @@ ShmemTextureData::Create(gfx::IntSize aSize, gfx::SurfaceFormat aFormat,
     return nullptr;
   }
 
-  bool hasIntermediateBuffer = ComputeHasIntermediateBuffer(aFormat, aLayersBackend);
+  bool hasIntermediateBuffer = ComputeHasIntermediateBuffer(aFormat,
+                                                            aLayersBackend,
+                                                            aSupportsTextureDirectMapping);
 
   BufferDescriptor descriptor = RGBDescriptor(aSize, aFormat, hasIntermediateBuffer);
 
@@ -613,11 +635,13 @@ ShmemTextureData::Create(gfx::IntSize aSize, gfx::SurfaceFormat aFormat,
 TextureData*
 ShmemTextureData::CreateSimilar(LayersIPCChannel* aAllocator,
                                 LayersBackend aLayersBackend,
+                                bool aSupportsTextureDirectMapping,
                                 TextureFlags aFlags,
                                 TextureAllocationFlags aAllocFlags) const
 {
   return ShmemTextureData::Create(GetSize(), GetFormat(), mMoz2DBackend,
-                                  aLayersBackend, aFlags, aAllocFlags, aAllocator);
+                                  aLayersBackend, aFlags, aAllocFlags, aAllocator,
+                                  aSupportsTextureDirectMapping);
 }
 
 void

@@ -278,6 +278,7 @@ public:
   virtual TextureData*
   CreateSimilar(LayersIPCChannel* aAllocator,
                 LayersBackend aLayersBackend,
+                bool aSupportsTextureDirectMapping = false,
                 TextureFlags aFlags = TextureFlags::DEFAULT,
                 TextureAllocationFlags aAllocFlags = ALLOC_DEFAULT) const { return nullptr; }
 
@@ -388,6 +389,7 @@ public:
   // Creates and allocates a TextureClient of the same type.
   already_AddRefed<TextureClient>
   CreateSimilar(LayersBackend aLayersBackend = LayersBackend::LAYERS_NONE,
+                bool aSupportsTextureDirectMapping = false,
                 TextureFlags aFlags = TextureFlags::DEFAULT,
                 TextureAllocationFlags aAllocFlags = ALLOC_DEFAULT) const;
 
@@ -669,6 +671,7 @@ private:
                    gfx::SurfaceFormat aFormat,
                    gfx::IntSize aSize,
                    LayersBackend aLayersBackend,
+                   bool aSupportsTextureDirectMapping,
                    int32_t aMaxTextureSize,
                    BackendSelector aSelector,
                    TextureFlags aTextureFlags,
@@ -680,6 +683,7 @@ private:
                            gfx::IntSize aSize,
                            gfx::BackendType aMoz2dBackend,
                            LayersBackend aLayersBackend,
+                           bool aSupportsTextureDirectMapping,
                            TextureFlags aTextureFlags,
                            TextureAllocationFlags flags = ALLOC_DEFAULT);
 

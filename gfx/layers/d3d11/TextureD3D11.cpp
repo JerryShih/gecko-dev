@@ -602,6 +602,7 @@ CreateD3D11TextureClientWithDevice(IntSize aSize, SurfaceFormat aFormat,
 TextureData*
 D3D11TextureData::CreateSimilar(LayersIPCChannel* aAllocator,
                                 LayersBackend aLayersBackend,
+                                bool SupportsTextureDirectMapping,
                                 TextureFlags aFlags,
                                 TextureAllocationFlags aAllocFlags) const
 {
