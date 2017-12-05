@@ -238,7 +238,7 @@ public:
   // a new one.
   void RecycleTextureSource(TileHost& aTile) {
     for (size_t i = mFirstPossibility; i < mTiles.Length(); i++) {
-      if (!mTiles[i].mTextureSource) {
+      if (!mTiles[i].mTextureSource || mTiles[i].mTextureSource->IsDirectMap()) {
         if (i == mFirstPossibility) {
           mFirstPossibility++;
         }
