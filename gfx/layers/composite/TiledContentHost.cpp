@@ -207,7 +207,15 @@ public:
   explicit TextureSourceRecycler(nsTArray<TileHost>&& aTileSet)
     : mTiles(Move(aTileSet))
     , mFirstPossibility(0)
+    , mUsedTextureHostCount(0)
+    , mUsedTextureSourceCount(0)
   {}
+
+  ~TextureSourceRecycler()
+  {
+    printf_stderr("bignose total texturesource:%d, texturehost used:%d, texturesource used:%d\n",
+        mTiles.Length(), mUsedTextureHostCount, mUsedTextureSourceCount);
+  }
 
   // Attempts to recycle a texture source that is already bound to the
   // texture host for aTile.
@@ -226,6 +234,7 @@ public:
       // any).
       if (aTile.mTextureHost == mTiles[i].mTextureHost) {
         aTile.mTextureSource = Move(mTiles[i].mTextureSource);
+        mUsedTextureHostCount++;
         if (aTile.mTextureHostOnWhite) {
           aTile.mTextureSourceOnWhite = Move(mTiles[i].mTextureSourceOnWhite);
         }
@@ -247,6 +256,7 @@ public:
 
       if (mTiles[i].mTextureSource &&
           mTiles[i].mTextureHost->GetFormat() == aTile.mTextureHost->GetFormat()) {
+        mUsedTextureSourceCount++;
         aTile.mTextureSource = Move(mTiles[i].mTextureSource);
         if (aTile.mTextureHostOnWhite) {
           aTile.mTextureSourceOnWhite = Move(mTiles[i].mTextureSourceOnWhite);
@@ -267,6 +277,9 @@ public:
 protected:
   nsTArray<TileHost> mTiles;
   size_t mFirstPossibility;
+
+  size_t mUsedTextureHostCount;
+  size_t mUsedTextureSourceCount;
 };
 
 bool
@@ -297,6 +310,8 @@ TiledLayerBufferComposite::UseTiles(const SurfaceDescriptorTiles& aTiles,
 
   TextureSourceRecycler oldRetainedTiles(Move(mRetainedTiles));
   mRetainedTiles.SetLength(tileDescriptors.Length());
+
+  printf_stderr("bignose tilebuffer:%p, tile num:%d\n", this, tileDescriptors.Length());
 
   // Step 1, deserialize the incoming set of tiles into mRetainedTiles, and attempt
   // to recycle the TextureSource for any repeated tiles.
@@ -334,6 +349,7 @@ TiledLayerBufferComposite::UseTiles(const SurfaceDescriptorTiles& aTiles,
 
     tile.mTilePosition = newTiles.TilePosition(i);
 
+    //bignose
     // If this same tile texture existed in the old tile set then this will move the texture
     // source into our new tile.
     oldRetainedTiles.RecycleTextureSourceForTile(tile);

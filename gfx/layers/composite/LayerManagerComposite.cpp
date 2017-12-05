@@ -841,6 +841,10 @@ private:
 void
 LayerManagerComposite::Render(const nsIntRegion& aInvalidRegion, const nsIntRegion& aOpaqueRegion)
 {
+  static int count = 0;
+  count++;
+  printf_stderr("bignose render, frame:%d start\n",count);
+
   AUTO_PROFILER_LABEL("LayerManagerComposite::Render", GRAPHICS);
 
   if (mDestroyed || !mCompositor || mCompositor->IsDestroyed()) {
@@ -997,6 +1001,8 @@ LayerManagerComposite::Render(const nsIntRegion& aInvalidRegion, const nsIntRegi
   mCompositor->GetWidget()->PostRender(&widgetContext);
 
   RecordFrame();
+
+  printf_stderr("bignose render, frame:%d end\n",count);
 }
 
 #if defined(MOZ_WIDGET_ANDROID)

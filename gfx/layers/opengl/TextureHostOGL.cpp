@@ -4,6 +4,7 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
+#include <iostream>
 #include "TextureHostOGL.h"
 
 #include "EGLUtils.h"
@@ -340,6 +341,8 @@ DirectMapTextureSource::DirectMapTextureSource(TextureSourceProvider* aProvider,
                     aSurface->GetFormat())
   , mSync(0)
 {
+  printf("bignose ClientStorageTextureSource::creating obj:%p\n", this);
+
   MOZ_ASSERT(aSurface);
 
   UpdateInternal(aSurface, nullptr, nullptr, true);
@@ -347,6 +350,8 @@ DirectMapTextureSource::DirectMapTextureSource(TextureSourceProvider* aProvider,
 
 DirectMapTextureSource::~DirectMapTextureSource()
 {
+  printf("bignose ClientStorageTextureSource::delete, obj:%p\n", this);
+
   DeleteSyncObject();
 }
 
@@ -376,6 +381,8 @@ DirectMapTextureSource::Update(gfx::DataSourceSurface* aSurface,
                                nsIntRegion* aDestRegion,
                                gfx::IntPoint* aSrcOffset)
 {
+  printf("bignose ClientStorageTextureSource::updating  obj:%p\n", this);
+
   if (!aSurface) {
     return false;
   }
@@ -386,6 +393,7 @@ DirectMapTextureSource::Update(gfx::DataSourceSurface* aSurface,
 void
 DirectMapTextureSource::Sync()
 {
+  printf("ClientStorageTextureSource::sync obj:%p\n", this);
   if (mSync && gl() && gl()->MakeCurrent()) {
     gl()->fClientWaitSync(mSync, LOCAL_GL_SYNC_FLUSH_COMMANDS_BIT, LOCAL_GL_TIMEOUT_IGNORED);
   }
@@ -397,6 +405,8 @@ DirectMapTextureSource::UpdateInternal(gfx::DataSourceSurface* aSurface,
                                        gfx::IntPoint* aSrcOffset,
                                        bool aInit)
 {
+  printf("bignose ClientStorageTextureSource::updating  obj:%p\n", this);
+
   if (!gl() || !gl()->MakeCurrent()) {
     return false;
   }
@@ -451,6 +461,14 @@ DirectMapTextureSource::UpdateInternal(gfx::DataSourceSurface* aSurface,
 
   // Reset APPLE_client_storage.
   gl()->fPixelStorei(LOCAL_GL_UNPACK_CLIENT_STORAGE_APPLE, LOCAL_GL_FALSE);
+
+  printf_stderr("bignose fence:%d\n", mSync);
+
+  std::cerr << "bignose upload:"<< "region:" << destRegion << " " <<
+      "size:" << aSurface->GetSize() << " " <<
+      "srcPoint:" << srcPoint << '\n';
+
+  printf_stderr("bignose format:%d\n", mFormat);
 
   return true;
 }

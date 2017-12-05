@@ -1832,6 +1832,11 @@ CompositorOGL::SupportsTextureDirectMapping()
 {
   if (mGLContext) {
     mGLContext->MakeCurrent();
+
+    bool result = mGLContext->IsExtensionSupported(gl::GLContext::APPLE_client_storage) &&
+        mGLContext->IsExtensionSupported(gl::GLContext::APPLE_texture_range);
+
+    printf_stderr("bignose has direct mapping:%d\n", result);
     return mGLContext->IsExtensionSupported(gl::GLContext::APPLE_client_storage) &&
            mGLContext->IsExtensionSupported(gl::GLContext::APPLE_texture_range);
   }

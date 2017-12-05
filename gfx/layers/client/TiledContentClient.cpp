@@ -1124,6 +1124,12 @@ ClientMultiTiledLayerBuffer::ValidateTile(TileClient& aTile,
     return false;
   }
 
+  if (backBuffer && backBuffer->GetReadLock()) {
+    printf_stderr("1c bignose start use buffer: texture info(%d,%d)\n",
+        backBuffer->GetReadLock()->GetPID(),
+        backBuffer->GetReadLock()->GetSerialID());
+  }
+
   gfx::Tile moz2DTile;
   RefPtr<DrawTarget> dt = backBuffer->BorrowDrawTarget();
   RefPtr<DrawTarget> dtOnWhite;

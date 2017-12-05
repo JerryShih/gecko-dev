@@ -679,6 +679,7 @@ BufferTextureHost::EnsureWrappingTextureSource()
   }
 
   if (!mProvider) {
+    printf_stderr("bignose skip upload 2\n");
     return false;
   }
 
@@ -763,6 +764,8 @@ bool IsCompatibleTextureSource(TextureSource* aTexture,
 void
 BufferTextureHost::PrepareTextureSource(CompositableTextureSourceRef& aTexture)
 {
+  printf_stderr("bignose BufferTextureHost::PrepareTextureSource, obj:%p\n", this);
+
   // Reuse WrappingTextureSourceYCbCrBasic to reduce memory consumption.
   if (mFormat == gfx::SurfaceFormat::YUV &&
       !mHasIntermediateBuffer &&
@@ -774,9 +777,13 @@ BufferTextureHost::PrepareTextureSource(CompositableTextureSourceRef& aTexture)
     aTexture->AsDataTextureSource()->SetOwner(this);
     mFirstSource = aTexture->AsDataTextureSource();
     mNeedsFullUpdate = true;
+
+    printf_stderr("bignose line:%d\n", __LINE__);
   }
 
   if (!mHasIntermediateBuffer) {
+    printf_stderr("bignose line:%d\n", __LINE__);
+
     EnsureWrappingTextureSource();
   }
 
@@ -784,6 +791,7 @@ BufferTextureHost::PrepareTextureSource(CompositableTextureSourceRef& aTexture)
     // We are already attached to a TextureSource, nothing to do except tell
     // the compositable to use it.
     aTexture = mFirstSource.get();
+    printf_stderr("bignose line:%d\n", __LINE__);
     return;
   }
 
@@ -793,6 +801,7 @@ BufferTextureHost::PrepareTextureSource(CompositableTextureSourceRef& aTexture)
     mFirstSource = nullptr;
   }
 
+  printf_stderr("bignose line:%d\n", __LINE__);
   DataTextureSource* texture = aTexture.get() ? aTexture->AsDataTextureSource() : nullptr;
 
   bool compatibleFormats = texture && IsCompatibleTextureSource(texture,
@@ -822,9 +831,18 @@ BufferTextureHost::PrepareTextureSource(CompositableTextureSourceRef& aTexture)
 bool
 BufferTextureHost::BindTextureSource(CompositableTextureSourceRef& aTexture)
 {
+  printf_stderr("1 bignose BufferTextureHost::BindTextureSource, obj:%p\n",
+      this);
+  if (mReadLock) {
+    printf_stderr("1 bignose texture info(%d,%d)\n",
+        mReadLock->GetPID(),
+        mReadLock->GetSerialID());
+  }
   MOZ_ASSERT(mLocked);
   MOZ_ASSERT(mFirstSource);
   aTexture = mFirstSource;
+
+  //return false;
   return !!aTexture;
 }
 
@@ -841,6 +859,14 @@ BufferTextureHost::AcquireTextureSource(CompositableTextureSourceRef& aTexture)
 void
 BufferTextureHost::ReadUnlock()
 {
+  if (mReadLock) {
+    printf_stderr("1 bignose buffertexturehost readunlock, obj:%p, texture info(%d,%d)\n",
+        this,
+        mReadLock->GetPID(),
+        mReadLock->GetSerialID());
+    //nsTraceRefcnt::WalkTheStack(stderr);
+  }
+
   if (mFirstSource) {
     mFirstSource->Sync();
   }
@@ -932,6 +958,8 @@ BufferTextureHost::MaybeUpload(nsIntRegion *aRegion)
     aRegion = nullptr;
   }
 
+  printf_stderr("bignose buffer maybeupload, obj:%p\n", this);
+
   if (!Upload(aRegion)) {
     return false;
   }
@@ -968,7 +996,11 @@ BufferTextureHost::Upload(nsIntRegion *aRegion)
     // attached to a layer.
     return false;
   }
+
+  printf_stderr("bignose bufferTextureHost::upload() obj:%p, has intermediatebuffer:%d\n",
+      this, mHasIntermediateBuffer);
   if (!mHasIntermediateBuffer && EnsureWrappingTextureSource()) {
+    printf_stderr("bignose use wrapping textureSource\n");
     if (mFirstSource && mFirstSource->IsDirectMap()) {
       // The direct mapping texture source still needs to call Update() to
       // upload the new data. Only skip the uploading if we have the same
@@ -1070,6 +1102,15 @@ BufferTextureHost::Upload(nsIntRegion *aRegion)
       return false;
     }
 
+    if (regionToUpdate) {
+      std::cerr << "bignose BufferTextureHost::Upload " <<
+          "buffer_size:" << mSize << " "
+          "update_region:" << *regionToUpdate << '\n';
+    } else {
+      std::cerr << "bignose BufferTextureHost::Upload " <<
+          "buffer_size:" << mSize << " "
+          "update_region:" << "full size" << '\n';
+    }
     if (!mFirstSource->Update(surf.get(), regionToUpdate)) {
       NS_WARNING("failed to update the DataTextureSource");
       return false;

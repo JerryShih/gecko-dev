@@ -879,7 +879,7 @@ RecordStackFrame(uint32_t /*aFrameNumber*/, void* aPC, void* /*aSP*/,
 void
 nsTraceRefcnt::WalkTheStack(FILE* aStream)
 {
-  MozStackWalk(PrintStackFrame, /* skipFrames */ 2, /* maxFrames */ 0, aStream);
+  MozStackWalk(PrintStackFrame, /* skipFrames */ 0, /* maxFrames */ 0, aStream);
 }
 
 /**

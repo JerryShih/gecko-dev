@@ -176,6 +176,9 @@ KnowsCompositor::IdentifyTextureHost(const TextureFactoryIdentifier& aIdentifier
   mTextureFactoryIdentifier = aIdentifier;
 
   mSyncObject = SyncObjectClient::CreateSyncObjectClient(aIdentifier.mSyncHandle);
+
+  printf_stderr("bignose IdentifyTextureHost, has direct upload:%d\n",
+      (int)aIdentifier.mSupportsTextureDirectMapping);
 }
 
 KnowsCompositor::KnowsCompositor()

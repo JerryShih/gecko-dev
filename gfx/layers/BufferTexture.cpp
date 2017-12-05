@@ -112,6 +112,11 @@ bool ComputeHasIntermediateBuffer(gfx::SurfaceFormat aFormat,
                                   LayersBackend aLayersBackend,
                                   bool aSupportsTextureDirectMapping)
 {
+  printf_stderr("bignose ComputeHasIntermediateBuffer, %d\n",(int)aSupportsTextureDirectMapping);
+  //MOZ_ASSERT(false);
+
+  //return false;
+
   if (aSupportsTextureDirectMapping) {
     return false;
   }
