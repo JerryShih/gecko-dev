@@ -669,7 +669,7 @@ public:
   virtual MacIOSurface* GetMacIOSurface() { return nullptr; }
 
 protected:
-  void ReadUnlock();
+  virtual void ReadUnlock();
 
   void RecycleTexture(TextureFlags aFlags);
 
@@ -772,6 +772,8 @@ public:
                                 const wr::LayoutRect& aClip,
                                 wr::ImageRendering aFilter,
                                 const Range<wr::ImageKey>& aImageKeys) override;
+
+  virtual void ReadUnlock() override;
 
 protected:
   bool Upload(nsIntRegion *aRegion = nullptr);

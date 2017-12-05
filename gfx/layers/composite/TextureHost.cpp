@@ -839,11 +839,31 @@ BufferTextureHost::AcquireTextureSource(CompositableTextureSourceRef& aTexture)
 }
 
 void
+BufferTextureHost::ReadUnlock()
+{
+  if (mFirstSource) {
+    mFirstSource->Sync();
+  }
+
+  TextureHost::ReadUnlock();
+}
+
+void
 BufferTextureHost::UnbindTextureSource()
 {
   if (mFirstSource && mFirstSource->IsOwnedBy(this)) {
     mFirstSource->Unbind();
   }
+
+  // The buffer in this texture source might still be used by gpu. Defer
+  // the ReadUnlock() to the next end of composition.
+  if (mFirstSource->IsDirectMap()) {
+    if (mProvider) {
+      mProvider->UnlockAfterComposition(this);
+      return;
+    }
+  }
+
   // This texture is not used by any layer anymore.
   // If the texture doesn't have an intermediate buffer, it means we are
   // compositing synchronously on the CPU, so we don't need to wait until
@@ -947,7 +967,16 @@ BufferTextureHost::Upload(nsIntRegion *aRegion)
     return false;
   }
   if (!mHasIntermediateBuffer && EnsureWrappingTextureSource()) {
-    return true;
+    if (mFirstSource && mFirstSource->IsDirectMap()) {
+      // The direct mapping texture source still needs to call Update() to
+      // upload the new data. Only skip the uploading if we have the same
+      // serial id.
+      if (mFirstSource->GetUpdateSerial() == mUpdateSerial) {
+        return true;
+      }
+    } else {
+      return true;
+    }
   }
 
   if (mFormat == gfx::SurfaceFormat::UNKNOWN) {
