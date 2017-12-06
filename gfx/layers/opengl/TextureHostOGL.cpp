@@ -347,11 +347,7 @@ DirectMapTextureSource::DirectMapTextureSource(TextureSourceProvider* aProvider,
 
 DirectMapTextureSource::~DirectMapTextureSource()
 {
-  if (mSync) {
-    gl()->MakeCurrent();
-    gl()->fDeleteSync(mSync);
-    mSync = 0;
-  }
+  DeleteSyncObject();
 }
 
 void
@@ -390,8 +386,7 @@ DirectMapTextureSource::Update(gfx::DataSourceSurface* aSurface,
 void
 DirectMapTextureSource::Sync()
 {
-  if (mSync) {
-    gl()->MakeCurrent();
+  if (mSync && gl() && gl()->MakeCurrent()) {
     gl()->fClientWaitSync(mSync, LOCAL_GL_SYNC_FLUSH_COMMANDS_BIT, LOCAL_GL_TIMEOUT_IGNORED);
   }
 }
@@ -402,7 +397,9 @@ DirectMapTextureSource::UpdateInternal(gfx::DataSourceSurface* aSurface,
                                        gfx::IntPoint* aSrcOffset,
                                        bool aInit)
 {
-  gl()->MakeCurrent();
+  if (!gl() || gl()->MakeCurrent()) {
+    return false;
+  }
 
   if (aInit) {
     gl()->fGenTextures(1, &mTextureHandle);
@@ -452,7 +449,9 @@ DirectMapTextureSource::UpdateInternal(gfx::DataSourceSurface* aSurface,
   }
   mSync = gl()->fFenceSync(LOCAL_GL_SYNC_GPU_COMMANDS_COMPLETE, 0);
 
+  // Reset APPLE_client_storage.
   gl()->fPixelStorei(LOCAL_GL_UNPACK_CLIENT_STORAGE_APPLE, LOCAL_GL_FALSE);
+
   return true;
 }
 
