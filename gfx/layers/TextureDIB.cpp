@@ -67,6 +67,7 @@ public:
   virtual TextureData*
   CreateSimilar(LayersIPCChannel* aAllocator,
                 LayersBackend aLayersBackend,
+                bool SupportsTextureDirectMapping,
                 TextureFlags aFlags = TextureFlags::DEFAULT,
                 TextureAllocationFlags aAllocFlags = ALLOC_DEFAULT) const override;
 
@@ -159,6 +160,7 @@ DIBTextureData::Create(gfx::IntSize aSize, gfx::SurfaceFormat aFormat,
 TextureData*
 MemoryDIBTextureData::CreateSimilar(LayersIPCChannel* aAllocator,
                                     LayersBackend aLayersBackend,
+                                    bool SupportsTextureDirectMapping,
                                     TextureFlags aFlags,
                                     TextureAllocationFlags aAllocFlags) const
 {
