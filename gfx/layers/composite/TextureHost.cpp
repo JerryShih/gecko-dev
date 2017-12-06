@@ -851,16 +851,18 @@ BufferTextureHost::ReadUnlock()
 void
 BufferTextureHost::UnbindTextureSource()
 {
-  if (mFirstSource && mFirstSource->IsOwnedBy(this)) {
-    mFirstSource->Unbind();
-  }
+  if (mFirstSource) {
+    if (mFirstSource->IsOwnedBy(this)) {
+      mFirstSource->Unbind();
+    }
 
-  // The buffer in this texture source might still be used by gpu. Defer
-  // the ReadUnlock() to the next end of composition.
-  if (mFirstSource->IsDirectMap()) {
-    if (mProvider) {
-      mProvider->UnlockAfterComposition(this);
-      return;
+    // The buffer in this texture source might still be used by gpu. Defer
+    // the ReadUnlock() to the next end of composition.
+    if (mFirstSource->IsDirectMap()) {
+      if (mProvider) {
+        mProvider->UnlockAfterComposition(this);
+        return;
+      }
     }
   }
 
