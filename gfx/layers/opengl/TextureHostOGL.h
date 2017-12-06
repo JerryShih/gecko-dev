@@ -299,6 +299,13 @@ public:
                          gfx::DataSourceSurface* aSurface);
   virtual ~DirectMapTextureSource();
 
+  virtual void SetTextureSourceProvider(TextureSourceProvider* aProvider) override;
+
+  virtual void DeallocateDeviceData() override
+  {
+    DeleteSyncObject();
+  }
+
   virtual bool Update(gfx::DataSourceSurface* aSurface,
                       nsIntRegion* aDestRegion = nullptr,
                       gfx::IntPoint* aSrcOffset = nullptr) override;
@@ -313,6 +320,9 @@ private:
                       nsIntRegion* aDestRegion,
                       gfx::IntPoint* aSrcOffset,
                       bool aInit);
+
+  void DeleteSyncObject();
+
   GLsync mSync;
 };
 

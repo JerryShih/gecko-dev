@@ -354,6 +354,27 @@ DirectMapTextureSource::~DirectMapTextureSource()
   }
 }
 
+void
+DirectMapTextureSource::SetTextureSourceProvider(TextureSourceProvider* aProvider)
+{
+  GLContext* newGL = aProvider ? aProvider->GetGLContext() : nullptr;
+
+  if (gl() != newGL) {
+    DeleteSyncObject();
+  }
+
+  GLTextureSource::SetTextureSourceProvider(aProvider);
+}
+
+void
+DirectMapTextureSource::DeleteSyncObject()
+{
+  if (mSync && gl() && gl()->MakeCurrent()) {
+    gl()->fDeleteSync(mSync);
+  }
+  mSync = 0;
+}
+
 bool
 DirectMapTextureSource::Update(gfx::DataSourceSurface* aSurface,
                                nsIntRegion* aDestRegion,
