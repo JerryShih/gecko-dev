@@ -397,7 +397,7 @@ DirectMapTextureSource::UpdateInternal(gfx::DataSourceSurface* aSurface,
                                        gfx::IntPoint* aSrcOffset,
                                        bool aInit)
 {
-  if (!gl() || gl()->MakeCurrent()) {
+  if (!gl() || !gl()->MakeCurrent()) {
     return false;
   }
 
