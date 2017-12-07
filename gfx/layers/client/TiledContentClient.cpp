@@ -647,7 +647,7 @@ TileClient::GetBackBuffer(CompositableClient& aCompositable,
 
   // Try to re-use the front-buffer if possible
   if (mFrontBuffer &&
-      mFrontBuffer->HasIntermediateBuffer() &&
+      //mFrontBuffer->HasIntermediateBuffer() &&
       !mFrontBuffer->IsReadLocked() &&
       (aMode != SurfaceMode::SURFACE_COMPONENT_ALPHA || (
         mFrontBufferOnWhite && !mFrontBufferOnWhite->IsReadLocked()))) {
