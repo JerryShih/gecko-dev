@@ -64,6 +64,14 @@ CrossProcessSemaphore::Wait(const Maybe<TimeDuration>& aWaitTime)
   return hr == WAIT_OBJECT_0;
 }
 
+bool
+CrossProcessSemaphore::TryWait()
+{
+  MOZ_ASSERT(mSemaphore, "Improper construction of semaphore.");
+  HRESULT hr = ::WaitForSingleObject(mSemaphore, 0);
+  return hr == WAIT_OBJECT_0;
+}
+
 void
 CrossProcessSemaphore::Signal()
 {

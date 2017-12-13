@@ -797,7 +797,7 @@ class tscrollx(PageloaderTest):
     """
     tpmanifest = '${talos}/tests/scroll/scroll.manifest'
     tpcycles = 1
-    tppagecycles = 25
+    tppagecycles = 10
     tpmozafterpaint = False
     tpchrome = False
     gecko_profile_interval = 1

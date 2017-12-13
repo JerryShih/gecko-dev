@@ -610,6 +610,10 @@ CreateBackBufferTexture(TextureClient* aCurrentTexture,
     return nullptr;
   }
 
+//  static int count=0;
+//  count++;
+//  printf_stderr("bignose create backbuffertexture, pid:%d, id:%d\n",getpid(), count);
+
   texture->EnableReadLock();
 
   if (!aCompositable.AddTextureClient(texture)) {
@@ -653,6 +657,9 @@ TileClient::GetBackBuffer(CompositableClient& aCompositable,
         mFrontBufferOnWhite && !mFrontBufferOnWhite->IsReadLocked()))) {
     // If we had a backbuffer we no longer care about it since we'll
     // re-use the front buffer.
+//    static int count = 0;
+//    count++;
+//    printf_stderr("bignose reuse front buffer, pid:%d, count:%d\n",getpid(), count);
     DiscardBackBuffer();
     Flip();
   } else {
@@ -960,6 +967,11 @@ void ClientMultiTiledLayerBuffer::Update(const nsIntRegion& newValidRegion,
 
   nsIntRegion paintRegion = aPaintRegion;
   nsIntRegion dirtyRegion = aDirtyRegion;
+
+  {
+
+  //AUTO_PROFILER_LABEL("ClientMultiTiledLayerBuffer::Update", GRAPHICS);
+
   if (!paintRegion.IsEmpty()) {
     for (size_t i = 0; i < newTileCount; ++i) {
       const TileIntPoint tilePosition = newTiles.TilePosition(i);
@@ -1044,6 +1056,8 @@ void ClientMultiTiledLayerBuffer::Update(const nsIntRegion& newValidRegion,
       }
       UnlockTile(tile);
     }
+  }
+
   }
 
   mTiles = newTiles;

@@ -34,6 +34,8 @@
 #include "pratom.h"
 #include "nsThreadUtils.h"
 
+#include "mozilla/ipc/CrossProcessMutex.h"
+
 class gfxImageSurface;
 struct ID3D11Device;
 

@@ -143,6 +143,16 @@ CrossProcessSemaphore::Wait(const Maybe<TimeDuration>& aWaitTime)
   return ret == 0;
 }
 
+bool
+CrossProcessSemaphore::TryWait()
+{
+  MOZ_ASSERT(*mRefCount > 0, "Attempting to wait on a semaphore with zero ref count");
+  int ret;
+  while ((ret = sem_trywait(mSemaphore)) == -1 && errno == EINTR) {
+  }
+  return ret == 0;
+}
+
 void
 CrossProcessSemaphore::Signal()
 {

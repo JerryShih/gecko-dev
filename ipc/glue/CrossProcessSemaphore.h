@@ -65,6 +65,12 @@ public:
   bool Wait(const Maybe<TimeDuration>& aWaitTime = Nothing());
 
   /**
+   * Similar to the Wait() call, but this is a non-blocking call. If the
+   * decrement cannot be immediately performed, then call returns false.
+   **/
+  bool TryWait();
+
+  /**
    * Increments the current value of the semaphore.
    **/
   void Signal();

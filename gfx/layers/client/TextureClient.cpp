@@ -465,13 +465,9 @@ TextureClient::TryReadLock()
     return true;
   }
 
-  if (mReadLock->AsNonBlockingLock()) {
-    if (IsReadLocked()) {
-      return false;
-    }
-  }
-
-  if (!mReadLock->TryReadLock(TimeDuration::FromMilliseconds(500))) {
+  // The default timeout is zero.
+  TimeDuration timeout;
+  if (!mReadLock->TryReadLock(timeout)) {
     return false;
   }
 
@@ -1539,7 +1535,11 @@ public:
     if (!IsValid()) {
       return false;
     }
-    return mSemaphore->Wait(Some(aTimeout));
+    if (aTimeout.IsZero()) {
+      return mSemaphore->TryWait();
+    } else {
+      return mSemaphore->Wait(Some(aTimeout));
+    }
   }
   virtual int32_t ReadUnlock() override
   {

@@ -19,6 +19,7 @@ EXPORTS.mozilla.ipc += [
     'CrashReporterClient.h',
     'CrashReporterHost.h',
     'CrashReporterMetadataShmem.h',
+    #'CrossProcessConditionVariable.h',
     'CrossProcessMutex.h',
     'CrossProcessSemaphore.h',
     'FileDescriptor.h',
@@ -71,14 +72,17 @@ else:
 
 if CONFIG['OS_ARCH'] == 'WINNT':
     SOURCES += [
+        #'CrossProcessConditionVariable_windows.cpp',
         'CrossProcessMutex_windows.cpp',
     ]
 elif not CONFIG['OS_ARCH'] in ('NetBSD', 'OpenBSD'):
     UNIFIED_SOURCES += [
+        #'CrossProcessConditionVariable_posix.cpp',
         'CrossProcessMutex_posix.cpp',
     ]
 else:
     UNIFIED_SOURCES += [
+        #'CrossProcessConditionVariable_unimplemented.cpp',
         'CrossProcessMutex_unimplemented.cpp',
     ]
 

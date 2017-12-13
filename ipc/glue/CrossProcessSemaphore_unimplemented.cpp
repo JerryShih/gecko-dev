@@ -41,6 +41,13 @@ CrossProcessSemaphore::Wait(const Maybe<TimeDuration>& aWaitTime)
   return false;
 }
 
+bool
+CrossProcessSemaphore::TryWait()
+{
+  MOZ_CRASH("Cross-process semaphores not allowed on this platform - woah! We should've aborted by now!");
+  return false;
+}
+
 void
 CrossProcessSemaphore::Signal()
 {
