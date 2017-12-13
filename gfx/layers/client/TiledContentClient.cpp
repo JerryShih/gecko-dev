@@ -656,7 +656,8 @@ TileClient::GetBackBuffer(CompositableClient& aCompositable,
     DiscardBackBuffer();
     Flip();
   } else {
-    if (!mBackBuffer || mBackBuffer->IsReadLocked()) {
+    //bignose test
+    if (!mBackBuffer) {
       mBackBuffer.Set(this,
         CreateBackBufferTexture(mBackBuffer, aCompositable, mAllocator)
       );
@@ -666,19 +667,26 @@ TileClient::GetBackBuffer(CompositableClient& aCompositable,
         return nullptr;
       }
       mInvalidBack = IntRect(IntPoint(), mBackBuffer->GetSize());
+    } else if (mBackBuffer->IsReadLocked()) {
+      //spin loop for mBackBuffer readunlock().
+      while (mBackBuffer->IsReadLocked()) {}
     }
 
-    if (aMode == SurfaceMode::SURFACE_COMPONENT_ALPHA
-        && (!mBackBufferOnWhite || mBackBufferOnWhite->IsReadLocked())) {
-      mBackBufferOnWhite = CreateBackBufferTexture(
-        mBackBufferOnWhite, aCompositable, mAllocator
-      );
+    if (aMode == SurfaceMode::SURFACE_COMPONENT_ALPHA) {
       if (!mBackBufferOnWhite) {
-        DiscardBackBuffer();
-        DiscardFrontBuffer();
-        return nullptr;
+        mBackBufferOnWhite = CreateBackBufferTexture(
+          mBackBufferOnWhite, aCompositable, mAllocator
+        );
+        if (!mBackBufferOnWhite) {
+          DiscardBackBuffer();
+          DiscardFrontBuffer();
+          return nullptr;
+        }
+        mInvalidBack = IntRect(IntPoint(), mBackBufferOnWhite->GetSize());
+      } else if (mBackBufferOnWhite->IsReadLocked()) {
+        //spin loop for mBackBufferOnWhite readunlock().
+        while (mBackBufferOnWhite->IsReadLocked()) {}
       }
-      mInvalidBack = IntRect(IntPoint(), mBackBufferOnWhite->GetSize());
     }
 
     ValidateBackBufferFromFront(aDirtyRegion, aAddPaintedRegion);
