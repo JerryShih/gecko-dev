@@ -213,8 +213,8 @@ public:
 
   ~TextureSourceRecycler()
   {
-    printf_stderr("bignose total texturesource:%d, texturehost used:%d, texturesource used:%d\n",
-        mTiles.Length(), mUsedTextureHostCount, mUsedTextureSourceCount);
+//    printf_stderr("bignose total texturesource:%d, texturehost used:%d, texturesource used:%d\n",
+//        mTiles.Length(), mUsedTextureHostCount, mUsedTextureSourceCount);
   }
 
   // Attempts to recycle a texture source that is already bound to the

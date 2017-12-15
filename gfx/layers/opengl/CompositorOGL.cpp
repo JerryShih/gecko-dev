@@ -632,6 +632,7 @@ CompositorOGL::BeginFrame(const nsIntRegion& aInvalidRegion,
                           IntRect *aClipRectOut,
                           IntRect *aRenderBoundsOut)
 {
+  printf_stderr("bignose CompositorOGL::BeginFrame\n");
   AUTO_PROFILER_LABEL("CompositorOGL::BeginFrame", GRAPHICS);
 
   MOZ_ASSERT(!mFrameInProgress, "frame still in progress (should have called EndFrame");
@@ -1637,6 +1638,8 @@ CompositorOGL::EndFrame()
   }
 
   Compositor::EndFrame();
+
+  printf_stderr("bignose CompositorOGL::EndFrame\n");
 }
 
 void

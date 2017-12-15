@@ -247,10 +247,10 @@ TexSubImage2DHelper(GLContext* gl,
         gl->fPixelStorei(LOCAL_GL_UNPACK_ALIGNMENT,
                          std::min(GetAddressAlignment((ptrdiff_t)pixels),
                                   GetAddressAlignment((ptrdiff_t)stride)));
-        printf_stderr("bignose error:%d\n",gl->fGetError());
+        //printf_stderr("bignose error:%d\n",gl->fGetError());
         int rowLength = stride/pixelsize;
         gl->fPixelStorei(LOCAL_GL_UNPACK_ROW_LENGTH, rowLength);
-        printf_stderr("bignose error:%d\n",gl->fGetError());
+        //printf_stderr("bignose error:%d\n",gl->fGetError());
         gl->fTexSubImage2D(target,
                            level,
                            xoffset,
@@ -260,20 +260,20 @@ TexSubImage2DHelper(GLContext* gl,
                            format,
                            type,
                            pixels);
-        printf_stderr("bignose texsubimage2d:%d,%d,%d,%d,%d,%d,%d,%d\n",
-             target,
-             level,
-             xoffset,
-             yoffset,
-             width,
-             height,
-             format,
-             type);
-        printf_stderr("bignose error:%d\n",gl->fGetError());
+//        printf_stderr("bignose texsubimage2d:%d,%d,%d,%d,%d,%d,%d,%d\n",
+//             target,
+//             level,
+//             xoffset,
+//             yoffset,
+//             width,
+//             height,
+//             format,
+//             type);
+        //printf_stderr("bignose error:%d\n",gl->fGetError());
         gl->fPixelStorei(LOCAL_GL_UNPACK_ROW_LENGTH, 0);
-        printf_stderr("bignose error:%d\n",gl->fGetError());
+        //printf_stderr("bignose error:%d\n",gl->fGetError());
         gl->fPixelStorei(LOCAL_GL_UNPACK_ALIGNMENT, 4);
-        printf_stderr("bignose error:%d\n",gl->fGetError());
+        //printf_stderr("bignose error:%d\n",gl->fGetError());
     }
 }
 
@@ -371,12 +371,12 @@ TexImage2DHelper(GLContext* gl,
                          std::min(GetAddressAlignment((ptrdiff_t)pixels),
                                   GetAddressAlignment((ptrdiff_t)stride)));
 
-        printf_stderr("bignose error:%d\n",gl->fGetError());
+        //printf_stderr("bignose error:%d\n",gl->fGetError());
 
         int rowLength = stride/pixelsize;
         gl->fPixelStorei(LOCAL_GL_UNPACK_ROW_LENGTH, rowLength);
 
-        printf_stderr("bignose error:%d\n",gl->fGetError());
+        //printf_stderr("bignose error:%d\n",gl->fGetError());
 
         gl->fTexImage2D(target,
                         level,
@@ -388,12 +388,12 @@ TexImage2DHelper(GLContext* gl,
                         type,
                         pixels);
 
-        printf_stderr("bignose error:%d\n",gl->fGetError());
+        //printf_stderr("bignose error:%d\n",gl->fGetError());
 
         gl->fPixelStorei(LOCAL_GL_UNPACK_ROW_LENGTH, 0);
-        printf_stderr("bignose error:%d\n",gl->fGetError());
+        //printf_stderr("bignose error:%d\n",gl->fGetError());
         gl->fPixelStorei(LOCAL_GL_UNPACK_ALIGNMENT, 4);
-        printf_stderr("bignose error:%d\n",gl->fGetError());
+        //printf_stderr("bignose error:%d\n",gl->fGetError());
     }
 }
 

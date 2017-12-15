@@ -674,9 +674,18 @@ TileClient::GetBackBuffer(CompositableClient& aCompositable,
         return nullptr;
       }
       mInvalidBack = IntRect(IntPoint(), mBackBuffer->GetSize());
-    } else if (mBackBuffer->IsReadLocked()) {
+    } else if (mBackBuffer->GetReadLock() && mBackBuffer->IsReadLocked()) {
+      char buffer[256];
+      sprintf(buffer, "mBackBuffer(%d,%d)",
+          mBackBuffer->GetReadLock()->GetPID(),
+          mBackBuffer->GetReadLock()->GetSerialID());
+      PROFILER_ADD_MARKER(buffer);
       //spin loop for mBackBuffer readunlock().
-      while (mBackBuffer->IsReadLocked()) {}
+      while (mBackBuffer->IsReadLocked()) {
+        printf_stderr("bignose client mBackBuffer wait readlock: texture info(%d,%d)\n",
+            mBackBuffer->GetReadLock()->GetPID(),
+            mBackBuffer->GetReadLock()->GetSerialID());
+      }
     }
 
     if (aMode == SurfaceMode::SURFACE_COMPONENT_ALPHA) {
@@ -690,9 +699,18 @@ TileClient::GetBackBuffer(CompositableClient& aCompositable,
           return nullptr;
         }
         mInvalidBack = IntRect(IntPoint(), mBackBufferOnWhite->GetSize());
-      } else if (mBackBufferOnWhite->IsReadLocked()) {
+      } else if (mBackBufferOnWhite->GetReadLock() && mBackBufferOnWhite->IsReadLocked()) {
+        char buffer[256];
+        sprintf(buffer, "mBackBufferOnWhite(%d,%d)",
+            mBackBufferOnWhite->GetReadLock()->GetPID(),
+            mBackBufferOnWhite->GetReadLock()->GetSerialID());
+        PROFILER_ADD_MARKER(buffer);
         //spin loop for mBackBufferOnWhite readunlock().
-        while (mBackBufferOnWhite->IsReadLocked()) {}
+        while (mBackBufferOnWhite->IsReadLocked()) {
+          printf_stderr("bignose client mBackBufferOnWhite wait readlock: texture info(%d,%d)\n",
+              mBackBufferOnWhite->GetReadLock()->GetPID(),
+              mBackBufferOnWhite->GetReadLock()->GetSerialID());
+        }
       }
     }
 

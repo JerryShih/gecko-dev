@@ -1460,7 +1460,13 @@ public:
 
   virtual bool Serialize(ReadLockDescriptor& aOutput, base::ProcessId aOther) override;
 
+  virtual uint32_t GetPID() { return mPID; }
+  virtual uint32_t GetSerialID() { return mUniqueID; }
+
   int32_t mReadCount;
+
+  int32_t mPID;
+  int32_t mUniqueID;
 };
 
 // The cross-prcess implementation of TextureReadLock.
@@ -1620,6 +1626,12 @@ MemoryTextureReadLock::MemoryTextureReadLock()
 : mReadCount(1)
 {
   MOZ_COUNT_CTOR(MemoryTextureReadLock);
+
+  //bignose
+  static uint32_t count = 0;
+  count++;
+  mPID = getpid();
+  mUniqueID = count;
 }
 
 MemoryTextureReadLock::~MemoryTextureReadLock()

@@ -171,7 +171,6 @@ FixedSizeSmallShmemSectionAllocator::AllocShmemSection(uint32_t aSize, ShmemSect
   //bignose
   static uint32_t count = 0;
   count++;
-  uint32_t uniqueID = getpid();
   aShmemSection->pid() = getpid();
   aShmemSection->uniqueID() = count;
 
